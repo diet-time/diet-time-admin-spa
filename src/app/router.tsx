@@ -1,0 +1,16 @@
+import { createBrowserRouter } from 'react-router-dom';
+import { ProtectedRoute } from '@/auth/ProtectedRoute';
+import { LoginPage } from '@/auth/LoginPage';
+import { AdminLayout } from '@/layouts/AdminLayout';
+import { DashboardPage } from '@/features/dashboard/DashboardPage';
+import { MealsPage } from '@/features/meals/pages/MealsPage';
+import { MealFormPage } from '@/features/meals/pages/MealFormPage';
+import { MealDetailsPage } from '@/features/meals/pages/MealDetailsPage';
+import { MasterDataPage } from '@/features/master-data/MasterDataPage';
+import { PlanListPage } from '@/features/meal-plans/PlanListPage';
+import { PlanBuilderPage } from '@/features/meal-plans/PlanBuilderPage';
+import { PlanCalendarPage } from '@/features/meal-plans/PlanCalendarPage';
+import { AuditPage } from '@/features/audit/AuditPage';
+import { ModulePage } from '@/features/shared/ModulePage';
+import { AppErrorPage, ForbiddenPage, NotFoundPage } from '@/pages/ErrorPages';
+export const router=createBrowserRouter([{path:'/login',element:<LoginPage/>},{element:<ProtectedRoute/>,children:[{element:<AdminLayout/>,errorElement:<AppErrorPage/>,children:[{index:true,element:<DashboardPage/>},{path:'meals',element:<MealsPage/>},{path:'meals/new',element:<MealFormPage/>},{path:'meals/:mealId',element:<MealDetailsPage/>},{path:'meals/:mealId/edit',element:<MealFormPage/>},{path:'categories',element:<MasterDataPage resource="meal-categories"/>},{path:'ingredients',element:<MasterDataPage resource="ingredients"/>},{path:'allergens',element:<MasterDataPage resource="allergens"/>},{path:'meal-types',element:<MasterDataPage resource="meal-types"/>},{path:'meal-plans',element:<PlanListPage/>},{path:'meal-plans/new',element:<PlanBuilderPage/>},{path:'meal-plans/:planId/edit',element:<PlanBuilderPage/>},{path:'meal-plans/calendar',element:<PlanCalendarPage/>},{path:'meal-plans/pricing',element:<ModulePage title="Plan pricing" description="Manage current, scheduled, expired, and historical plan prices without overlapping active periods." endpoint="GET /admin/meal-plan-pricing"/>},{path:'meal-plans/slots',element:<ModulePage title="Slot configuration" description="Configure reusable slot rules and meal-type defaults." endpoint="GET /admin/meal-slot-configurations"/>},{path:'pricing',element:<ModulePage title="Pricing" description="Manage meal, delivery, corporate, and promotional price timelines." endpoint="GET /admin/pricing"/>},{path:'media',element:<ModulePage title="Media library" description="Review uploaded media, translations, captions, dimensions, and active usage." endpoint="GET /admin/media"/>},{path:'audit',element:<AuditPage/>},{path:'settings',element:<ModulePage title="Settings" description="Portal policy, translation requirements, upload limits, and operational configuration belong to backend-controlled settings." endpoint="GET /admin/settings"/>},{path:'forbidden',element:<ForbiddenPage/>},{path:'*',element:<NotFoundPage/>}]}]}]);

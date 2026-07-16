@@ -1,0 +1,5 @@
+import { render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { useAuthStore } from '@/app/store/authStore';
+import { RoleGuard } from './RoleGuard';
+describe('RoleGuard',()=>{beforeEach(()=>useAuthStore.getState().clear());it('shows content for an allowed role',()=>{useAuthStore.getState().setSession({id:'1',name:'D',email:'d@example.com',roles:['Dietitian']});render(<RoleGuard allowedRoles={['Dietitian']}>Edit nutrition</RoleGuard>);expect(screen.getByText('Edit nutrition')).toBeInTheDocument()});it('hides unauthorized content',()=>{useAuthStore.getState().setSession({id:'2',name:'V',email:'v@example.com',roles:['Viewer']});render(<RoleGuard allowedRoles={['Finance']}>Edit price</RoleGuard>);expect(screen.queryByText('Edit price')).not.toBeInTheDocument()});it('permits admins',()=>{useAuthStore.getState().setSession({id:'3',name:'A',email:'a@example.com',roles:['Admin']});render(<RoleGuard allowedRoles={['Finance']}>Edit price</RoleGuard>);expect(screen.getByText('Edit price')).toBeInTheDocument()})});

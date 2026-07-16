@@ -1,0 +1,5 @@
+import { ErrorOutline, InboxOutlined } from '@mui/icons-material';
+import { Alert, Box, Button, Skeleton, Stack, Typography } from '@mui/material';
+export function LoadingState({ rows = 6 }: { rows?: number }) { return <Stack spacing={1.5} aria-label="Loading content">{Array.from({ length: rows }, (_, i) => <Skeleton key={i} variant="rounded" height={i === 0 ? 52 : 44} />)}</Stack>; }
+export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) { return <Alert severity="error" icon={<ErrorOutline />} action={onRetry && <Button color="inherit" onClick={onRetry}>Try again</Button>}>{message}</Alert>; }
+export function EmptyState({ title = 'Nothing here yet', description }: { title?: string; description?: string }) { return <Box textAlign="center" py={7}><InboxOutlined sx={{ fontSize: 48, color: 'text.disabled' }} /><Typography variant="h3" mt={1}>{title}</Typography>{description && <Typography color="text.secondary" mt={1}>{description}</Typography>}</Box>; }

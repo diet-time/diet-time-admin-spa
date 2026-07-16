@@ -1,0 +1,2 @@
+import { Chip } from '@mui/material';
+export function StatusChip({ label }: { label: string }) { const normalized = label.toLowerCase(); const color = normalized.includes('active') || normalized.includes('available') || normalized.includes('published') ? 'success' : normalized.includes('draft') || normalized.includes('schedule') ? 'warning' : normalized.includes('archive') || normalized.includes('expired') ? 'default' : 'error'; return <Chip size="small" color={color} variant={color === 'default' ? 'outlined' : 'filled'} label={label} />; }
