@@ -1,0 +1,4 @@
+import { describe, expect, it } from 'vitest';
+import { defaultMealValues, mealSchema } from './mealSchema';
+const valid=()=>({...defaultMealValues,sku:'MEAL-001',categoryId:'cat-1',translations:{en:{name:'Grilled chicken'}}});
+describe('mealSchema',()=>{it('accepts a valid draft meal',()=>expect(mealSchema.safeParse(valid()).success).toBe(true));it('rejects negative nutrition',()=>expect(mealSchema.safeParse({...valid(),nutrition:{...defaultMealValues.nutrition,calories:-1}}).success).toBe(false));it('requires vegan meals to be vegetarian',()=>expect(mealSchema.safeParse({...valid(),dietary:{...defaultMealValues.dietary,vegan:true}}).success).toBe(false));it('rejects end before start',()=>expect(mealSchema.safeParse({...valid(),availability:{mode:'range' as const,isAvailable:true,availableFrom:'2026-08-02T12:00',availableUntil:'2026-08-01T12:00'}}).success).toBe(false))});
