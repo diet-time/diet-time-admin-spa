@@ -2,9 +2,9 @@ import { CloudUploadOutlined } from '@mui/icons-material';
 import { Alert, Box, LinearProgress, Paper, Stack, Typography } from '@mui/material';
 import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { mediaApi } from '@/api/mediaApi';
+import { uploadMealImage } from '@/api/mediaApi';
 
-export function ImageUploader({ mealId, onComplete }: { mealId?: string; onComplete?: (objectKey: string) => void }) {
+export function ImageUploader({ mealId, onComplete }: { mealId?: string; onComplete?: () => void }) {
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState('');
   const maxSize = Number(import.meta.env.VITE_UPLOAD_MAX_MB ?? 8) * 1024 * 1024;
@@ -19,16 +19,9 @@ export function ImageUploader({ mealId, onComplete }: { mealId?: string; onCompl
     setError('');
     setProgress(0);
     try {
-      const ticket = await mediaApi.requestUpload({
-        fileName: file.name,
-        contentType: file.type,
-        entityType: 'MEAL_ITEM',
-        entityId: mealId,
-      });
-      await mediaApi.upload(ticket, file, setProgress);
-      await mediaApi.attachToMeal(mealId, { objectKey: ticket.objectKey, mediaType: 'Gallery', altTextEn: file.name });
+      await uploadMealImage(mealId, file, setProgress);
       setProgress(100);
-      onComplete?.(ticket.objectKey);
+      onComplete?.();
     } catch {
       setError('The image could not be uploaded. Try again.');
       setProgress(null);
