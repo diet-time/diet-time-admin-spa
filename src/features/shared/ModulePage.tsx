@@ -1,0 +1,3 @@
+import { ConstructionOutlined } from '@mui/icons-material';
+import { Alert, Card, CardContent, Stack, Typography } from '@mui/material';
+export function ModulePage({title,description,endpoint}:{title:string;description:string;endpoint?:string}){return <Stack spacing={3}><Typography variant="h1">{title}</Typography><Card><CardContent sx={{py:7,textAlign:'center'}}><ConstructionOutlined color="primary" sx={{fontSize:52}}/><Typography variant="h2" mt={2}>{title}</Typography><Typography color="text.secondary" maxWidth={620} mx="auto" mt={1}>{description}</Typography>{endpoint&&<Alert severity="info" sx={{mt:3,textAlign:'start'}}>This screen is ready to bind once the backend exposes <code>{endpoint}</code> with its final OpenAPI schema.</Alert>}</CardContent></Card></Stack>}
