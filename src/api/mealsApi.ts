@@ -297,7 +297,7 @@ export const mealsApi = {
     const response = await apiClient.get<AdminMealDetailResponse>(`/admin/meals/${id}`, { signal });
     return normalizeMealDetail(response.data);
   },
-  create: async (body: MealFormValues) => (await apiClient.post<{ id: string }>('/admin/meals', toAdminMealRequest(body))).data,
+  create: async (body: MealFormValues) => (await apiClient.post<{ data: { id: string } }>('/admin/meals', toAdminMealRequest(body))).data.data,
   update: async (id: string, body: MealFormValues) => (await apiClient.put(`/admin/meals/${id}`, toAdminMealRequest(body))).data,
   status: async (id: string, status: string) => (await apiClient.patch(`/admin/meals/${id}/status`, { status })).data,
 };
