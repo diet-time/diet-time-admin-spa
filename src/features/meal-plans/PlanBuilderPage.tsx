@@ -150,6 +150,28 @@ export function PlanBuilderPage() {
           { languageCode: 'en' as const, name: planDetails.nameEn.trim() },
           ...(planDetails.nameAr.trim() ? [{ languageCode: 'ar' as const, name: planDetails.nameAr.trim() }] : []),
         ],
+        days: days.map((planDay) => ({
+          dayNumber: planDay.number,
+          dayOfWeek: null,
+          englishLabel: `Day ${planDay.number}`,
+          arabicLabel: null,
+          slots: planDay.slots.map((planSlot, slotIndex) => ({
+            mealTypeId: mealTypeIdFor(planSlot)!,
+            displayOrder: slotIndex,
+            minimumSelection: planSlot.min,
+            maximumSelection: planSlot.max,
+            isRequired: planSlot.required,
+            selectionCutoffTime: null,
+            allowsPaidUpgrade: false,
+            options: planSlot.options.map((option, optionIndex) => ({
+              mealItemId: option.id,
+              additionalPrice: 0,
+              isDefault: option.default,
+              isAvailable: true,
+              displayOrder: optionIndex,
+            })),
+          })),
+        })),
       };
 
       if (planId) {
@@ -158,36 +180,6 @@ export function PlanBuilderPage() {
       }
 
       const createdPlan = await plansApi.create(input);
-      for (const planDay of days) {
-        const createdDay = await plansApi.addDay(createdPlan.id, {
-          dayNumber: planDay.number,
-          dayOfWeek: null,
-          englishLabel: `Day ${planDay.number}`,
-          arabicLabel: null,
-        });
-        for (const [slotIndex, planSlot] of planDay.slots.entries()) {
-          const mealTypeId = mealTypeIdFor(planSlot);
-          if (!mealTypeId) throw new Error(`A meal type is required for ${planSlot.title}.`);
-          const createdSlot = await plansApi.addSlot(createdDay.id, {
-            mealTypeId,
-            displayOrder: slotIndex,
-            minimumSelection: planSlot.min,
-            maximumSelection: planSlot.max,
-            isRequired: planSlot.required,
-            selectionCutoffTime: null,
-            allowsPaidUpgrade: false,
-          });
-          for (const [optionIndex, option] of planSlot.options.entries()) {
-            await plansApi.addOption(createdSlot.id, {
-              mealItemId: option.id,
-              additionalPrice: 0,
-              isDefault: option.default,
-              isAvailable: true,
-              displayOrder: optionIndex,
-            });
-          }
-        }
-      }
       return createdPlan.id;
     },
     onSuccess: async () => {

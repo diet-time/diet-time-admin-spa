@@ -2,7 +2,10 @@ import { apiClient } from './apiClient';
 import type { PagedResponse, PlanSummary } from './apiTypes';
 export interface PlanFilters { page: number; pageSize: number; search?: string; published?: boolean }
 export interface PlanTranslationInput { languageCode: 'en' | 'ar'; name: string; shortDescription?: string; fullDescription?: string }
-export interface PlanInput { code: string; planType: string; durationDays: number; isCustomizable: boolean; validFrom?: string | null; validUntil?: string | null; translations: PlanTranslationInput[] }
+export interface PlanStructureOptionInput { mealItemId: string; additionalPrice: number; isDefault: boolean; isAvailable: boolean; displayOrder: number }
+export interface PlanStructureSlotInput { mealTypeId: string; displayOrder: number; minimumSelection: number; maximumSelection: number; isRequired: boolean; selectionCutoffTime?: string | null; allowsPaidUpgrade: boolean; options: PlanStructureOptionInput[] }
+export interface PlanStructureDayInput { dayNumber: number; dayOfWeek?: number | null; englishLabel: string; arabicLabel?: string | null; slots: PlanStructureSlotInput[] }
+export interface PlanInput { code: string; planType: string; durationDays: number; isCustomizable: boolean; validFrom?: string | null; validUntil?: string | null; translations: PlanTranslationInput[]; days?: PlanStructureDayInput[] }
 export interface PlanDayInput { dayNumber: number; dayOfWeek?: number | null; englishLabel: string; arabicLabel?: string | null }
 export interface PlanSlotInput { mealTypeId: string; displayOrder: number; minimumSelection: number; maximumSelection: number; isRequired: boolean; selectionCutoffTime?: string | null; allowsPaidUpgrade: boolean }
 export interface SlotOptionInput { mealItemId: string; additionalPrice: number; isDefault: boolean; isAvailable: boolean; displayOrder: number }
