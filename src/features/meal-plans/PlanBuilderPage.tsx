@@ -148,12 +148,12 @@ export function PlanBuilderPage() {
 
   return (
     <Stack spacing={3}>
-      <Stack direction="row" justifyContent="space-between">
+      <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ md: 'flex-start' }} gap={2}>
         <Box>
           <Typography variant="h1">{planId ? 'Edit meal plan' : 'Create meal plan'}</Typography>
           <Typography color="text.secondary">Template days → meal slots → selectable meal options</Typography>
         </Box>
-        <Stack direction="row" gap={1}>
+        <Stack direction="row" gap={1} flexWrap="wrap">
           <Button onClick={() => navigate('/meal-plans')}>Cancel</Button>
           <Button variant="outlined">Save draft</Button>
           <Button variant="contained" disabled={issues.length > 0}>Publish</Button>
@@ -162,29 +162,36 @@ export function PlanBuilderPage() {
       {issues.length > 0 && (
         <Alert severity="error"><strong>Publishing checklist:</strong> {issues.join(' ')}</Alert>
       )}
-      <Card>
-        <CardContent>
-          <Grid container spacing={3}>
-            <Grid size={{ xs: 12, lg: 3 }} sx={{ borderInlineEnd: { lg: '1px solid' }, borderColor: 'divider', pr: { lg: 2 } }}>
+      <Card sx={{ overflow: 'hidden' }}>
+        <CardContent sx={{ p: '0 !important' }}>
+          <Grid container spacing={0}>
+            <Grid
+              size={{ xs: 12, lg: 3 }}
+              sx={{ p: { xs: 2.5, md: 3 }, borderInlineEnd: { lg: 1 }, borderBottom: { xs: 1, lg: 0 }, borderColor: 'divider', bgcolor: '#FCFDFC', minHeight: { lg: 560 } }}
+            >
               <Stack direction="row" justifyContent="space-between" alignItems="center">
                 <Typography variant="h3">Days</Typography>
                 <Button startIcon={<Add />} onClick={addDay}>Add</Button>
               </Stack>
-              <List>
+              <List sx={{ mt: 1.5, p: 0 }}>
                 {days.map((planDay, index) => (
                   <ListItemButton
                     key={planDay.id}
                     selected={index === selectedDay}
                     onClick={() => { setSelectedDay(index); setSelectedSlot(0); setSelectedMeal(null); }}
+                    sx={{ mb: 1, borderRadius: 2, border: 1, borderColor: index === selectedDay ? 'rgba(0,103,78,.18)' : 'transparent', '&.Mui-selected': { bgcolor: 'rgba(0,103,78,.08)' }, '&.Mui-selected:hover': { bgcolor: 'rgba(0,103,78,.11)' } }}
                   >
-                    <ListItemIcon><DragIndicator /></ListItemIcon>
+                    <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}><DragIndicator /></ListItemIcon>
                     <ListItemText primary={`Day ${planDay.number}`} secondary={`${planDay.slots.length} slots`} />
-                    <ContentCopy fontSize="small" />
+                    <ContentCopy fontSize="small" color="action" />
                   </ListItemButton>
                 ))}
               </List>
             </Grid>
-            <Grid size={{ xs: 12, lg: 4 }} sx={{ borderInlineEnd: { lg: '1px solid' }, borderColor: 'divider', pr: { lg: 2 } }}>
+            <Grid
+              size={{ xs: 12, lg: 4 }}
+              sx={{ p: { xs: 2.5, md: 3 }, borderInlineEnd: { lg: 1 }, borderBottom: { xs: 1, lg: 0 }, borderColor: 'divider', minHeight: { lg: 560 } }}
+            >
               <Stack direction="row" justifyContent="space-between">
                 <Typography variant="h3">Meal slots</Typography>
                 <Button startIcon={<Add />} onClick={addSlot}>Add slot</Button>
@@ -194,14 +201,20 @@ export function PlanBuilderPage() {
                   key={planSlot.id}
                   selected={index === selectedSlot}
                   onClick={() => { setSelectedSlot(index); setSelectedMeal(null); }}
+                  sx={{ mt: index === 0 ? 1.5 : 0.75, borderRadius: 2, border: 1, borderColor: index === selectedSlot ? 'rgba(0,103,78,.18)' : 'transparent', '&.Mui-selected': { bgcolor: 'rgba(0,103,78,.08)' }, '&.Mui-selected:hover': { bgcolor: 'rgba(0,103,78,.11)' } }}
                 >
                   <ListItemText primary={planSlot.title} secondary={`${planSlot.options.length} options · select ${planSlot.min}–${planSlot.max}`} />
                   {planSlot.required && <Chip size="small" label="Required" />}
                 </ListItemButton>
               ))}
               {slot && (
-                <Stack spacing={2} mt={3}>
+                <Stack spacing={2} mt={2.5} p={2} sx={{ border: 1, borderColor: 'divider', borderRadius: 2, bgcolor: '#FCFDFC' }}>
+                  <Box>
+                    <Typography variant="subtitle2" fontWeight={700}>Slot settings</Typography>
+                    <Typography variant="caption" color="text.secondary">Set the meal type and how many choices customers can make.</Typography>
+                  </Box>
                   <TextField
+                    fullWidth
                     select
                     label="Meal type"
                     value={selectedMealTypeId}
@@ -222,42 +235,50 @@ export function PlanBuilderPage() {
                       <MenuItem value={mealType.id} key={mealType.id}>{mealType.nameEn}</MenuItem>
                     ))}
                   </TextField>
-                  <Stack direction="row" gap={1}>
-                    <TextField
-                      type="number"
-                      label="Minimum"
-                      value={slot.min}
-                      slotProps={{ htmlInput: { min: 0, max: slot.max } }}
-                      onChange={(event) => updateSlot({ min: Math.max(0, Number(event.target.value)) })}
-                    />
-                    <TextField
-                      type="number"
-                      label="Maximum"
-                      value={slot.max}
-                      slotProps={{ htmlInput: { min: slot.min } }}
-                      onChange={(event) => updateSlot({ max: Math.max(slot.min, Number(event.target.value)) })}
-                    />
-                  </Stack>
+                  <Grid container spacing={1.5}>
+                    <Grid size={6}>
+                      <TextField
+                        fullWidth
+                        type="number"
+                        label="Minimum"
+                        value={slot.min}
+                        slotProps={{ htmlInput: { min: 0, max: slot.max } }}
+                        onChange={(event) => updateSlot({ min: Math.max(0, Number(event.target.value)) })}
+                      />
+                    </Grid>
+                    <Grid size={6}>
+                      <TextField
+                        fullWidth
+                        type="number"
+                        label="Maximum"
+                        value={slot.max}
+                        slotProps={{ htmlInput: { min: slot.min } }}
+                        onChange={(event) => updateSlot({ max: Math.max(slot.min, Number(event.target.value)) })}
+                      />
+                    </Grid>
+                  </Grid>
                   <FormControlLabel
                     control={<Checkbox checked={slot.required} onChange={(_, checked) => updateSlot({ required: checked })} />}
                     label="Required slot"
+                    sx={{ m: 0 }}
                   />
                 </Stack>
               )}
             </Grid>
-            <Grid size={{ xs: 12, lg: 5 }}>
+            <Grid size={{ xs: 12, lg: 5 }} sx={{ p: { xs: 2.5, md: 3 }, minHeight: { lg: 560 } }}>
               <Stack direction="row" justifyContent="space-between">
                 <Typography variant="h3">Meal options</Typography>
                 <Button
                   startIcon={<Add />}
+                  variant="contained"
                   disabled={!slot || !selectedMeal || slot.options.some((option) => option.id === selectedMeal.id)}
                   onClick={addMeal}
                 >
-                  Add meal
+                  Add selected
                 </Button>
               </Stack>
               <Autocomplete
-                sx={{ my: 2 }}
+                sx={{ mt: 2, mb: 1 }}
                 options={meals}
                 value={selectedMeal}
                 inputValue={mealSearch}
@@ -276,6 +297,7 @@ export function PlanBuilderPage() {
                 renderInput={(params) => (
                   <TextField
                     {...params}
+                    label="Find a meal"
                     placeholder="Search active meals by name, category, tag, or allergen"
                     error={mealsQuery.isError}
                     helperText={mealsQuery.isError ? 'Unable to load active meals.' : undefined}
@@ -294,15 +316,21 @@ export function PlanBuilderPage() {
                 )}
               />
               {slot?.options.length ? (
-                <Stack direction="row" flexWrap="wrap" useFlexGap gap={1} py={2}>
+                <Box py={2.5}>
+                  <Typography variant="caption" color="text.secondary" display="block" mb={1}>
+                    {slot.options.length} {slot.options.length === 1 ? 'meal' : 'meals'} added to this slot
+                  </Typography>
+                  <Stack direction="row" flexWrap="wrap" useFlexGap gap={1}>
                   {slot.options.map((option) => (
                     <Chip
                       key={option.id}
                       label={option.name}
                       onDelete={() => updateSlot({ options: slot.options.filter((item) => item.id !== option.id) })}
+                      sx={{ bgcolor: 'rgba(0,103,78,.08)', '& .MuiChip-deleteIcon': { color: 'rgba(0,103,78,.45)' } }}
                     />
                   ))}
-                </Stack>
+                  </Stack>
+                </Box>
               ) : (
                 <Box py={5} textAlign="center">
                   <Typography fontWeight={700}>No selectable meals yet</Typography>
