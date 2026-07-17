@@ -52,6 +52,16 @@ interface Day {
   slots: Slot[];
 }
 
+interface PlanDetails {
+  code: string;
+  nameEn: string;
+  nameAr: string;
+  planType: string;
+  isCustomizable: boolean;
+}
+
+const planTypes = ['STANDARD', 'WEIGHT_LOSS', 'WEIGHT_GAIN', 'KETO', 'DIABETIC', 'VEGETARIAN', 'VEGAN', 'HIGH_PROTEIN', 'LOW_CARB', 'BALANCED', 'CUSTOM'];
+
 const initial: Day[] = [{
   id: 'new-day-1',
   number: 1,
@@ -66,6 +76,13 @@ export function PlanBuilderPage() {
   const [selectedSlot, setSelectedSlot] = useState(0);
   const [mealSearch, setMealSearch] = useState('');
   const [selectedMeal, setSelectedMeal] = useState<MealSummary | null>(null);
+  const [planDetails, setPlanDetails] = useState<PlanDetails>({
+    code: '',
+    nameEn: '',
+    nameAr: '',
+    planType: 'STANDARD',
+    isCustomizable: true,
+  });
   const day = days[selectedDay];
   const slot = day?.slots[selectedSlot];
 
@@ -107,6 +124,70 @@ export function PlanBuilderPage() {
   const issues = days.flatMap((planDay) => planDay.slots
     .filter((planSlot) => planSlot.required && planSlot.options.length < planSlot.min)
     .map((planSlot) => `Day ${planDay.number} ${planSlot.title} needs at least ${planSlot.min} active option(s).`));
+  const mealTypeIdFor = (planSlot: Slot) => planSlot.mealTypeId
+    ?? mealTypes.find((mealType) => mealType.nameEn === planSlot.title)?.id;
+  const canSave = !!planDetails.code.trim()
+    && !!planDetails.nameEn.trim()
+    && days.length > 0
+    && days.every((planDay) => planDay.slots.every((planSlot) => !!mealTypeIdFor(planSlot)));
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const input = {
+        code: planDetails.code.trim().toUpperCase(),
+        planType: planDetails.planType,
+        durationDays: days.length,
+        isCustomizable: planDetails.isCustomizable,
+        validFrom: null,
+        validUntil: null,
+        translations: [
+          { languageCode: 'en' as const, name: planDetails.nameEn.trim() },
+          ...(planDetails.nameAr.trim() ? [{ languageCode: 'ar' as const, name: planDetails.nameAr.trim() }] : []),
+        ],
+      };
+
+      if (planId) {
+        await plansApi.update(planId, input);
+        return planId;
+      }
+
+      const createdPlan = await plansApi.create(input);
+      for (const planDay of days) {
+        const createdDay = await plansApi.addDay(createdPlan.id, {
+          dayNumber: planDay.number,
+          dayOfWeek: null,
+          englishLabel: `Day ${planDay.number}`,
+          arabicLabel: null,
+        });
+        for (const [slotIndex, planSlot] of planDay.slots.entries()) {
+          const mealTypeId = mealTypeIdFor(planSlot);
+          if (!mealTypeId) throw new Error(`A meal type is required for ${planSlot.title}.`);
+          const createdSlot = await plansApi.addSlot(createdDay.id, {
+            mealTypeId,
+            displayOrder: slotIndex,
+            minimumSelection: planSlot.min,
+            maximumSelection: planSlot.max,
+            isRequired: planSlot.required,
+            selectionCutoffTime: null,
+            allowsPaidUpgrade: false,
+          });
+          for (const [optionIndex, option] of planSlot.options.entries()) {
+            await plansApi.addOption(createdSlot.id, {
+              mealItemId: option.id,
+              additionalPrice: 0,
+              isDefault: option.default,
+              isAvailable: true,
+              displayOrder: optionIndex,
+            });
+          }
+        }
+      }
+      return createdPlan.id;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['plans'] });
+      navigate('/meal-plans');
+    },
+  });
 
   const updateSlot = (changes: Partial<Slot>) => {
     setDays((currentDays) => currentDays.map((currentDay, dayIndex) => dayIndex === selectedDay
@@ -164,7 +245,13 @@ export function PlanBuilderPage() {
         </Box>
         <Stack direction="row" gap={1} flexWrap="wrap">
           <Button onClick={() => navigate('/meal-plans')}>Cancel</Button>
-          <Button variant="outlined">Save draft</Button>
+          <Button
+            variant="outlined"
+            disabled={!canSave || saveMutation.isPending || publishMutation.isPending}
+            onClick={() => saveMutation.mutate()}
+          >
+            {saveMutation.isPending ? 'Saving…' : 'Save draft'}
+          </Button>
           <Button
             variant="contained"
             disabled={!planId || issues.length > 0 || publishMutation.isPending}
@@ -180,6 +267,70 @@ export function PlanBuilderPage() {
       {publishMutation.isError && (
         <Alert severity="error">The meal plan could not be published. Review the plan and try again.</Alert>
       )}
+      {saveMutation.isError && (
+        <Alert severity="error">The draft could not be saved. Review the plan details and try again.</Alert>
+      )}
+      <Card>
+        <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
+          <Stack spacing={2}>
+            <Box>
+              <Typography variant="h3">Plan details</Typography>
+              <Typography variant="body2" color="text.secondary">Enter the required information before saving this draft.</Typography>
+            </Box>
+            <Grid container spacing={2} alignItems="center">
+              <Grid size={{ xs: 12, md: 3 }}>
+                <TextField
+                  required
+                  fullWidth
+                  label="Plan code"
+                  value={planDetails.code}
+                  slotProps={{ htmlInput: { maxLength: 50 } }}
+                  onChange={(event) => setPlanDetails((current) => ({ ...current, code: event.target.value }))}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 3 }}>
+                <TextField
+                  required
+                  fullWidth
+                  label="English name"
+                  value={planDetails.nameEn}
+                  onChange={(event) => setPlanDetails((current) => ({ ...current, nameEn: event.target.value }))}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 3 }}>
+                <TextField
+                  fullWidth
+                  label="Arabic name"
+                  dir="rtl"
+                  value={planDetails.nameAr}
+                  onChange={(event) => setPlanDetails((current) => ({ ...current, nameAr: event.target.value }))}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 3 }}>
+                <TextField
+                  select
+                  fullWidth
+                  label="Plan type"
+                  value={planDetails.planType}
+                  onChange={(event) => setPlanDetails((current) => ({ ...current, planType: event.target.value }))}
+                >
+                  {planTypes.map((type) => <MenuItem value={type} key={type}>{type.replaceAll('_', ' ')}</MenuItem>)}
+                </TextField>
+              </Grid>
+              <Grid size={{ xs: 12, md: 3 }}>
+                <FormControlLabel
+                  control={<Checkbox checked={planDetails.isCustomizable} onChange={(_, checked) => setPlanDetails((current) => ({ ...current, isCustomizable: checked }))} />}
+                  label="Customer customizable"
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 3 }}>
+                <Typography variant="body2" color="text.secondary">Duration</Typography>
+                <Typography fontWeight={700}>{days.length} {days.length === 1 ? 'day' : 'days'}</Typography>
+              </Grid>
+            </Grid>
+          </Stack>
+        </CardContent>
+      </Card>
       <Card sx={{ overflow: 'hidden' }}>
         <CardContent sx={{ p: '0 !important' }}>
           <Grid container spacing={0}>
