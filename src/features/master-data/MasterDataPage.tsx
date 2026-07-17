@@ -139,19 +139,6 @@ export function MasterDataPage({ resource }: { resource: MasterResource }) {
     },
   });
 
-  const toggleStatus = (record: MasterRecord) => mutation.mutate({
-    id: record.id,
-    body: {
-      code: record.code,
-      nameEn: record.nameEn,
-      nameAr: record.nameAr,
-      descriptionEn: record.descriptionEn,
-      descriptionAr: record.descriptionAr,
-      displayOrder: record.displayOrder,
-      isActive: !record.isActive,
-    },
-  });
-
   return (
     <Stack spacing={3}>
       <Stack direction="row" justifyContent="space-between">
@@ -175,9 +162,6 @@ export function MasterDataPage({ resource }: { resource: MasterResource }) {
             slotProps={{ input: { startAdornment: <InputAdornment position="start"><Search /></InputAdornment> } }}
           />
         </Box>
-        {mutation.isError && !dialog && (
-          <Alert severity="error" sx={{ mx: 2, mb: 2 }}>The status could not be updated. Please try again.</Alert>
-        )}
         {query.isLoading ? (
           <Box p={2}><LoadingState /></Box>
         ) : query.isError ? (
@@ -209,26 +193,17 @@ export function MasterDataPage({ resource }: { resource: MasterResource }) {
                     )}
                     {isCategory && <TableCell>{record.displayOrder ?? 0}</TableCell>}
                     <TableCell>
-                      <RoleGuard
-                        allowedRoles={['Dietitian', 'ContentManager']}
-                        fallback={(
-                          <Button component="span" size="small" variant={record.isActive ? 'contained' : 'outlined'} color={record.isActive ? 'success' : 'inherit'}>
-                            {record.isActive ? 'Active' : 'Inactive'}
-                          </Button>
-                        )}
+                      <Button
+                        component="span"
+                        size="small"
+                        variant={record.isActive ? 'contained' : 'outlined'}
+                        color={record.isActive ? 'success' : 'error'}
+                        disableRipple
+                        aria-label={`Status: ${record.isActive ? 'Active' : 'Inactive'}`}
+                        sx={{ minWidth: 82, minHeight: 30, px: 1.5, borderRadius: 999, cursor: 'default', pointerEvents: 'none', boxShadow: 'none' }}
                       >
-                        <Button
-                          size="small"
-                          variant={record.isActive ? 'contained' : 'outlined'}
-                          color={record.isActive ? 'success' : 'inherit'}
-                          disabled={mutation.isPending}
-                          onClick={() => toggleStatus(record)}
-                          aria-label={`${record.isActive ? 'Deactivate' : 'Activate'} ${record.nameEn}`}
-                          sx={{ minWidth: 88 }}
-                        >
-                          {record.isActive ? 'Active' : 'Inactive'}
-                        </Button>
-                      </RoleGuard>
+                        {record.isActive ? 'Active' : 'Inactive'}
+                      </Button>
                     </TableCell>
                     <TableCell>{record.usageCount}</TableCell>
                     <TableCell>{formatDate(record.updatedAt || record.createdAt)}</TableCell>
