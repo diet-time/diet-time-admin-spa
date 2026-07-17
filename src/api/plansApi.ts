@@ -1,8 +1,38 @@
 import { apiClient } from './apiClient';
 import type { PagedResponse, PlanSummary } from './apiTypes';
 export interface PlanFilters { page: number; pageSize: number; search?: string; published?: boolean }
+
+interface PlansListApiResponse {
+  data?: PlanSummary[];
+  items?: PlanSummary[];
+  meta?: Partial<Omit<PagedResponse<PlanSummary>, 'items'>>;
+  page?: number;
+  pageSize?: number;
+  totalCount?: number;
+  totalPages?: number;
+}
+
+const normalizePlansResponse = (
+  response: PlansListApiResponse,
+  filters: PlanFilters,
+): PagedResponse<PlanSummary> => {
+  const items = response.data ?? response.items ?? [];
+  const meta = response.meta;
+
+  return {
+    items,
+    page: meta?.page ?? response.page ?? filters.page,
+    pageSize: meta?.pageSize ?? response.pageSize ?? filters.pageSize,
+    totalCount: meta?.totalCount ?? response.totalCount ?? items.length,
+    totalPages: meta?.totalPages ?? response.totalPages ?? 1,
+  };
+};
+
 export const plansApi = {
-  list: async (filters: PlanFilters, signal?: AbortSignal) => (await apiClient.get<PagedResponse<PlanSummary>>('/admin/meal-plans', { params: filters, signal })).data,
+  list: async (filters: PlanFilters, signal?: AbortSignal) => {
+    const response = await apiClient.get<PlansListApiResponse>('/admin/meal-plans', { params: filters, signal });
+    return normalizePlansResponse(response.data, filters);
+  },
   get: async (id: string) => (await apiClient.get(`/admin/meal-plans/${id}`)).data,
   create: async (body: unknown) => (await apiClient.post<{ id: string }>('/admin/meal-plans', body)).data,
   update: async (id: string, body: unknown) => (await apiClient.put(`/admin/meal-plans/${id}`, body)).data,
