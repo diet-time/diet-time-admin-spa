@@ -15,9 +15,29 @@ const responseId = (response: IdResponse) => {
   return { id };
 };
 
+interface PlansListApiItem {
+  id: string;
+  code?: string;
+  name?: string;
+  nameEn?: string;
+  nameAr?: string;
+  planType?: string;
+  durationDays?: number;
+  isCustomizable?: boolean;
+  customizable?: boolean;
+  isPublished?: boolean;
+  published?: boolean;
+  isActive?: boolean;
+  active?: boolean;
+  validFrom?: string;
+  validUntil?: string;
+  priceFrom?: number;
+  updatedAt?: string;
+}
+
 interface PlansListApiResponse {
-  data?: PlanSummary[];
-  items?: PlanSummary[];
+  data?: PlansListApiItem[];
+  items?: PlansListApiItem[];
   meta?: Partial<Omit<PagedResponse<PlanSummary>, 'items'>>;
   page?: number;
   pageSize?: number;
@@ -29,14 +49,29 @@ const normalizePlansResponse = (
   response: PlansListApiResponse,
   filters: PlanFilters,
 ): PagedResponse<PlanSummary> => {
-  const items = response.data ?? response.items ?? [];
+  const sourceItems = response.data ?? response.items ?? [];
   const meta = response.meta;
+  const items: PlanSummary[] = sourceItems.map((plan) => ({
+    id: plan.id,
+    code: plan.code ?? '',
+    nameEn: plan.nameEn ?? plan.name ?? '',
+    nameAr: plan.nameAr,
+    planType: plan.planType ?? '',
+    durationDays: plan.durationDays ?? 0,
+    customizable: plan.customizable ?? plan.isCustomizable ?? false,
+    published: plan.published ?? plan.isPublished ?? false,
+    active: plan.active ?? plan.isActive ?? false,
+    validFrom: plan.validFrom,
+    validUntil: plan.validUntil,
+    priceFrom: plan.priceFrom,
+    updatedAt: plan.updatedAt ?? '',
+  }));
 
   return {
     items,
     page: meta?.page ?? response.page ?? filters.page,
     pageSize: meta?.pageSize ?? response.pageSize ?? filters.pageSize,
-    totalCount: meta?.totalCount ?? response.totalCount ?? items.length,
+    totalCount: meta?.totalCount ?? response.totalCount ?? sourceItems.length,
     totalPages: meta?.totalPages ?? response.totalPages ?? 1,
   };
 };

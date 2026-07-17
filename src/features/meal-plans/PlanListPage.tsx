@@ -57,6 +57,7 @@ export function PlanListPage() {
     },
   });
   const items = query.data?.items ?? [];
+  const statusLabel = (plan: PlanSummary) => !plan.published ? 'Draft' : plan.active ? 'Published' : 'Inactive';
 
   const closeMenu = () => setRowMenu(null);
   const editSelectedPlan = () => {
@@ -87,7 +88,7 @@ export function PlanListPage() {
           <TextField
             value={search}
             onChange={(event) => { setSearch(event.target.value); setPage(0); }}
-            placeholder="Search plan code or name"
+            placeholder="Search plan name"
             slotProps={{ input: { startAdornment: <InputAdornment position="start"><Search /></InputAdornment> } }}
           />
         </Box>
@@ -102,28 +103,26 @@ export function PlanListPage() {
           <EmptyState title="No plan templates found" />
         ) : (
           <TableContainer>
-            <Table>
+            <Table size="small" sx={{ minWidth: 720, tableLayout: 'fixed', '& .MuiTableCell-head': { color: 'text.secondary', fontWeight: 750, bgcolor: '#FBFCFB' }, '& .MuiTableCell-root': { py: 1.75 } }}>
               <TableHead>
                 <TableRow>
-                  {['Code', 'Name', 'Plan type', 'Duration', 'Customizable', 'Published', 'Active', 'Validity', 'Price from', 'Updated', 'Actions'].map((heading) => (
-                    <TableCell key={heading}>{heading}</TableCell>
-                  ))}
+                  <TableCell sx={{ width: '34%' }}>Name</TableCell>
+                  <TableCell sx={{ width: '18%' }}>Plan type</TableCell>
+                  <TableCell sx={{ width: '12%' }}>Duration</TableCell>
+                  <TableCell sx={{ width: '14%' }}>Status</TableCell>
+                  <TableCell sx={{ width: '16%' }}>Updated</TableCell>
+                  <TableCell align="center" sx={{ width: '6%' }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {items.map((plan) => (
                   <TableRow key={plan.id}>
-                    <TableCell>{plan.code}</TableCell>
-                    <TableCell>{plan.nameEn}<Typography variant="caption" display="block" dir="rtl">{plan.nameAr}</Typography></TableCell>
-                    <TableCell>{plan.planType}</TableCell>
+                    <TableCell><Typography fontWeight={700}>{plan.nameEn || 'Unnamed plan'}</Typography></TableCell>
+                    <TableCell>{plan.planType.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase())}</TableCell>
                     <TableCell>{plan.durationDays} days</TableCell>
-                    <TableCell>{plan.customizable ? 'Yes' : 'No'}</TableCell>
-                    <TableCell><StatusChip label={plan.published ? 'Published' : 'Draft'} /></TableCell>
-                    <TableCell><StatusChip label={plan.active ? 'Active' : 'Inactive'} /></TableCell>
-                    <TableCell>{plan.validFrom || 'Open'} – {plan.validUntil || 'Open'}</TableCell>
-                    <TableCell>{plan.priceFrom === undefined ? '—' : `QAR ${plan.priceFrom}`}</TableCell>
-                    <TableCell>{new Date(plan.updatedAt).toLocaleDateString()}</TableCell>
-                    <TableCell>
+                    <TableCell><StatusChip label={statusLabel(plan)} /></TableCell>
+                    <TableCell>{plan.updatedAt ? new Date(plan.updatedAt).toLocaleDateString() : '—'}</TableCell>
+                    <TableCell align="center">
                       <IconButton
                         onClick={(event) => setRowMenu({ anchor: event.currentTarget, plan })}
                         aria-label={`Actions for ${plan.nameEn || plan.code}`}
