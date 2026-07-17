@@ -49,6 +49,7 @@ export const plansApi = {
   get: async (id: string) => (await apiClient.get(`/admin/meal-plans/${id}`)).data,
   create: async (body: PlanInput) => responseId((await apiClient.post<IdResponse>('/admin/meal-plans', body)).data),
   update: async (id: string, body: PlanInput) => (await apiClient.put(`/admin/meal-plans/${id}`, body)).data,
+  remove: async (id: string) => (await apiClient.delete(`/admin/meal-plans/${id}`)).data,
   publish: async (id: string) => (await apiClient.post(`/admin/meal-plans/${id}/publish`)).data,
   unpublish: async (id: string) => (await apiClient.post(`/admin/meal-plans/${id}/unpublish`)).data,
   addDay: async (id: string, body: PlanDayInput) => responseId((await apiClient.post<IdResponse>(`/admin/meal-plans/${id}/days`, body)).data),
