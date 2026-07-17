@@ -22,13 +22,14 @@ import {
   Typography,
 } from '@mui/material';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { masterDataApi } from '@/api/masterDataApi';
 import { mealsApi } from '@/api/mealsApi';
 import { plansApi } from '@/api/plansApi';
 import type { MealSummary } from '@/api/apiTypes';
 import { queryClient } from '@/app/queryClient';
+import { ErrorState, LoadingState } from '@/components/feedback/PageState';
 
 interface PlanOption {
   id: string;
@@ -83,6 +84,7 @@ export function PlanBuilderPage() {
     planType: 'STANDARD',
     isCustomizable: true,
   });
+  const hydratedPlanId = useRef<string | undefined>(undefined);
   const day = days[selectedDay];
   const slot = day?.slots[selectedSlot];
 
@@ -107,6 +109,11 @@ export function PlanBuilderPage() {
     }, signal),
     enabled: !!slot,
     staleTime: 30_000,
+  });
+  const planQuery = useQuery({
+    queryKey: ['plan', planId],
+    queryFn: ({ signal }) => plansApi.get(planId!, signal),
+    enabled: !!planId,
   });
   const publishMutation = useMutation({
     mutationFn: () => plansApi.publish(planId!),
@@ -189,6 +196,41 @@ export function PlanBuilderPage() {
     },
   });
 
+  useEffect(() => {
+    const plan = planQuery.data;
+    if (!plan || hydratedPlanId.current === plan.id) return;
+    hydratedPlanId.current = plan.id;
+    const english = plan.translations.find((translation) => translation.languageCode.toLowerCase() === 'en');
+    const arabic = plan.translations.find((translation) => translation.languageCode.toLowerCase() === 'ar');
+    setPlanDetails({
+      code: plan.code,
+      nameEn: english?.name ?? '',
+      nameAr: arabic?.name ?? '',
+      planType: plan.planType,
+      isCustomizable: plan.isCustomizable,
+    });
+    setDays(plan.days.map((planDay) => ({
+      id: planDay.id,
+      number: planDay.dayNumber,
+      slots: planDay.slots.map((planSlot) => ({
+        id: planSlot.id,
+        mealTypeId: planSlot.mealTypeId,
+        title: planSlot.mealTypeName,
+        min: planSlot.minimumSelection,
+        max: planSlot.maximumSelection,
+        required: planSlot.isRequired,
+        options: planSlot.options.map((option) => ({
+          id: option.mealItemId,
+          name: option.mealName,
+          default: option.isDefault,
+        })),
+      })),
+    })));
+    setSelectedDay(0);
+    setSelectedSlot(0);
+    setSelectedMeal(null);
+  }, [planQuery.data]);
+
   const updateSlot = (changes: Partial<Slot>) => {
     setDays((currentDays) => currentDays.map((currentDay, dayIndex) => dayIndex === selectedDay
       ? {
@@ -235,6 +277,11 @@ export function PlanBuilderPage() {
     setSelectedMeal(null);
     setMealSearch('');
   };
+
+  if (planId && planQuery.isLoading) return <LoadingState />;
+  if (planId && (planQuery.isError || !planQuery.data)) {
+    return <ErrorState message="Unable to load this meal plan." onRetry={() => void planQuery.refetch()} />;
+  }
 
   return (
     <Stack spacing={3}>

@@ -6,6 +6,34 @@ export interface PlanInput { code: string; planType: string; durationDays: numbe
 export interface PlanDayInput { dayNumber: number; dayOfWeek?: number | null; englishLabel: string; arabicLabel?: string | null }
 export interface PlanSlotInput { mealTypeId: string; displayOrder: number; minimumSelection: number; maximumSelection: number; isRequired: boolean; selectionCutoffTime?: string | null; allowsPaidUpgrade: boolean }
 export interface SlotOptionInput { mealItemId: string; additionalPrice: number; isDefault: boolean; isAvailable: boolean; displayOrder: number }
+export interface PlanDetail {
+  id: string;
+  code: string;
+  planType: string;
+  durationDays: number;
+  isCustomizable: boolean;
+  isPublished: boolean;
+  isActive: boolean;
+  validFrom?: string | null;
+  validUntil?: string | null;
+  translations: Array<{ languageCode: string; name: string; shortDescription?: string; fullDescription?: string }>;
+  days: Array<{
+    id: string;
+    dayNumber: number;
+    englishLabel: string;
+    arabicLabel?: string;
+    slots: Array<{
+      id: string;
+      mealTypeId: string;
+      mealTypeName: string;
+      displayOrder: number;
+      minimumSelection: number;
+      maximumSelection: number;
+      isRequired: boolean;
+      options: Array<{ id: string; mealItemId: string; mealName: string; isDefault: boolean }>;
+    }>;
+  }>;
+}
 
 interface IdResponse { data?: { id?: string }; id?: string }
 
@@ -81,7 +109,10 @@ export const plansApi = {
     const response = await apiClient.get<PlansListApiResponse>('/admin/meal-plans', { params: filters, signal });
     return normalizePlansResponse(response.data, filters);
   },
-  get: async (id: string) => (await apiClient.get(`/admin/meal-plans/${id}`)).data,
+  get: async (id: string, signal?: AbortSignal) => {
+    const response = await apiClient.get<{ data: PlanDetail }>(`/admin/meal-plans/${id}`, { signal });
+    return response.data.data;
+  },
   create: async (body: PlanInput) => responseId((await apiClient.post<IdResponse>('/admin/meal-plans', body)).data),
   update: async (id: string, body: PlanInput) => (await apiClient.put(`/admin/meal-plans/${id}`, body)).data,
   remove: async (id: string) => (await apiClient.delete(`/admin/meal-plans/${id}`)).data,
