@@ -107,8 +107,8 @@ export function PlanListPage() {
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ width: '32%' }}>Name</TableCell>
-                  <TableCell sx={{ width: '18%' }}>Plan type</TableCell>
-                  <TableCell sx={{ width: '12%' }}>Duration</TableCell>
+                  <TableCell sx={{ width: '18%' }}>Template type</TableCell>
+                  <TableCell sx={{ width: '12%' }}>Schedule</TableCell>
                   <TableCell sx={{ width: '14%' }}>Status</TableCell>
                   <TableCell sx={{ width: '15%' }}>Updated</TableCell>
                   <TableCell align="center" sx={{ width: '9%', whiteSpace: 'nowrap' }}>Actions</TableCell>
@@ -119,7 +119,7 @@ export function PlanListPage() {
                   <TableRow key={plan.id}>
                     <TableCell><Typography fontWeight={700}>{plan.nameEn || 'Unnamed plan'}</Typography></TableCell>
                     <TableCell>{plan.planType.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase())}</TableCell>
-                    <TableCell>{plan.durationDays} {plan.durationDays === 1 ? 'day' : 'days'}</TableCell>
+                    <TableCell>Saturday to Thursday</TableCell>
                     <TableCell><StatusChip label={statusLabel(plan)} /></TableCell>
                     <TableCell>{plan.updatedAt ? new Date(plan.updatedAt).toLocaleDateString() : '—'}</TableCell>
                     <TableCell align="center">
