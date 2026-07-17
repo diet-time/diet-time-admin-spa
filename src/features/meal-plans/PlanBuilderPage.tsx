@@ -22,7 +22,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { masterDataApi } from '@/api/masterDataApi';
 import { mealsApi } from '@/api/mealsApi';
@@ -84,7 +84,6 @@ export function PlanBuilderPage() {
     planType: 'STANDARD',
     isCustomizable: true,
   });
-  const hydratedPlanId = useRef<string | undefined>(undefined);
   const day = days[selectedDay];
   const slot = day?.slots[selectedSlot];
 
@@ -114,6 +113,8 @@ export function PlanBuilderPage() {
     queryKey: ['plan', planId],
     queryFn: ({ signal }) => plansApi.get(planId!, signal),
     enabled: !!planId,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
   const publishMutation = useMutation({
     mutationFn: () => plansApi.publish(planId!),
@@ -190,8 +191,7 @@ export function PlanBuilderPage() {
 
   useEffect(() => {
     const plan = planQuery.data;
-    if (!plan || hydratedPlanId.current === plan.id) return;
-    hydratedPlanId.current = plan.id;
+    if (!plan) return;
     const english = plan.translations.find((translation) => translation.languageCode.toLowerCase() === 'en');
     const arabic = plan.translations.find((translation) => translation.languageCode.toLowerCase() === 'ar');
     setPlanDetails({
@@ -270,7 +270,7 @@ export function PlanBuilderPage() {
     setMealSearch('');
   };
 
-  if (planId && planQuery.isLoading) return <LoadingState />;
+  if (planId && planQuery.isFetching) return <LoadingState />;
   if (planId && (planQuery.isError || !planQuery.data)) {
     return <ErrorState message="Unable to load this meal plan." onRetry={() => void planQuery.refetch()} />;
   }
