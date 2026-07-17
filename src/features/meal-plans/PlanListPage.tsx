@@ -102,8 +102,8 @@ export function PlanListPage() {
         ) : !items.length ? (
           <EmptyState title="No plan templates found" />
         ) : (
-          <TableContainer>
-            <Table size="small" sx={{ minWidth: 720, tableLayout: 'fixed', '& .MuiTableCell-head': { color: 'text.secondary', fontWeight: 750, bgcolor: '#FBFCFB' }, '& .MuiTableCell-root': { py: 1.75 } }}>
+          <TableContainer sx={{ width: '100%', overflowX: 'hidden' }}>
+            <Table size="small" sx={{ width: '100%', tableLayout: 'fixed', '& .MuiTableCell-head': { color: 'text.secondary', fontWeight: 750, bgcolor: '#FBFCFB' }, '& .MuiTableCell-root': { py: 1.75, overflow: 'hidden', textOverflow: 'ellipsis' } }}>
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ width: '34%' }}>Name</TableCell>
