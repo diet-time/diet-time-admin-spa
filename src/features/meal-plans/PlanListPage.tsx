@@ -106,12 +106,12 @@ export function PlanListPage() {
             <Table size="small" sx={{ width: '100%', tableLayout: 'fixed', '& .MuiTableCell-head': { color: 'text.secondary', fontWeight: 750, bgcolor: '#FBFCFB' }, '& .MuiTableCell-root': { py: 1.75, overflow: 'hidden', textOverflow: 'ellipsis' } }}>
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ width: '34%' }}>Name</TableCell>
+                  <TableCell sx={{ width: '32%' }}>Name</TableCell>
                   <TableCell sx={{ width: '18%' }}>Plan type</TableCell>
                   <TableCell sx={{ width: '12%' }}>Duration</TableCell>
                   <TableCell sx={{ width: '14%' }}>Status</TableCell>
-                  <TableCell sx={{ width: '16%' }}>Updated</TableCell>
-                  <TableCell align="center" sx={{ width: '6%' }}>Actions</TableCell>
+                  <TableCell sx={{ width: '15%' }}>Updated</TableCell>
+                  <TableCell align="center" sx={{ width: '9%', whiteSpace: 'nowrap' }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -119,7 +119,7 @@ export function PlanListPage() {
                   <TableRow key={plan.id}>
                     <TableCell><Typography fontWeight={700}>{plan.nameEn || 'Unnamed plan'}</Typography></TableCell>
                     <TableCell>{plan.planType.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase())}</TableCell>
-                    <TableCell>{plan.durationDays} days</TableCell>
+                    <TableCell>{plan.durationDays} {plan.durationDays === 1 ? 'day' : 'days'}</TableCell>
                     <TableCell><StatusChip label={statusLabel(plan)} /></TableCell>
                     <TableCell>{plan.updatedAt ? new Date(plan.updatedAt).toLocaleDateString() : '—'}</TableCell>
                     <TableCell align="center">
