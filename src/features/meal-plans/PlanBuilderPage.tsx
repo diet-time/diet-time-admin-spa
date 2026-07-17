@@ -21,12 +21,14 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { masterDataApi } from '@/api/masterDataApi';
 import { mealsApi } from '@/api/mealsApi';
+import { plansApi } from '@/api/plansApi';
 import type { MealSummary } from '@/api/apiTypes';
+import { queryClient } from '@/app/queryClient';
 
 interface PlanOption {
   id: string;
@@ -88,6 +90,13 @@ export function PlanBuilderPage() {
     }, signal),
     enabled: !!slot,
     staleTime: 30_000,
+  });
+  const publishMutation = useMutation({
+    mutationFn: () => plansApi.publish(planId!),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['plans'] });
+      navigate('/meal-plans');
+    },
   });
 
   const mealTypes = (mealTypesQuery.data?.items ?? []).filter((mealType) => mealType.isActive);
@@ -156,11 +165,20 @@ export function PlanBuilderPage() {
         <Stack direction="row" gap={1} flexWrap="wrap">
           <Button onClick={() => navigate('/meal-plans')}>Cancel</Button>
           <Button variant="outlined">Save draft</Button>
-          <Button variant="contained" disabled={issues.length > 0}>Publish</Button>
+          <Button
+            variant="contained"
+            disabled={!planId || issues.length > 0 || publishMutation.isPending}
+            onClick={() => publishMutation.mutate()}
+          >
+            {publishMutation.isPending ? 'Publishing…' : 'Publish'}
+          </Button>
         </Stack>
       </Stack>
       {issues.length > 0 && (
         <Alert severity="error"><strong>Publishing checklist:</strong> {issues.join(' ')}</Alert>
+      )}
+      {publishMutation.isError && (
+        <Alert severity="error">The meal plan could not be published. Review the plan and try again.</Alert>
       )}
       <Card sx={{ overflow: 'hidden' }}>
         <CardContent sx={{ p: '0 !important' }}>
