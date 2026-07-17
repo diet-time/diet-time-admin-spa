@@ -1,4 +1,4 @@
-import { CategoryOutlined, ChevronLeft, ChevronRight, DashboardOutlined, DinnerDiningOutlined, ExpandLess, ExpandMore, HistoryOutlined, ImageOutlined, MenuBookOutlined, PaymentsOutlined, RestaurantMenuOutlined, SettingsOutlined, SpaOutlined, WarningAmberOutlined } from '@mui/icons-material';
+import { CalendarMonthOutlined, CategoryOutlined, ChevronLeft, ChevronRight, DashboardOutlined, DinnerDiningOutlined, ExpandLess, ExpandMore, HistoryOutlined, ImageOutlined, MenuBookOutlined, PaymentsOutlined, RestaurantMenuOutlined, SettingsOutlined, SpaOutlined, WarningAmberOutlined } from '@mui/icons-material';
 import { Box, Collapse, Drawer, IconButton, List, ListItemButton, ListItemIcon, ListItemText, Toolbar, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,9 +20,11 @@ const items: NavItem[] = [
   { key: 'meals', path: '/meals', icon: <DinnerDiningOutlined /> },
   { key: 'mealPlans', path: '/meal-plans', icon: <MenuBookOutlined />, children: [
     { label: 'Plan Templates', path: '/meal-plans' },
-    { label: 'Plan Calendar', path: '/meal-plans/calendar' },
     { label: 'Plan Pricing', path: '/meal-plans/pricing' },
-    { label: 'Slot Configuration', path: '/meal-plans/slots' },
+  ] },
+  { key: 'operations', path: '/operations', icon: <CalendarMonthOutlined />, children: [
+    { label: 'Delivery Calendar', path: '/operations/delivery-calendar' },
+    { label: 'Holidays / Closures', path: '/operations/closures' },
   ] },
   { key: 'categories', path: '/categories', icon: <CategoryOutlined /> },
   { key: 'ingredients', path: '/ingredients', icon: <SpaOutlined /> },
@@ -44,7 +46,7 @@ export function Sidebar({ open, collapsed, onClose, onToggle }: {
   const theme = useTheme();
   const desktop = useMediaQuery(theme.breakpoints.up('md'));
   const location = useLocation();
-  const [plansOpen, setPlansOpen] = useState(location.pathname.startsWith('/meal-plans'));
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ mealPlans: location.pathname.startsWith('/meal-plans'), operations: location.pathname.startsWith('/operations') });
   const width = collapsed ? collapsedWidth : expandedWidth;
 
   const content = (
@@ -66,7 +68,7 @@ export function Sidebar({ open, collapsed, onClose, onToggle }: {
               <ListItemButton
                 component={item.children ? 'button' : NavLink}
                 to={item.children ? undefined : item.path}
-                onClick={() => item.children ? setPlansOpen((value) => !value) : onClose()}
+                onClick={() => item.children ? setOpenGroups((value) => ({ ...value, [item.key]: !value[item.key] })) : onClose()}
                 selected={active}
                 title={collapsed ? t(item.key) : undefined}
                 sx={{
@@ -80,10 +82,10 @@ export function Sidebar({ open, collapsed, onClose, onToggle }: {
               >
                 <ListItemIcon sx={{ minWidth: collapsed ? 42 : 46, color: 'inherit' }}>{item.icon}</ListItemIcon>
                 {!collapsed && <ListItemText primary={t(item.key)} primaryTypographyProps={{ fontWeight: active ? 700 : 500 }} />}
-                {item.children && !collapsed && (plansOpen ? <ExpandLess /> : <ExpandMore />)}
+                {item.children && !collapsed && (openGroups[item.key] ? <ExpandLess /> : <ExpandMore />)}
               </ListItemButton>
               {item.children && !collapsed && (
-                <Collapse in={plansOpen}>
+                <Collapse in={!!openGroups[item.key]}>
                   <List disablePadding>
                     {item.children.map((child) => (
                       <ListItemButton
