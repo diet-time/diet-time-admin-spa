@@ -1,6 +1,5 @@
 import { apiClient } from './apiClient';
 import type { MasterRecord, PagedResponse } from './apiTypes';
-import i18n from '@/i18n';
 export interface MasterFilters { page: number; pageSize: number; search?: string; sort?: string }
 export interface MasterInput { code: string; nameEn: string; nameAr?: string; descriptionEn?: string; descriptionAr?: string; displayOrder?: number; isActive: boolean }
 export type MasterResource = 'meal-categories' | 'ingredients' | 'allergens' | 'meal-types';
@@ -24,13 +23,9 @@ export const masterDataApi = {
       throw new Error(`The backend does not expose a list endpoint for ${resource}.`);
     }
 
-    const isAdminResource = resource === 'allergens' || resource === 'ingredients' || resource === 'meal-categories';
-    const endpoint = isAdminResource ? `/admin/${resource}` : '/meal-types';
-    // GET /meal-types returns the complete public list. It only accepts the
-    // normalized language value, not browser locales or list parameters.
-    const params = isAdminResource
-      ? { ...filters, sort: filters.sort ?? 'createdAt_desc' }
-      : { language: i18n.resolvedLanguage === 'ar' ? 'ar' : 'en' };
+    // Admin lists include inactive records; the public meal-types endpoint does not.
+    const endpoint = `/admin/${resource}`;
+    const params = { ...filters, sort: filters.sort ?? 'createdAt_desc' };
     const response = await apiClient.get<{ data?: MasterListApiItem[]; meta?: { page?: number; pageSize?: number; totalCount?: number; totalPages?: number } }>(endpoint, { params, signal });
     const items = response.data.data ?? [];
     return {

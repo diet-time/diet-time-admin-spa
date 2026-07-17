@@ -30,7 +30,6 @@ import { masterDataApi, type MasterInput, type MasterResource } from '@/api/mast
 import type { MasterRecord } from '@/api/apiTypes';
 import { queryClient } from '@/app/queryClient';
 import { RoleGuard } from '@/auth/RoleGuard';
-import { StatusChip } from '@/components/common/StatusChip';
 import { EmptyState, ErrorState, LoadingState } from '@/components/feedback/PageState';
 
 const labels: Record<MasterResource, string> = {
@@ -52,15 +51,13 @@ type SortDirection = 'asc' | 'desc';
 type DialogState = { id?: string; values: MasterInput };
 
 const baseColumns: Array<{ field: SortField; label: string }> = [
-  { field: 'code', label: 'Code' },
   { field: 'nameEn', label: 'English' },
   { field: 'nameAr', label: 'Arabic' },
 ];
 const trailingColumns: Array<{ field: SortField; label: string }> = [
   { field: 'isActive', label: 'Status' },
   { field: 'usageCount', label: 'Usage' },
-  { field: 'createdAt', label: 'Created' },
-  { field: 'updatedAt', label: 'Updated' },
+  { field: 'updatedAt', label: 'Last modified' },
 ];
 
 const formatDate = (value: string) => {
@@ -80,10 +77,10 @@ export function MasterDataPage({ resource }: { resource: MasterResource }) {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(25);
   const [search, setSearch] = useState('');
-  const [sortField, setSortField] = useState<SortField>('createdAt');
+  const [sortField, setSortField] = useState<SortField>('updatedAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [dialog, setDialog] = useState<DialogState | null>(null);
-  const supportsAdminList = resource === 'allergens' || resource === 'ingredients' || resource === 'meal-categories';
+  const supportsAdminList = true;
   const isCategory = resource === 'meal-categories';
   const filters = {
     page: page + 1,
@@ -142,6 +139,19 @@ export function MasterDataPage({ resource }: { resource: MasterResource }) {
     },
   });
 
+  const toggleStatus = (record: MasterRecord) => mutation.mutate({
+    id: record.id,
+    body: {
+      code: record.code,
+      nameEn: record.nameEn,
+      nameAr: record.nameAr,
+      descriptionEn: record.descriptionEn,
+      descriptionAr: record.descriptionAr,
+      displayOrder: record.displayOrder,
+      isActive: !record.isActive,
+    },
+  });
+
   return (
     <Stack spacing={3}>
       <Stack direction="row" justifyContent="space-between">
@@ -165,6 +175,9 @@ export function MasterDataPage({ resource }: { resource: MasterResource }) {
             slotProps={{ input: { startAdornment: <InputAdornment position="start"><Search /></InputAdornment> } }}
           />
         </Box>
+        {mutation.isError && !dialog && (
+          <Alert severity="error" sx={{ mx: 2, mb: 2 }}>The status could not be updated. Please try again.</Alert>
+        )}
         {query.isLoading ? (
           <Box p={2}><LoadingState /></Box>
         ) : query.isError ? (
@@ -173,7 +186,7 @@ export function MasterDataPage({ resource }: { resource: MasterResource }) {
           <EmptyState />
         ) : (
           <TableContainer>
-            <Table sx={{ minWidth: isCategory ? 1250 : 1000 }}>
+            <Table sx={{ minWidth: isCategory ? 1100 : 820 }}>
               <TableHead>
                 <TableRow>
                   {baseColumns.map(sortHeader)}
@@ -186,7 +199,6 @@ export function MasterDataPage({ resource }: { resource: MasterResource }) {
               <TableBody>
                 {query.data.items.map((record) => (
                   <TableRow key={record.id} hover>
-                    <TableCell>{record.code}</TableCell>
                     <TableCell>{record.nameEn}</TableCell>
                     <TableCell dir="rtl">{record.nameAr || '—'}</TableCell>
                     {isCategory && (
@@ -196,10 +208,30 @@ export function MasterDataPage({ resource }: { resource: MasterResource }) {
                       </TableCell>
                     )}
                     {isCategory && <TableCell>{record.displayOrder ?? 0}</TableCell>}
-                    <TableCell><StatusChip label={record.isActive ? 'Active' : 'Inactive'} /></TableCell>
+                    <TableCell>
+                      <RoleGuard
+                        allowedRoles={['Dietitian', 'ContentManager']}
+                        fallback={(
+                          <Button component="span" size="small" variant={record.isActive ? 'contained' : 'outlined'} color={record.isActive ? 'success' : 'inherit'}>
+                            {record.isActive ? 'Active' : 'Inactive'}
+                          </Button>
+                        )}
+                      >
+                        <Button
+                          size="small"
+                          variant={record.isActive ? 'contained' : 'outlined'}
+                          color={record.isActive ? 'success' : 'inherit'}
+                          disabled={mutation.isPending}
+                          onClick={() => toggleStatus(record)}
+                          aria-label={`${record.isActive ? 'Deactivate' : 'Activate'} ${record.nameEn}`}
+                          sx={{ minWidth: 88 }}
+                        >
+                          {record.isActive ? 'Active' : 'Inactive'}
+                        </Button>
+                      </RoleGuard>
+                    </TableCell>
                     <TableCell>{record.usageCount}</TableCell>
-                    <TableCell>{formatDate(record.createdAt)}</TableCell>
-                    <TableCell>{formatDate(record.updatedAt)}</TableCell>
+                    <TableCell>{formatDate(record.updatedAt || record.createdAt)}</TableCell>
                     <TableCell>
                       <RoleGuard allowedRoles={['Dietitian', 'ContentManager']}>
                         <IconButton aria-label={`Edit ${record.nameEn}`} onClick={() => editRecord(record)}><EditOutlined /></IconButton>
