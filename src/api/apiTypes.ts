@@ -1,7 +1,7 @@
 export interface ApiErrorBody { title?: string; detail?: string; status?: number; correlationId?: string; errors?: Record<string, string[]> }
 export interface PagedResponse<T> { items: T[]; page: number; pageSize: number; totalCount: number; totalPages: number }
 export interface Translation { en: string; ar?: string }
-export type RecordStatus = 'Draft' | 'Published' | 'Active' | 'Inactive' | 'Archived';
+export type RecordStatus = 'Draft' | 'Active' | 'Inactive' | 'Archived';
 export interface MealSummary { id: string; sku: string; nameEn: string; nameAr?: string; thumbnailUrl?: string; categoryName: string; calories?: number; protein?: number; currentPrice?: number; currency?: string; status: RecordStatus; isAvailable: boolean; availableFrom?: string; availableUntil?: string; updatedAt: string }
 export interface MealFilters { page: number; pageSize: number; search?: string; categoryId?: string; status?: string; available?: boolean; missingImage?: boolean; missingTranslation?: boolean; sort?: string }
 export interface MasterRecord { id: string; code: string; nameEn: string; nameAr?: string; descriptionEn?: string; descriptionAr?: string; displayOrder?: number; isActive: boolean; usageCount: number; createdAt: string; updatedAt: string }

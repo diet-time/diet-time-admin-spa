@@ -35,7 +35,7 @@ import { RoleGuard } from '@/auth/RoleGuard';
 import { EmptyState, ErrorState, LoadingState } from '@/components/feedback/PageState';
 
 const pageSizes = [10, 25, 50];
-const statuses = ['Draft', 'Published', 'Active', 'Inactive', 'Archived'];
+const statuses = ['Draft', 'Active', 'Inactive', 'Archived'];
 
 const formatDateTime = (value?: string) => {
   if (!value) return '—';

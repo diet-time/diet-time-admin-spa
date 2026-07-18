@@ -39,7 +39,7 @@ export const mealSchema = z.object({
   sku: z.string().trim().min(2).max(40).regex(/^[A-Za-z0-9_-]+$/, 'Use letters, numbers, hyphens, or underscores'),
   categoryId: z.string().min(1, 'Select a category'),
   preparationMinutes: z.coerce.number().int().min(0).max(1440),
-  status: z.enum(['Draft', 'Published', 'Active', 'Inactive', 'Archived']),
+  status: z.enum(['Draft', 'Active', 'Inactive', 'Archived']),
   translations: z.object({ en: translationSchema.extend({ name: z.string().trim().min(1, 'English name is required').max(160) }), ar: translationSchema.optional() }),
   nutrition: nutritionSchema,
   dietary: z.object({ vegetarian: z.boolean(), vegan: z.boolean(), glutenFree: z.boolean(), dairyFree: z.boolean(), nutFree: z.boolean(), spicy: z.boolean(), spiceLevel: z.coerce.number().int().min(0).max(5) }),

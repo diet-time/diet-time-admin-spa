@@ -41,7 +41,6 @@ const normalizeStatus = (status: string): MealSummary['status'] => {
   const normalized = status.toLowerCase();
   if (normalized === 'active') return 'Active';
   if (normalized === 'inactive') return 'Inactive';
-  if (normalized === 'published') return 'Published';
   if (normalized === 'archived') return 'Archived';
   return 'Draft';
 };
