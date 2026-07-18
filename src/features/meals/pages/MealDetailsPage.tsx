@@ -1,5 +1,5 @@
-import { BrokenImageOutlined, Edit } from '@mui/icons-material';
-import { Alert, Box, Button, Card, CardContent, Grid, Stack, Typography } from '@mui/material';
+import { ArrowBack, BrokenImageOutlined, Edit } from '@mui/icons-material';
+import { Alert, Box, Button, Card, CardContent, Chip, Grid, Stack, Typography } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { mealsApi } from '@/api/mealsApi';
@@ -40,14 +40,30 @@ export function MealDetailsPage() {
   const imageAlt = primaryMedia?.altTextEn || meal.translations.en.name;
 
   return <Stack spacing={3}>
-    <Stack direction="row" justifyContent="space-between">
+    <Stack spacing={2}>
+      <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
+        <Button component={Link} to="/meals" startIcon={<ArrowBack />} sx={{ ml: -1 }}>
+          Back to meals
+        </Button>
+        <RoleGuard allowedRoles={['Dietitian', 'ContentManager']}>
+          <Button component={Link} to={`/meals/${mealId}/edit`} variant="contained" startIcon={<Edit />}>
+            Edit meal
+          </Button>
+        </RoleGuard>
+      </Stack>
       <Box>
         <Typography variant="h1">{meal.translations.en.name}</Typography>
-        <Typography color="text.secondary">{meal.sku} · {meal.status}</Typography>
+        <Stack direction="row" alignItems="center" gap={1} mt={0.5}>
+          <Typography color="text.secondary">{meal.sku}</Typography>
+          <Chip
+            size="small"
+            label={meal.status}
+            color={meal.status === 'Active' ? 'success' : 'default'}
+            variant="outlined"
+            sx={{ fontWeight: 700 }}
+          />
+        </Stack>
       </Box>
-      <RoleGuard allowedRoles={['Dietitian', 'ContentManager']}>
-        <Button component={Link} to={`/meals/${mealId}/edit`} variant="contained" startIcon={<Edit />}>Edit</Button>
-      </RoleGuard>
     </Stack>
 
     <Alert severity={meal.availability.isAvailable ? 'success' : 'warning'}>
