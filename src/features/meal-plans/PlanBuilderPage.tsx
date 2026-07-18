@@ -218,8 +218,8 @@ export function PlanBuilderPage() {
       };
 
       if (planId) {
-        await plansApi.update(planId, input);
-        return planId;
+        const updatedPlan = await plansApi.update(planId, input);
+        return updatedPlan.id;
       }
 
       const createdPlan = await plansApi.create(input);

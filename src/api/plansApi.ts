@@ -66,6 +66,7 @@ const normalizePlanDetail = (plan: RawPlanDetail): PlanDetail => ({
 });
 
 interface IdResponse { data?: { id?: string }; id?: string }
+interface VersionedUpdateApiResponse { data: { id: string; createdDraft: boolean } }
 
 const responseId = (response: IdResponse) => {
   const id = response.data?.id ?? response.id;
@@ -144,7 +145,7 @@ export const plansApi = {
     return normalizePlanDetail(response.data.data);
   },
   create: async (body: PlanInput) => responseId((await apiClient.post<IdResponse>('/admin/meal-plans', body)).data),
-  update: async (id: string, body: PlanInput) => (await apiClient.put(`/admin/meal-plans/${id}`, body)).data,
+  update: async (id: string, body: PlanInput) => (await apiClient.put<VersionedUpdateApiResponse>(`/admin/meal-plans/${id}`, body)).data.data,
   remove: async (id: string) => (await apiClient.delete(`/admin/meal-plans/${id}`)).data,
   publish: async (id: string) => (await apiClient.post(`/admin/meal-plans/${id}/publish`)).data,
   unpublish: async (id: string) => (await apiClient.post(`/admin/meal-plans/${id}/unpublish`)).data,

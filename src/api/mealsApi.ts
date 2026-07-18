@@ -141,6 +141,8 @@ interface AdminMealDetailResponse {
   };
 }
 
+interface VersionedUpdateApiResponse { data: { id: string; createdDraft: boolean } }
+
 const availabilityMode = (
   isAvailable: boolean,
   availableFrom?: string,
@@ -300,6 +302,6 @@ export const mealsApi = {
     return normalizeMealDetail(response.data);
   },
   create: async (body: MealFormValues) => (await apiClient.post<{ data: { id: string } }>('/admin/meals', toAdminMealRequest(body))).data.data,
-  update: async (id: string, body: MealFormValues) => (await apiClient.put(`/admin/meals/${id}`, toAdminMealRequest(body))).data,
+  update: async (id: string, body: MealFormValues) => (await apiClient.put<VersionedUpdateApiResponse>(`/admin/meals/${id}`, toAdminMealRequest(body))).data.data,
   status: async (id: string, status: string) => (await apiClient.patch(`/admin/meals/${id}/status`, { status })).data,
 };
