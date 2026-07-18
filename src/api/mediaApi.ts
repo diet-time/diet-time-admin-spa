@@ -8,6 +8,8 @@ export interface MealMedia {
   mediaType: MealMediaType;
   objectKey: string;
   publicUrl?: string;
+  thumbnailObjectKey?: string;
+  thumbnailUrl?: string;
   contentType: string;
   isPrimary: boolean;
   displayOrder: number;
@@ -24,6 +26,7 @@ export async function uploadMealImage(
   const form = new FormData();
   form.append('file', file);
   form.append('mediaType', mediaType);
+  if (mediaType === 'IMAGE') form.append('isPrimary', 'true');
 
   const response = await apiClient.post<{ data: MealMedia }>(`/admin/meals/${mealId}/media/upload`, form, {
     onUploadProgress: (event) => {

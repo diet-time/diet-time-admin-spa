@@ -55,7 +55,8 @@ function ImageUploadField({ mealId, mediaType, title, description, recommendedSi
     try {
       setPreviewUrl(await filePreview(file));
       const media = await uploadMealImage(mealId, file, mediaType, setProgress);
-      if (media.publicUrl) setPreviewUrl(media.publicUrl);
+      const uploadedUrl = mediaType === 'THUMBNAIL' ? media.thumbnailUrl : media.publicUrl;
+      if (uploadedUrl) setPreviewUrl(uploadedUrl);
       setProgress(100);
       onComplete?.();
     } catch {
