@@ -33,7 +33,7 @@ Roles represented are Admin, Dietitian, ContentManager, Finance, Operations, and
 
 ## Image upload and time handling
 
-The portal uploads a validated JPEG/PNG/WebP as multipart form data to `POST /admin/meals/{id}/media/upload`, with `mediaType` set to `IMAGE`.
+The portal uploads validated JPEG/PNG/WebP files as multipart form data to `POST /admin/meals/{id}/media/upload`. Original images use `mediaType=IMAGE`; separately uploaded list/card thumbnails use `mediaType=THUMBNAIL`. Both are bound from the meal detail response's `media` array and previewed in the form.
 
 Availability fields are presented as Qatar time (`Asia/Qatar`, UTC+3). Local input is converted to ISO-8601 UTC before submission. Backend responses are formatted with the `Asia/Qatar` IANA zone. The backend must repeat range, subscription-impact, plan compatibility, and overlap validation transactionally.
 

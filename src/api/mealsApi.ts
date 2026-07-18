@@ -1,5 +1,6 @@
 import { apiClient } from './apiClient';
 import type { MealFilters, MealSummary, PagedResponse } from './apiTypes';
+import type { MealMedia } from './mediaApi';
 import type { MealFormValues } from '@/features/meals/schemas/mealSchema';
 import { defaultMealValues } from '@/features/meals/schemas/mealSchema';
 
@@ -78,6 +79,7 @@ interface AdminMealDetailResponse {
   data: {
     id: string;
     status?: string;
+    media?: MealMedia[];
     meal?: {
       sku?: string;
       categoryId?: string;
@@ -165,7 +167,7 @@ const toIsoTimestamp = (value?: string) => {
   return Number.isNaN(date.getTime()) ? value : date.toISOString();
 };
 
-const normalizeMealDetail = (response: AdminMealDetailResponse): MealFormValues & { id: string } => {
+const normalizeMealDetail = (response: AdminMealDetailResponse): MealFormValues & { id: string; media: MealMedia[] } => {
   const detail = response.data;
   const meal = detail.meal ?? {};
   const english = meal.translations?.find((translation) => translation.languageCode?.toLowerCase() === 'en');
@@ -176,6 +178,7 @@ const normalizeMealDetail = (response: AdminMealDetailResponse): MealFormValues 
   return {
     ...defaultMealValues,
     id: detail.id,
+    media: detail.media ?? [],
     sku: meal.sku ?? '',
     categoryId: meal.categoryId ?? '',
     preparationMinutes: meal.preparationTimeMinutes ?? 0,
