@@ -5,6 +5,7 @@ import { Link, useParams } from 'react-router-dom';
 import { mealsApi } from '@/api/mealsApi';
 import { RoleGuard } from '@/auth/RoleGuard';
 import { ErrorState, LoadingState } from '@/components/feedback/PageState';
+import { NutritionMetricCard } from '../components/NutritionMetricCard';
 
 function MediaPreview({ title, url, alt, height }: { title: string; url?: string; alt: string; height: number }) {
   return <Stack spacing={1}>
@@ -73,10 +74,7 @@ export function MealDetailsPage() {
           <Typography variant="h2">Nutrition</Typography>
           <Grid container spacing={2} mt={1}>
             {Object.entries(meal.nutrition).map(([key, value]) => <Grid size={{ xs: 6, sm: 3 }} key={key}>
-              <Box bgcolor="background.default" p={2} borderRadius={2}>
-                <Typography fontWeight={800}>{String(value)}</Typography>
-                <Typography variant="caption">{key}</Typography>
-              </Box>
+              <NutritionMetricCard metric={key} value={value} />
             </Grid>)}
           </Grid>
         </CardContent></Card>

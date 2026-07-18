@@ -1,45 +1,29 @@
 /* eslint-disable react-refresh/only-export-components */
-import {
-  Box,
-  FormControl,
-  FormControlLabel,
-  InputLabel,
-  MenuItem,
-  Paper,
-  Select,
-  Stack,
-  Switch,
-  TextField,
-  Typography,
-  Divider,
-} from '@mui/material';
-import { format } from 'date-fns';
-import {
-  Controller,
-  type Control,
-  type FieldErrors,
-  type UseFormRegister,
-} from 'react-hook-form';
+import { CalendarMonthOutlined, CheckCircleOutline, VisibilityOffOutlined } from '@mui/icons-material';
+import { Alert, Box, Chip, FormControlLabel, Grid, Stack, Switch, TextField, Typography } from '@mui/material';
+import { useEffect } from 'react';
+import { Controller, useController, useWatch, type Control, type FieldErrors, type UseFormRegister } from 'react-hook-form';
 import type { MealFormValues } from '../schemas/mealSchema';
-
-const options = [
-  { value: 'always', label: 'Always available' },
-  { value: 'from', label: 'Available from a future date' },
-  { value: 'until', label: 'Available until a date' },
-  { value: 'range', label: 'Available only within a date range' },
-  { value: 'temporary', label: 'Temporarily unavailable' },
-  { value: 'indefinite', label: 'Indefinitely unavailable' },
-] as const;
 
 export const toUtcIso = (localDateTime: string) =>
   localDateTime ? new Date(localDateTime).toISOString() : undefined;
+
+export const deriveAvailabilityMode = (
+  isAvailable: boolean,
+  availableFrom?: string,
+  availableUntil?: string,
+): MealFormValues['availability']['mode'] => {
+  if (!isAvailable) return 'indefinite';
+  if (availableFrom && availableUntil) return 'range';
+  if (availableFrom) return 'from';
+  if (availableUntil) return 'until';
+  return 'always';
+};
 
 export function AvailabilityEditor({
   control,
   register,
   errors,
-  from,
-  until,
 }: {
   control: Control<MealFormValues>;
   register: UseFormRegister<MealFormValues>;
@@ -47,284 +31,87 @@ export function AvailabilityEditor({
   from?: string;
   until?: string;
 }) {
-  return (
-    <Stack spacing={3}>
-      {/* Header Section */}
-      <Box>
-        <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
-          Availability Settings
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Configure when this meal is available to customers. Times are in Qatar timezone
-          (UTC+3).
-        </Typography>
-      </Box>
+  const isAvailable = useWatch({ control, name: 'availability.isAvailable' });
+  const availableFrom = useWatch({ control, name: 'availability.availableFrom' });
+  const availableUntil = useWatch({ control, name: 'availability.availableUntil' });
+  const { field: modeField } = useController({ control, name: 'availability.mode' });
 
-      <Divider />
+  useEffect(() => {
+    const nextMode = deriveAvailabilityMode(isAvailable, availableFrom, availableUntil);
+    if (modeField.value !== nextMode) modeField.onChange(nextMode);
+  }, [availableFrom, availableUntil, isAvailable, modeField]);
 
-      {/* Selectability Toggle */}
-      <Box
-        sx={{
-          p: 2,
-          bgcolor: 'background.default',
-          borderRadius: 1,
-          border: '1px solid',
-          borderColor: 'divider',
-        }}
-      >
-        <Controller
-          control={control}
-          name="availability.isAvailable"
-          render={({ field }) => (
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={field.value}
-                  onChange={(_, value) => field.onChange(value)}
-                />
-              }
-              label={
-                <Box>
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    Meal is selectable
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {field.value
-                      ? 'Customers can select this meal'
-                      : 'Customers cannot select this meal'}
-                  </Typography>
-                </Box>
-              }
-            />
-          )}
-        />
-      </Box>
+  return <Stack spacing={3}>
+    <Box>
+      <Typography variant="h2">Customer availability</Typography>
+      <Typography color="text.secondary" mt={0.5}>
+        Control whether customers can select this meal. Optional dates use Qatar time (UTC+3).
+      </Typography>
+    </Box>
 
-      {/* Availability Schedule */}
-      <FormControl fullWidth>
-        <InputLabel id="availability-mode" sx={{ fontSize: '0.95rem' }}>
-          Availability Schedule
-        </InputLabel>
-        <Controller
-          control={control}
-          name="availability.mode"
-          render={({ field }) => (
-            <Select
-              {...field}
-              labelId="availability-mode"
-              label="Availability Schedule"
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: 1,
-                },
-              }}
-            >
-              {options.map((o) => (
-                <MenuItem key={o.value} value={o.value}>
-                  {o.label}
-                </MenuItem>
-              ))}
-            </Select>
-          )}
-        />
-      </FormControl>
+    <Controller
+      control={control}
+      name="availability.isAvailable"
+      render={({ field }) => <Box sx={{ p: { xs: 2, sm: 2.5 }, borderRadius: 2.5, border: '1px solid', borderColor: field.value ? 'rgba(0,103,78,.28)' : 'rgba(194,91,22,.3)', bgcolor: field.value ? 'rgba(0,103,78,.055)' : '#FFF7ED' }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ sm: 'center' }} justifyContent="space-between" gap={2}>
+          <FormControlLabel
+            sx={{ m: 0 }}
+            control={<Switch checked={field.value} onChange={(_, value) => field.onChange(value)} />}
+            label={<Box ml={0.75}>
+              <Typography fontWeight={700}>Available for customers</Typography>
+              <Typography variant="body2" color="text.secondary">
+                {field.value ? 'Customers can add this meal to eligible orders.' : 'This meal is hidden from customer selection.'}
+              </Typography>
+            </Box>}
+          />
+          <Chip
+            icon={field.value ? <CheckCircleOutline /> : <VisibilityOffOutlined />}
+            label={field.value ? 'Selectable' : 'Unavailable'}
+            color={field.value ? 'success' : 'warning'}
+            variant="outlined"
+            sx={{ alignSelf: { xs: 'flex-start', sm: 'center' }, fontWeight: 700 }}
+          />
+        </Stack>
+      </Box>}
+    />
 
-      {/* Date/Time Inputs */}
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-        <TextField
-          fullWidth
-          type="datetime-local"
-          label="Available from"
-          InputLabelProps={{ shrink: true }}
-          {...register('availability.availableFrom')}
-          sx={{
-            '& .MuiOutlinedInput-root': {
-              borderRadius: 1,
-            },
-          }}
-        />
-        <TextField
-          fullWidth
-          type="datetime-local"
-          label="Available until"
-          InputLabelProps={{ shrink: true }}
-          {...register('availability.availableUntil')}
-          error={!!errors.availability?.availableUntil}
-          helperText={errors.availability?.availableUntil?.message}
-          sx={{
-            '& .MuiOutlinedInput-root': {
-              borderRadius: 1,
-            },
-          }}
-        />
+    {isAvailable ? <Box sx={{ p: { xs: 2, sm: 2.5 }, borderRadius: 2.5, border: '1px solid', borderColor: 'divider' }}>
+      <Stack direction="row" alignItems="center" gap={1} mb={0.5}>
+        <CalendarMonthOutlined color="primary" />
+        <Typography variant="h3">Optional availability window</Typography>
       </Stack>
+      <Typography variant="body2" color="text.secondary" mb={2.5}>
+        Leave both fields empty to keep the meal available without a time limit.
+      </Typography>
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <TextField
+            fullWidth
+            type="datetime-local"
+            label="Available from"
+            slotProps={{ inputLabel: { shrink: true } }}
+            {...register('availability.availableFrom')}
+            helperText="Optional start date and time"
+          />
+        </Grid>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <TextField
+            fullWidth
+            type="datetime-local"
+            label="Available until"
+            slotProps={{ inputLabel: { shrink: true } }}
+            {...register('availability.availableUntil')}
+            error={!!errors.availability?.availableUntil}
+            helperText={errors.availability?.availableUntil?.message ?? 'Optional end date and time'}
+          />
+        </Grid>
+      </Grid>
+    </Box> : <Alert severity="info" icon={<VisibilityOffOutlined />}>
+      The meal will be unavailable immediately. Any saved availability dates are ignored while this setting is off.
+    </Alert>}
 
-      {/* Timeline Visualization */}
-      <Box
-        sx={{
-          mt: 2,
-          p: 2,
-          bgcolor: 'background.default',
-          borderRadius: 1.5,
-          border: '1px solid',
-          borderColor: 'divider',
-        }}
-      >
-        <Typography
-          variant="body2"
-          sx={{ fontWeight: 600, mb: 2, textTransform: 'uppercase' }}
-          color="text.secondary"
-        >
-          Availability Timeline
-        </Typography>
-
-        <Box
-          display="grid"
-          gridTemplateColumns="repeat(3, 1fr)"
-          gap={2}
-          sx={{
-            '& > *': {
-              transition: 'all 0.2s ease-in-out',
-            },
-          }}
-        >
-          {/* Past */}
-          <Paper
-            variant="outlined"
-            sx={{
-              p: 2,
-              textAlign: 'center',
-              opacity: 0.6,
-              bgcolor: 'rgba(0, 0, 0, 0.02)',
-              borderRadius: 1,
-              '&:hover': {
-                borderColor: 'action.disabled',
-              },
-            }}
-          >
-            <Typography
-              variant="caption"
-              sx={{
-                display: 'block',
-                fontWeight: 600,
-                textTransform: 'uppercase',
-                mb: 0.8,
-                letterSpacing: 0.5,
-                color: 'text.secondary',
-              }}
-            >
-              Past
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                fontWeight: 700,
-                color: 'text.secondary',
-                fontSize: '0.95rem',
-              }}
-            >
-              {from ? format(new Date(from), 'dd MMM yyyy') : 'No start'}
-            </Typography>
-          </Paper>
-
-          {/* Current */}
-          <Paper
-            variant="outlined"
-            sx={{
-              p: 2,
-              textAlign: 'center',
-              borderColor: 'primary.main',
-              bgcolor: 'rgba(0, 103, 78, 0.08)',
-              borderRadius: 1,
-              borderWidth: 2,
-              boxShadow: 'inset 0 0 0 1px rgba(0, 103, 78, 0.2)',
-              '&:hover': {
-                borderColor: 'primary.dark',
-              },
-            }}
-          >
-            <Typography
-              variant="caption"
-              sx={{
-                display: 'block',
-                fontWeight: 600,
-                textTransform: 'uppercase',
-                mb: 0.8,
-                letterSpacing: 0.5,
-                color: 'primary.main',
-              }}
-            >
-              Current
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                fontWeight: 700,
-                color: 'primary.main',
-                fontSize: '0.95rem',
-              }}
-            >
-              Qatar · UTC+3
-            </Typography>
-          </Paper>
-
-          {/* Future */}
-          <Paper
-            variant="outlined"
-            sx={{
-              p: 2,
-              textAlign: 'center',
-              opacity: 0.6,
-              bgcolor: 'rgba(0, 0, 0, 0.02)',
-              borderRadius: 1,
-              '&:hover': {
-                borderColor: 'action.disabled',
-              },
-            }}
-          >
-            <Typography
-              variant="caption"
-              sx={{
-                display: 'block',
-                fontWeight: 600,
-                textTransform: 'uppercase',
-                mb: 0.8,
-                letterSpacing: 0.5,
-                color: 'text.secondary',
-              }}
-            >
-              Future
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                fontWeight: 700,
-                color: 'text.secondary',
-                fontSize: '0.95rem',
-              }}
-            >
-              {until ? format(new Date(until), 'dd MMM yyyy') : 'No end'}
-            </Typography>
-          </Paper>
-        </Box>
-
-        {/* Warning message */}
-        <Typography
-          variant="caption"
-          color="warning.main"
-          sx={{
-            display: 'block',
-            mt: 2,
-            p: 1,
-            bgcolor: 'rgba(255, 152, 0, 0.05)',
-            borderRadius: 0.5,
-            fontStyle: 'italic',
-          }}
-        >
-          ⚠️ Shortening an active period can affect published plan slots and active
-          subscriptions, and must be confirmed before saving.
-        </Typography>
-      </Box>
-    </Stack>
-  );
+    {isAvailable && (availableFrom || availableUntil) && <Alert severity="warning">
+      Changing an active availability window may affect published meal plans and active subscriptions.
+    </Alert>}
+  </Stack>;
 }
