@@ -8,6 +8,7 @@ interface MealsListApiItem {
   id: string;
   sku: string;
   status: string;
+  versionNumber: number;
   isAvailable: boolean;
   name: string;
   nameAr?: string;
@@ -62,6 +63,7 @@ const normalizeMealsResponse = (response: MealsListApiResponse, filters: MealFil
       currentPrice: meal.currentPrice,
       currency: meal.currency,
       status: normalizeStatus(meal.status),
+      revisionNumber: meal.versionNumber,
       isAvailable: meal.isAvailable,
       availableFrom: meal.availableFrom,
       availableUntil: meal.availableUntil,

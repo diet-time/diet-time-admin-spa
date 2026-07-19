@@ -182,10 +182,11 @@ export function MealsPage() {
                       onChange={(event) => setSelected(event.target.checked ? items.map((meal) => meal.id) : [])}
                     />
                   </TableCell>
-                  <TableCell sx={{ width: '37%' }}>Meal</TableCell>
+                  <TableCell sx={{ width: '32%' }}>Meal</TableCell>
                   <TableCell sx={{ width: '11%' }}>Details</TableCell>
                   <TableCell sx={{ width: '8%' }}>Price</TableCell>
                   <TableCell sx={{ width: '8%' }}>Status</TableCell>
+                  <TableCell sx={{ width: '5%' }}>Revision</TableCell>
                   <TableCell sx={{ width: '12%' }}>Availability</TableCell>
                   <TableCell sx={{ width: '15%' }}>Updated</TableCell>
                   <TableCell align="center" sx={{ width: '5%' }}>Actions</TableCell>
@@ -243,6 +244,9 @@ export function MealsPage() {
                         <LifecycleStatusIcon status={meal.status} />
                         <AvailabilityIcon available={meal.isAvailable} />
                       </Stack>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" fontWeight={700}>R{meal.revisionNumber}</Typography>
                     </TableCell>
                     <TableCell>
                       <AvailabilityPopover from={meal.availableFrom} until={meal.availableUntil} />
