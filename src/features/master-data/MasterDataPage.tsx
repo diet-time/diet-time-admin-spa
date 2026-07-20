@@ -77,7 +77,7 @@ export function MasterDataPage({ resource }: { resource: MasterResource }) {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(25);
   const [search, setSearch] = useState('');
-  const [activeOnly, setActiveOnly] = useState(resource === 'meal-types');
+  const [activeOnly, setActiveOnly] = useState(true);
   const [sortField, setSortField] = useState<SortField>('updatedAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [dialog, setDialog] = useState<DialogState | null>(null);
@@ -88,7 +88,7 @@ export function MasterDataPage({ resource }: { resource: MasterResource }) {
     pageSize,
     search: search || undefined,
     sort: supportsAdminList ? `${sortField}_${sortDirection}` : undefined,
-    isActive: resource === 'meal-types' && activeOnly ? true : undefined,
+    isActive: activeOnly ? true : undefined,
   };
 
   const changeSort = (field: SortField) => {
@@ -167,17 +167,15 @@ export function MasterDataPage({ resource }: { resource: MasterResource }) {
             placeholder={`Search ${labels[resource].toLowerCase()}`}
             slotProps={{ input: { startAdornment: <InputAdornment position="start"><Search /></InputAdornment> } }}
           />
-          {resource === 'meal-types' && (
-            <FormControlLabel
-              control={(
-                <Checkbox
-                  checked={activeOnly}
-                  onChange={(_, checked) => { setActiveOnly(checked); setPage(0); }}
-                />
-              )}
-              label="Show active only"
-            />
-          )}
+          <FormControlLabel
+            control={(
+              <Checkbox
+                checked={activeOnly}
+                onChange={(_, checked) => { setActiveOnly(checked); setPage(0); }}
+              />
+            )}
+            label="Show active only"
+          />
         </Stack>
         {query.isLoading ? (
           <Box p={2}><LoadingState /></Box>
