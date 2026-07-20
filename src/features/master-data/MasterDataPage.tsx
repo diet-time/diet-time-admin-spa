@@ -104,6 +104,10 @@ export function MasterDataPage({ resource }: { resource: MasterResource }) {
     queryKey: ['master', resource, filters],
     queryFn: ({ signal }) => masterDataApi.list(resource, filters, signal),
   });
+  // Keep the UI behavior reliable even when an older API version ignores the
+  // isActive query parameter. The server filter is still sent so pagination is
+  // correct on API versions that support it.
+  const visibleRecords = query.data?.items.filter((record) => !activeOnly || record.isActive) ?? [];
   const mutation = useMutation({
     mutationFn: async ({ id, body }: { id?: string; body: MasterInput }) => id
       ? masterDataApi.update(resource, id, body)
@@ -179,7 +183,7 @@ export function MasterDataPage({ resource }: { resource: MasterResource }) {
           <Box p={2}><LoadingState /></Box>
         ) : query.isError ? (
           <Box p={2}><ErrorState message={`Unable to load ${labels[resource].toLowerCase()}.`} onRetry={() => void query.refetch()} /></Box>
-        ) : !query.data?.items.length ? (
+        ) : !visibleRecords.length ? (
           <EmptyState />
         ) : (
           <TableContainer>
@@ -194,7 +198,7 @@ export function MasterDataPage({ resource }: { resource: MasterResource }) {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {query.data.items.map((record) => (
+                {visibleRecords.map((record) => (
                   <TableRow key={record.id} hover>
                     <TableCell>{record.nameEn}</TableCell>
                     <TableCell dir="rtl">{record.nameAr || '—'}</TableCell>
