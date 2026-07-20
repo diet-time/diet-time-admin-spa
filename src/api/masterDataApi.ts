@@ -1,6 +1,6 @@
 import { apiClient } from './apiClient';
 import type { MasterRecord, PagedResponse } from './apiTypes';
-export interface MasterFilters { page: number; pageSize: number; search?: string; sort?: string }
+export interface MasterFilters { page: number; pageSize: number; search?: string; sort?: string; isActive?: boolean }
 export interface MasterInput { code: string; nameEn: string; nameAr?: string; descriptionEn?: string; descriptionAr?: string; displayOrder?: number; isActive: boolean }
 export type MasterResource = 'meal-categories' | 'ingredients' | 'allergens' | 'meal-types';
 interface MasterListApiItem {
