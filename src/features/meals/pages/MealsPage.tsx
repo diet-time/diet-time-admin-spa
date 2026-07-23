@@ -30,6 +30,7 @@ import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { mealsApi } from '@/api/mealsApi';
+import { masterDataApi } from '@/api/masterDataApi';
 import { queryKeys } from '@/api/queryKeys';
 import { RoleGuard } from '@/auth/RoleGuard';
 import { EmptyState, ErrorState, LoadingState } from '@/components/feedback/PageState';
@@ -234,7 +235,7 @@ export function MealsPage() {
                       </Stack>
                     </TableCell>
                     <TableCell>
-                      <MealInfoPopover category={meal.categoryName} calories={meal.calories} protein={meal.protein} />
+                      <MealInfoPopover mealId={meal.id} category={meal.categoryName} calories={meal.calories} protein={meal.protein} />
                     </TableCell>
                     <TableCell>
                       <PricePopover mealId={meal.id} price={meal.currentPrice} currency={meal.currency} />
@@ -316,11 +317,29 @@ function DateTimeDisplay({ value }: { value?: string }) {
   );
 }
 
-function MealInfoPopover({ category, calories, protein }: { category: string; calories?: number; protein?: number }) {
-  const hasNutrition = calories !== undefined || protein !== undefined;
+function MealInfoPopover({ mealId, category, calories, protein }: { mealId: string; category: string; calories?: number; protein?: number }) {
+  const [opened, setOpened] = useState(false);
+  const needsDetail = category === 'Not assigned' || (calories === undefined && protein === undefined);
+  const detailQuery = useQuery({
+    queryKey: ['meal-popover-detail', mealId],
+    queryFn: ({ signal }) => mealsApi.get(mealId, signal),
+    enabled: opened && needsDetail,
+    staleTime: 5 * 60 * 1000,
+  });
+  const categoriesQuery = useQuery({
+    queryKey: ['meal-categories', 'dropdown'],
+    queryFn: ({ signal }) => masterDataApi.list('meal-categories', { page: 1, pageSize: 100, sort: 'displayOrder_asc' }, signal),
+    enabled: opened && category === 'Not assigned' && Boolean(detailQuery.data?.categoryId),
+    staleTime: 5 * 60 * 1000,
+  });
+  const detailCategory = categoriesQuery.data?.items.find((item) => item.id === detailQuery.data?.categoryId)?.nameEn;
+  if (category === 'Not assigned' && detailCategory) category = detailCategory;
+  calories ??= detailQuery.data?.nutrition.calories;
+  protein ??= detailQuery.data?.nutrition.protein;
+  const hasNutrition = calories !== undefined || protein !== undefined || detailQuery.data?.hasNutrition === true;
 
   return (
-    <DetailsPopover label="Details" ariaLabel="View category and nutrition" icon={<InfoOutlined />}>
+    <DetailsPopover label="Details" ariaLabel="View category and nutrition" icon={<InfoOutlined />} onOpenChange={setOpened}>
       <Stack spacing={1.5}>
         <Box>
           <Typography variant="caption" color="text.secondary">Category</Typography>
@@ -352,7 +371,7 @@ function MealInfoPopover({ category, calories, protein }: { category: string; ca
 function PricePopover({ mealId, price, currency }: { mealId: string; price?: number; currency?: string }) {
   const [opened, setOpened] = useState(false);
   const query = useQuery({
-    queryKey: ['meal-price', mealId],
+    queryKey: ['meal-popover-detail', mealId],
     queryFn: ({ signal }) => mealsApi.get(mealId, signal),
     enabled: opened && price === undefined,
     staleTime: 5 * 60 * 1000,

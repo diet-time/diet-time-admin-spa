@@ -220,7 +220,7 @@ const toIsoTimestamp = (value?: string) => {
   return Number.isNaN(date.getTime()) ? value : date.toISOString();
 };
 
-const normalizeMealDetail = (response: AdminMealDetailResponse): MealFormValues & { id: string; media: MealMedia[] } => {
+const normalizeMealDetail = (response: AdminMealDetailResponse): MealFormValues & { id: string; media: MealMedia[]; hasNutrition: boolean } => {
   const detail = response.data;
   const meal = detail.meal ?? {};
   const english = meal.translations?.find((translation) => translation.languageCode?.toLowerCase() === 'en');
@@ -232,6 +232,7 @@ const normalizeMealDetail = (response: AdminMealDetailResponse): MealFormValues 
     ...defaultMealValues,
     id: detail.id,
     media: detail.media ?? [],
+    hasNutrition: meal.nutrition !== undefined && meal.nutrition !== null,
     sku: meal.sku ?? '',
     categoryId: meal.categoryId ?? '',
     preparationMinutes: meal.preparationTimeMinutes ?? 0,
