@@ -16,8 +16,23 @@ interface MealsListApiItem {
   categoryName?: string;
   calories?: number;
   protein?: number;
-  currentPrice?: number;
+  currentPrice?: number | string | {
+    amount?: number | string;
+    currencyCode?: string;
+    currency?: string;
+  };
+  currentPriceAmount?: number | string;
   currency?: string;
+  currencyCode?: string;
+  prices?: Array<{
+    priceType?: string;
+    amount?: number | string;
+    currencyCode?: string;
+    currency?: string;
+    effectiveFrom?: string;
+    effectiveUntil?: string | null;
+    isActive?: boolean;
+  }>;
   availableFrom?: string;
   availableUntil?: string;
   updatedAt: string;
@@ -46,29 +61,64 @@ const normalizeStatus = (status: string): MealSummary['status'] => {
   return 'Draft';
 };
 
+const toFiniteNumber = (value: unknown) => {
+  if (typeof value !== 'number' && typeof value !== 'string') return undefined;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : undefined;
+};
+
+const currentListPrice = (meal: MealsListApiItem) => {
+  const currentPrice = typeof meal.currentPrice === 'object' ? meal.currentPrice : undefined;
+  const directAmount = toFiniteNumber(currentPrice?.amount ?? meal.currentPriceAmount ?? meal.currentPrice);
+  if (directAmount !== undefined) {
+    return {
+      amount: directAmount,
+      currency: currentPrice?.currencyCode ?? currentPrice?.currency ?? meal.currencyCode ?? meal.currency,
+    };
+  }
+
+  const now = Date.now();
+  const price = meal.prices?.find((candidate) => {
+    if (candidate.priceType && candidate.priceType.toUpperCase() !== 'INDIVIDUAL') return false;
+    if (candidate.isActive === false) return false;
+    const startsAt = candidate.effectiveFrom ? new Date(candidate.effectiveFrom).getTime() : undefined;
+    const endsAt = candidate.effectiveUntil ? new Date(candidate.effectiveUntil).getTime() : undefined;
+    return (startsAt === undefined || Number.isNaN(startsAt) || startsAt <= now)
+      && (endsAt === undefined || Number.isNaN(endsAt) || endsAt >= now);
+  });
+
+  return {
+    amount: toFiniteNumber(price?.amount),
+    currency: price?.currencyCode ?? price?.currency ?? meal.currencyCode ?? meal.currency,
+  };
+};
+
 const normalizeMealsResponse = (response: MealsListApiResponse, filters: MealFilters): PagedResponse<MealSummary> => {
   const sourceItems = response.data ?? response.items ?? [];
   const meta = response.meta;
 
   return {
-    items: sourceItems.map((meal) => ({
-      id: meal.id,
-      sku: meal.sku,
-      nameEn: meal.name,
-      nameAr: meal.nameAr,
-      thumbnailUrl: meal.thumbnailUrl,
-      categoryName: meal.categoryName ?? 'Not assigned',
-      calories: meal.calories,
-      protein: meal.protein,
-      currentPrice: meal.currentPrice,
-      currency: meal.currency,
-      status: normalizeStatus(meal.status),
-      revisionNumber: meal.versionNumber,
-      isAvailable: meal.isAvailable,
-      availableFrom: meal.availableFrom,
-      availableUntil: meal.availableUntil,
-      updatedAt: meal.updatedAt,
-    })),
+    items: sourceItems.map((meal) => {
+      const price = currentListPrice(meal);
+      return {
+        id: meal.id,
+        sku: meal.sku,
+        nameEn: meal.name,
+        nameAr: meal.nameAr,
+        thumbnailUrl: meal.thumbnailUrl,
+        categoryName: meal.categoryName ?? 'Not assigned',
+        calories: meal.calories,
+        protein: meal.protein,
+        currentPrice: price.amount,
+        currency: price.currency,
+        status: normalizeStatus(meal.status),
+        revisionNumber: meal.versionNumber,
+        isAvailable: meal.isAvailable,
+        availableFrom: meal.availableFrom,
+        availableUntil: meal.availableUntil,
+        updatedAt: meal.updatedAt,
+      };
+    }),
     page: meta?.page ?? response.page ?? filters.page,
     pageSize: meta?.pageSize ?? response.pageSize ?? filters.pageSize,
     totalCount: meta?.totalCount ?? response.totalCount ?? sourceItems.length,

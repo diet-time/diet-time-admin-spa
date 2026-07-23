@@ -49,12 +49,12 @@ function IngredientsAndAllergens({ control }: { control: ReturnType<typeof useFo
               value={selected}
               loading={ingredientsQuery.isLoading}
               noOptionsText="No ingredients found"
-              getOptionLabel={(item) => `${item.nameEn} (${item.code})`}
+              getOptionLabel={(item) => item.nameEn}
               isOptionEqualToValue={(option, value) => option.id === value.id}
               getOptionDisabled={(item) => !item.isActive && !ids.has(item.id)}
               onChange={(_, values) => field.onChange(values.map((item, index) => { const existing = field.value.find((link) => link.ingredientId === item.id); return existing ? { ...existing, displayOrder: index } : { ingredientId: item.id, isOptional: false, canBeRemoved: false, canBeReplaced: false, isPrimaryIngredient: false, displayOrder: index }; }))}
               renderTags={() => null}
-              renderInput={(params) => <TextField {...params} label="Search ingredients" placeholder="Type a name or code" error={ingredientsQuery.isError} helperText={ingredientsQuery.isError ? 'Unable to load ingredients.' : undefined} sx={{ bgcolor: 'background.paper' }} />}
+              renderInput={(params) => <TextField {...params} label="Search ingredients" placeholder="Type a name" error={ingredientsQuery.isError} helperText={ingredientsQuery.isError ? 'Unable to load ingredients.' : undefined} sx={{ bgcolor: 'background.paper' }} />}
             />
             <Box>
               <Typography variant="caption" color="text.secondary">Selected ingredients</Typography>
@@ -83,12 +83,12 @@ function IngredientsAndAllergens({ control }: { control: ReturnType<typeof useFo
               value={selected}
               loading={allergensQuery.isLoading}
               noOptionsText="No allergens found"
-              getOptionLabel={(item) => `${item.nameEn} (${item.code})`}
+              getOptionLabel={(item) => item.nameEn}
               isOptionEqualToValue={(option, value) => option.id === value.id}
               getOptionDisabled={(item) => !item.isActive && !ids.has(item.id)}
               onChange={(_, values) => field.onChange(values.map((item) => field.value.find((link) => link.allergenId === item.id) ?? { allergenId: item.id, level: 'CONTAINS' as const }))}
               renderTags={() => null}
-              renderInput={(params) => <TextField {...params} label="Search allergens" placeholder="Type a name or code" error={allergensQuery.isError} helperText={allergensQuery.isError ? 'Unable to load allergens.' : undefined} sx={{ bgcolor: 'background.paper' }} />}
+              renderInput={(params) => <TextField {...params} label="Search allergens" placeholder="Type a name" error={allergensQuery.isError} helperText={allergensQuery.isError ? 'Unable to load allergens.' : undefined} sx={{ bgcolor: 'background.paper' }} />}
             />
             <Box>
               <Typography variant="caption" color="text.secondary">Selected allergens</Typography>
