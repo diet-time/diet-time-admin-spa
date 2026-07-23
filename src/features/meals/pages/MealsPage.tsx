@@ -30,7 +30,6 @@ import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { mealsApi } from '@/api/mealsApi';
-import { masterDataApi } from '@/api/masterDataApi';
 import { queryKeys } from '@/api/queryKeys';
 import { RoleGuard } from '@/auth/RoleGuard';
 import { EmptyState, ErrorState, LoadingState } from '@/components/feedback/PageState';
@@ -235,10 +234,10 @@ export function MealsPage() {
                       </Stack>
                     </TableCell>
                     <TableCell>
-                      <MealInfoPopover mealId={meal.id} category={meal.categoryName} calories={meal.calories} protein={meal.protein} />
+                      <MealInfoPopover category={meal.categoryName} calories={meal.calories} protein={meal.protein} />
                     </TableCell>
                     <TableCell>
-                      <PricePopover mealId={meal.id} price={meal.currentPrice} currency={meal.currency} />
+                      <PricePopover price={meal.currentPrice} currency={meal.currency} />
                     </TableCell>
                     <TableCell>
                       <Stack direction="row" spacing={0.6} alignItems="center">
@@ -317,29 +316,11 @@ function DateTimeDisplay({ value }: { value?: string }) {
   );
 }
 
-function MealInfoPopover({ mealId, category, calories, protein }: { mealId: string; category: string; calories?: number; protein?: number }) {
-  const [opened, setOpened] = useState(false);
-  const needsDetail = category === 'Not assigned' || (calories === undefined && protein === undefined);
-  const detailQuery = useQuery({
-    queryKey: ['meal-popover-detail', mealId],
-    queryFn: ({ signal }) => mealsApi.get(mealId, signal),
-    enabled: opened && needsDetail,
-    staleTime: 5 * 60 * 1000,
-  });
-  const categoriesQuery = useQuery({
-    queryKey: ['meal-categories', 'dropdown'],
-    queryFn: ({ signal }) => masterDataApi.list('meal-categories', { page: 1, pageSize: 100, sort: 'displayOrder_asc' }, signal),
-    enabled: opened && category === 'Not assigned' && Boolean(detailQuery.data?.categoryId),
-    staleTime: 5 * 60 * 1000,
-  });
-  const detailCategory = categoriesQuery.data?.items.find((item) => item.id === detailQuery.data?.categoryId)?.nameEn;
-  if (category === 'Not assigned' && detailCategory) category = detailCategory;
-  calories ??= detailQuery.data?.nutrition.calories;
-  protein ??= detailQuery.data?.nutrition.protein;
-  const hasNutrition = calories !== undefined || protein !== undefined || detailQuery.data?.hasNutrition === true;
+function MealInfoPopover({ category, calories, protein }: { category: string; calories?: number; protein?: number }) {
+  const hasNutrition = calories !== undefined || protein !== undefined;
 
   return (
-    <DetailsPopover label="Details" ariaLabel="View category and nutrition" icon={<InfoOutlined />} onOpenChange={setOpened}>
+    <DetailsPopover label="Details" ariaLabel="View category and nutrition" icon={<InfoOutlined />}>
       <Stack spacing={1.5}>
         <Box>
           <Typography variant="caption" color="text.secondary">Category</Typography>
@@ -368,41 +349,14 @@ function MealInfoPopover({ mealId, category, calories, protein }: { mealId: stri
   );
 }
 
-function PricePopover({ mealId, price, currency }: { mealId: string; price?: number; currency?: string }) {
-  const [opened, setOpened] = useState(false);
-  const query = useQuery({
-    queryKey: ['meal-popover-detail', mealId],
-    queryFn: ({ signal }) => mealsApi.get(mealId, signal),
-    enabled: opened && price === undefined,
-    staleTime: 5 * 60 * 1000,
-  });
-  const now = Date.now();
-  const detailPrice = query.data?.prices
-    .filter((candidate) => {
-      if (!candidate.isActive) return false;
-      const startsAt = new Date(candidate.effectiveFrom).getTime();
-      const endsAt = candidate.effectiveUntil ? new Date(candidate.effectiveUntil).getTime() : undefined;
-      return (Number.isNaN(startsAt) || startsAt <= now)
-        && (endsAt === undefined || Number.isNaN(endsAt) || endsAt >= now);
-    })
-    .sort((left, right) => new Date(right.effectiveFrom).getTime() - new Date(left.effectiveFrom).getTime())[0];
-  const displayedPrice = price ?? detailPrice?.amount;
-  const displayedCurrency = currency ?? detailPrice?.currencyCode;
-
+function PricePopover({ price, currency }: { price?: number; currency?: string }) {
   return (
-    <DetailsPopover label="Price" ariaLabel="View meal price" icon={<PaymentsOutlined />} width={220} onOpenChange={setOpened}>
+    <DetailsPopover label="Price" ariaLabel="View meal price" icon={<PaymentsOutlined />} width={220}>
       <Typography variant="caption" color="text.secondary">Current price</Typography>
-      {query.isLoading ? (
-        <Typography color="text.secondary" mt={0.5}>Loading priceâ€¦</Typography>
-      ) : query.isError ? (
-        <Stack alignItems="flex-start" spacing={0.75} mt={0.5}>
-          <Typography color="error.main">Unable to load price</Typography>
-          <Button size="small" onClick={() => void query.refetch()}>Try again</Button>
-        </Stack>
-      ) : displayedPrice === undefined ? (
+      {price === undefined ? (
         <Typography color="text.secondary" mt={0.5}>No price configured</Typography>
       ) : (
-        <Typography variant="h3" mt={0.5}>{displayedCurrency ?? 'QAR'} {displayedPrice.toFixed(2)}</Typography>
+        <Typography variant="h3" mt={0.5}>{currency ?? 'QAR'} {price.toFixed(2)}</Typography>
       )}
     </DetailsPopover>
   );
@@ -427,16 +381,8 @@ function AvailabilityPopover({ from, until }: { from?: string; until?: string })
   );
 }
 
-function DetailsPopover({ label, ariaLabel, icon, width = 280, children, onOpenChange }: { label: string; ariaLabel: string; icon: ReactNode; width?: number; children: ReactNode; onOpenChange?: (open: boolean) => void }) {
+function DetailsPopover({ label, ariaLabel, icon, width = 280, children }: { label: string; ariaLabel: string; icon: ReactNode; width?: number; children: ReactNode }) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
-  const open = (element: HTMLElement) => {
-    setAnchor(element);
-    onOpenChange?.(true);
-  };
-  const close = () => {
-    setAnchor(null);
-    onOpenChange?.(false);
-  };
 
   return (
     <>
@@ -445,7 +391,7 @@ function DetailsPopover({ label, ariaLabel, icon, width = 280, children, onOpenC
         variant="outlined"
         color="inherit"
         startIcon={icon}
-        onClick={(event) => open(event.currentTarget)}
+        onClick={(event) => setAnchor(event.currentTarget)}
         aria-label={ariaLabel}
         aria-haspopup="dialog"
         aria-expanded={Boolean(anchor)}
@@ -456,7 +402,7 @@ function DetailsPopover({ label, ariaLabel, icon, width = 280, children, onOpenC
       <Popover
         open={Boolean(anchor)}
         anchorEl={anchor}
-        onClose={close}
+        onClose={() => setAnchor(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
         transformOrigin={{ vertical: 'top', horizontal: 'left' }}
         slotProps={{ paper: { sx: { width, p: 2, mt: 0.75, border: 1, borderColor: 'divider', boxShadow: '0 12px 32px rgba(23,53,45,.14)' } } }}

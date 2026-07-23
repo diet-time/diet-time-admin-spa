@@ -13,9 +13,22 @@ interface MealsListApiItem {
   name: string;
   nameAr?: string;
   thumbnailUrl?: string;
+  category?: {
+    id: string;
+    code: string;
+    name: string;
+  };
   categoryName?: string;
+  nutrition?: {
+    caloriesKcal?: number;
+    proteinGrams?: number;
+  } | null;
   calories?: number;
   protein?: number;
+  price?: {
+    amount?: number | string;
+    currencyCode?: string;
+  } | null;
   currentPrice?: number | string | {
     amount?: number | string;
     currencyCode?: string;
@@ -69,11 +82,11 @@ const toFiniteNumber = (value: unknown) => {
 
 const currentListPrice = (meal: MealsListApiItem) => {
   const currentPrice = typeof meal.currentPrice === 'object' ? meal.currentPrice : undefined;
-  const directAmount = toFiniteNumber(currentPrice?.amount ?? meal.currentPriceAmount ?? meal.currentPrice);
+  const directAmount = toFiniteNumber(meal.price?.amount ?? currentPrice?.amount ?? meal.currentPriceAmount ?? meal.currentPrice);
   if (directAmount !== undefined) {
     return {
       amount: directAmount,
-      currency: currentPrice?.currencyCode ?? currentPrice?.currency ?? meal.currencyCode ?? meal.currency,
+      currency: meal.price?.currencyCode ?? currentPrice?.currencyCode ?? currentPrice?.currency ?? meal.currencyCode ?? meal.currency,
     };
   }
 
@@ -106,9 +119,9 @@ const normalizeMealsResponse = (response: MealsListApiResponse, filters: MealFil
         nameEn: meal.name,
         nameAr: meal.nameAr,
         thumbnailUrl: meal.thumbnailUrl,
-        categoryName: meal.categoryName ?? 'Not assigned',
-        calories: meal.calories,
-        protein: meal.protein,
+        categoryName: meal.category?.name ?? meal.categoryName ?? 'Not assigned',
+        calories: meal.nutrition?.caloriesKcal ?? meal.calories,
+        protein: meal.nutrition?.proteinGrams ?? meal.protein,
         currentPrice: price.amount,
         currency: price.currency,
         status: normalizeStatus(meal.status),
@@ -220,7 +233,7 @@ const toIsoTimestamp = (value?: string) => {
   return Number.isNaN(date.getTime()) ? value : date.toISOString();
 };
 
-const normalizeMealDetail = (response: AdminMealDetailResponse): MealFormValues & { id: string; media: MealMedia[]; hasNutrition: boolean } => {
+const normalizeMealDetail = (response: AdminMealDetailResponse): MealFormValues & { id: string; media: MealMedia[] } => {
   const detail = response.data;
   const meal = detail.meal ?? {};
   const english = meal.translations?.find((translation) => translation.languageCode?.toLowerCase() === 'en');
@@ -232,7 +245,6 @@ const normalizeMealDetail = (response: AdminMealDetailResponse): MealFormValues 
     ...defaultMealValues,
     id: detail.id,
     media: detail.media ?? [],
-    hasNutrition: meal.nutrition !== undefined && meal.nutrition !== null,
     sku: meal.sku ?? '',
     categoryId: meal.categoryId ?? '',
     preparationMinutes: meal.preparationTimeMinutes ?? 0,
