@@ -1,4 +1,4 @@
-import { Add, ContentCopy, DeleteOutline, DragIndicator } from '@mui/icons-material';
+import { Add, CloudUploadOutlined, ContentCopy, DeleteOutline, DragIndicator } from '@mui/icons-material';
 import {
   Alert,
   Autocomplete,
@@ -16,11 +16,13 @@ import {
   DialogTitle,
   FormControlLabel,
   Grid,
+  LinearProgress,
   List,
   ListItemButton,
   ListItemIcon,
   ListItemText,
   MenuItem,
+  Paper,
   Stack,
   TextField,
   Typography,
@@ -102,6 +104,10 @@ export function PlanBuilderPage() {
   const [newDayActive, setNewDayActive] = useState(true);
   const [dayError, setDayError] = useState('');
   const [draggedDay, setDraggedDay] = useState<number | null>(null);
+  const [planImage, setPlanImage] = useState<File | null>(null);
+  const [planImagePreview, setPlanImagePreview] = useState('');
+  const [planImageError, setPlanImageError] = useState('');
+  const [planImageProgress, setPlanImageProgress] = useState<number | null>(null);
   const [planDetails, setPlanDetails] = useState<PlanDetails>({
     code: '',
     nameEn: '',
@@ -142,13 +148,6 @@ export function PlanBuilderPage() {
     staleTime: 0,
     refetchOnMount: 'always',
   });
-  const publishMutation = useMutation({
-    mutationFn: () => plansApi.publish(planId!),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['plans'] });
-      navigate('/meal-plans');
-    },
-  });
   const createDayMutation = useMutation({
     mutationFn: (body: { menuWeekday: MenuWeekday; displayOrder: number; isActive: boolean }) =>
       plansApi.createTemplateDay(planId!, body),
@@ -182,7 +181,7 @@ export function PlanBuilderPage() {
     && days.length > 0
     && days.every((planDay) => planDay.slots.every((planSlot) => !!mealTypeIdFor(planSlot)));
   const saveMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (publish: boolean) => {
       const input = {
         code: planDetails.code.trim().toUpperCase(),
         planType: planDetails.planType,
@@ -215,15 +214,25 @@ export function PlanBuilderPage() {
             })),
           })),
         })),
+        publish,
       };
 
+      let savedPlanId: string;
       if (planId) {
         const updatedPlan = await plansApi.update(planId, input);
-        return updatedPlan.id;
+        savedPlanId = updatedPlan.id;
+      } else {
+        const createdPlan = await plansApi.create(input);
+        savedPlanId = createdPlan.id;
       }
 
-      const createdPlan = await plansApi.create(input);
-      return createdPlan.id;
+      if (planImage) {
+        setPlanImageProgress(0);
+        const uploaded = await plansApi.uploadImage(savedPlanId, planImage, setPlanImageProgress);
+        setPlanImagePreview(uploaded.publicUrl);
+        setPlanImageProgress(100);
+      }
+      return savedPlanId;
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['plans'] });
@@ -266,6 +275,7 @@ export function PlanBuilderPage() {
     setSelectedDay(0);
     setSelectedSlot(0);
     setSelectedMeal(null);
+    setPlanImagePreview(plan.imageUrl ?? '');
   }, [planQuery.data]);
 
   const updateSlot = (changes: Partial<Slot>) => {
@@ -316,10 +326,6 @@ export function PlanBuilderPage() {
     setSelectedSlot(0);
   };
 
-  const updateSelectedDay = (changes: Partial<Pick<MenuDay, 'displayOrder' | 'isActive'>>) => {
-    setDays((currentDays) => currentDays.map((currentDay, index) => index === selectedDay ? { ...currentDay, ...changes } : currentDay));
-  };
-
   const reorderDay = (from: number, to: number) => {
     if (from === to) return;
     setDays((currentDays) => {
@@ -361,6 +367,20 @@ export function PlanBuilderPage() {
     setMealSearch('');
   };
 
+  const selectPlanImage = (file?: File) => {
+    if (!file) return;
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    const maxSize = Number(import.meta.env.VITE_UPLOAD_MAX_MB ?? 8) * 1024 * 1024;
+    if (!allowed.includes(file.type) || file.size > maxSize) {
+      setPlanImageError(`Choose a JPEG, PNG, or WebP image smaller than ${Math.round(maxSize / 1024 / 1024)} MB.`);
+      return;
+    }
+    setPlanImageError('');
+    setPlanImage(file);
+    setPlanImageProgress(null);
+    setPlanImagePreview(URL.createObjectURL(file));
+  };
+
   if (planId && planQuery.isFetching) return <LoadingState />;
   if (planId && (planQuery.isError || !planQuery.data)) {
     return <ErrorState message="Unable to load this meal plan." onRetry={() => void planQuery.refetch()} />;
@@ -377,28 +397,25 @@ export function PlanBuilderPage() {
           <Button onClick={() => navigate('/meal-plans')}>Cancel</Button>
           <Button
             variant="outlined"
-            disabled={!canSave || saveMutation.isPending || publishMutation.isPending}
-            onClick={() => saveMutation.mutate()}
+            disabled={!canSave || saveMutation.isPending}
+            onClick={() => saveMutation.mutate(false)}
           >
             {saveMutation.isPending ? 'Saving…' : 'Save draft'}
           </Button>
           <Button
             variant="contained"
-            disabled={!planId || issues.length > 0 || publishMutation.isPending}
-            onClick={() => publishMutation.mutate()}
+            disabled={!canSave || issues.length > 0 || saveMutation.isPending}
+            onClick={() => saveMutation.mutate(true)}
           >
-            {publishMutation.isPending ? 'Publishing…' : 'Publish'}
+            {saveMutation.isPending && saveMutation.variables ? 'Publishing…' : 'Publish'}
           </Button>
         </Stack>
       </Stack>
       {issues.length > 0 && (
         <Alert severity="error"><strong>Publishing checklist:</strong> {issues.join(' ')}</Alert>
       )}
-      {publishMutation.isError && (
-        <Alert severity="error">The meal plan could not be published. Review the plan and try again.</Alert>
-      )}
       {saveMutation.isError && (
-        <Alert severity="error">The draft could not be saved. Review the plan details and try again.</Alert>
+        <Alert severity="error">{saveMutation.variables ? 'The meal plan could not be saved and published. Review the plan and try again.' : 'The draft could not be saved. Review the plan details and try again.'}</Alert>
       )}
       <Card>
         <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
@@ -461,6 +478,41 @@ export function PlanBuilderPage() {
           </Stack>
         </CardContent>
       </Card>
+      <Card>
+        <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
+          <Stack spacing={2}>
+            <Box>
+              <Typography variant="h3">Meal plan image</Typography>
+              <Typography variant="body2" color="text.secondary">Upload the image shown on guest plan cards and the plan banner. It will be stored with image type MEALPLAN when the plan is saved.</Typography>
+            </Box>
+            {planImageError && <Alert severity="error">{planImageError}</Alert>}
+            <Grid container spacing={2} alignItems="stretch">
+              <Grid size={{ xs: 12, md: 5 }}>
+                {planImagePreview ? (
+                  <Box component="img" src={planImagePreview} alt="Meal plan preview" sx={{ width: '100%', height: 220, objectFit: 'cover', borderRadius: 2, border: 1, borderColor: 'divider' }} />
+                ) : (
+                  <Box sx={{ height: 220, display: 'grid', placeItems: 'center', border: 1, borderColor: 'divider', borderRadius: 2, bgcolor: 'background.default', color: 'text.secondary' }}>No plan image uploaded</Box>
+                )}
+              </Grid>
+              <Grid size={{ xs: 12, md: 7 }}>
+                <Paper variant="outlined" sx={{ height: '100%', minHeight: 220, display: 'grid', placeItems: 'center', p: 3, borderStyle: 'dashed', textAlign: 'center' }}>
+                  <Stack alignItems="center" spacing={1}>
+                    <CloudUploadOutlined color="primary" sx={{ fontSize: 44 }} />
+                    <Typography fontWeight={700}>Choose a meal plan image</Typography>
+                    <Typography variant="body2" color="text.secondary">JPEG, PNG or WebP · recommended 1600 × 900</Typography>
+                    <Button component="label" variant="outlined">
+                      Browse image
+                      <input hidden type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => selectPlanImage(event.target.files?.[0])} />
+                    </Button>
+                    {planImage && <Typography variant="caption">{planImage.name} · uploads with the next save or publish</Typography>}
+                  </Stack>
+                </Paper>
+              </Grid>
+            </Grid>
+            {planImageProgress !== null && <Box aria-live="polite"><LinearProgress variant="determinate" value={planImageProgress} /><Typography variant="caption">Plan image upload {planImageProgress}% complete</Typography></Box>}
+          </Stack>
+        </CardContent>
+      </Card>
       <Card sx={{ overflow: 'hidden' }}>
         <CardContent sx={{ p: '0 !important' }}>
           <Grid container spacing={0}>
@@ -501,21 +553,6 @@ export function PlanBuilderPage() {
                   </ListItemButton>
                 ))}
               </List>
-              {day && (
-                <Stack spacing={1.5} mt={2.5} p={2} sx={{ border: 1, borderColor: 'divider', borderRadius: 2, bgcolor: 'background.paper' }}>
-                  <Typography variant="subtitle2" fontWeight={700}>{t('weeklySchedule.menuDaySettings')}</Typography>
-                  <TextField label={t('weeklySchedule.weekday')} value={t(`weekdays.${day.menuWeekday}`)} disabled fullWidth />
-                  <TextField
-                    label={t('weeklySchedule.displayOrder')}
-                    type="number"
-                    value={day.displayOrder}
-                    slotProps={{ htmlInput: { min: 1 } }}
-                    onChange={(event) => updateSelectedDay({ displayOrder: Math.max(1, Number(event.target.value)) })}
-                    fullWidth
-                  />
-                  <FormControlLabel control={<Checkbox checked={day.isActive} onChange={(_, checked) => updateSelectedDay({ isActive: checked })} />} label={t('weeklySchedule.active')} />
-                </Stack>
-              )}
             </Grid>
             <Grid
               size={{ xs: 12, lg: 4 }}

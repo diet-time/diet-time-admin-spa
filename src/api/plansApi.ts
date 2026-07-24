@@ -6,7 +6,7 @@ export interface PlanTranslationInput { languageCode: 'en' | 'ar'; name: string;
 export interface PlanStructureOptionInput { mealItemId: string; additionalPrice: number; isDefault: boolean; isAvailable: boolean; displayOrder: number }
 export interface PlanStructureSlotInput { mealTypeId: string; displayOrder: number; minimumSelection: number; maximumSelection: number; isRequired: boolean; selectionCutoffTime?: string | null; allowsPaidUpgrade: boolean; options: PlanStructureOptionInput[] }
 export interface PlanStructureDayInput { menuWeekday: MenuWeekday; displayOrder: number; isActive: boolean; slots: PlanStructureSlotInput[] }
-export interface PlanInput { code: string; planType: string; durationDays: number; isCustomizable: boolean; validFrom?: string | null; validUntil?: string | null; translations: PlanTranslationInput[]; days?: PlanStructureDayInput[] }
+export interface PlanInput { code: string; planType: string; durationDays: number; isCustomizable: boolean; validFrom?: string | null; validUntil?: string | null; translations: PlanTranslationInput[]; days?: PlanStructureDayInput[]; publish?: boolean }
 export interface PlanDayInput { menuWeekday: MenuWeekday; displayOrder: number; isActive: boolean }
 export interface PlanSlotInput { mealTypeId: string; displayOrder: number; minimumSelection: number; maximumSelection: number; isRequired: boolean; selectionCutoffTime?: string | null; allowsPaidUpgrade: boolean }
 export interface SlotOptionInput { mealItemId: string; additionalPrice: number; isDefault: boolean; isAvailable: boolean; displayOrder: number }
@@ -20,6 +20,8 @@ export interface PlanDetail {
   isActive: boolean;
   validFrom?: string | null;
   validUntil?: string | null;
+  imageUrl?: string | null;
+  imageType?: 'MEALPLAN' | null;
   translations: Array<{ languageCode: string; name: string; shortDescription?: string; fullDescription?: string }>;
   days: Array<{
     id: string;
@@ -67,6 +69,7 @@ const normalizePlanDetail = (plan: RawPlanDetail): PlanDetail => ({
 
 interface IdResponse { data?: { id?: string }; id?: string }
 interface VersionedUpdateApiResponse { data: { id: string; createdDraft: boolean } }
+interface PlanImageApiResponse { data: { planId: string; imageType: 'MEALPLAN'; publicUrl: string; contentType: string } }
 
 const responseId = (response: IdResponse) => {
   const id = response.data?.id ?? response.id;
@@ -146,9 +149,18 @@ export const plansApi = {
   },
   create: async (body: PlanInput) => responseId((await apiClient.post<IdResponse>('/admin/meal-plans', body)).data),
   update: async (id: string, body: PlanInput) => (await apiClient.put<VersionedUpdateApiResponse>(`/admin/meal-plans/${id}`, body)).data.data,
+  uploadImage: async (id: string, file: File, onProgress?: (percentage: number) => void) => {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('imageType', 'MEALPLAN');
+    const response = await apiClient.post<PlanImageApiResponse>(`/admin/meal-plans/${id}/image/upload`, form, {
+      onUploadProgress: (event) => {
+        if (event.total) onProgress?.(Math.round((event.loaded * 100) / event.total));
+      },
+    });
+    return response.data.data;
+  },
   remove: async (id: string) => (await apiClient.delete(`/admin/meal-plans/${id}`)).data,
-  publish: async (id: string) => (await apiClient.post(`/admin/meal-plans/${id}/publish`)).data,
-  unpublish: async (id: string) => (await apiClient.post(`/admin/meal-plans/${id}/unpublish`)).data,
   getTemplateDays: async (id: string, signal?: AbortSignal) => {
     const response = await apiClient.get<{ data: RawPlanDay[] }>(`/admin/meal-plan-templates/${id}/days`, { signal });
     return sortMenuDays(response.data.data.map((day) => normalizePlanDay({ ...day, slots: day.slots ?? [] }, id)));
