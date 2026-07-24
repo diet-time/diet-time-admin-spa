@@ -74,6 +74,8 @@ interface PlanDetails {
   code: string;
   nameEn: string;
   nameAr: string;
+  shortDescriptionEn: string;
+  shortDescriptionAr: string;
   planType: string;
   isCustomizable: boolean;
   durationDays: number;
@@ -112,6 +114,8 @@ export function PlanBuilderPage() {
     code: '',
     nameEn: '',
     nameAr: '',
+    shortDescriptionEn: '',
+    shortDescriptionAr: '',
     planType: 'STANDARD',
     isCustomizable: true,
     durationDays: 20,
@@ -176,8 +180,11 @@ export function PlanBuilderPage() {
     .map((planSlot) => `${t(`weekdays.${planDay.menuWeekday}`)} ${planSlot.title} needs at least ${planSlot.min} active option(s).`));
   const mealTypeIdFor = (planSlot: Slot) => planSlot.mealTypeId
     ?? mealTypes.find((mealType) => mealType.nameEn === planSlot.title)?.id;
+  const hasIncompleteArabicTranslation = !!planDetails.shortDescriptionAr.trim()
+    && !planDetails.nameAr.trim();
   const canSave = !!planDetails.code.trim()
     && !!planDetails.nameEn.trim()
+    && !hasIncompleteArabicTranslation
     && days.length > 0
     && days.every((planDay) => planDay.slots.every((planSlot) => !!mealTypeIdFor(planSlot)));
   const saveMutation = useMutation({
@@ -190,8 +197,16 @@ export function PlanBuilderPage() {
         validFrom: null,
         validUntil: null,
         translations: [
-          { languageCode: 'en' as const, name: planDetails.nameEn.trim() },
-          ...(planDetails.nameAr.trim() ? [{ languageCode: 'ar' as const, name: planDetails.nameAr.trim() }] : []),
+          {
+            languageCode: 'en' as const,
+            name: planDetails.nameEn.trim(),
+            shortDescription: planDetails.shortDescriptionEn.trim() || undefined,
+          },
+          ...(planDetails.nameAr.trim() ? [{
+            languageCode: 'ar' as const,
+            name: planDetails.nameAr.trim(),
+            shortDescription: planDetails.shortDescriptionAr.trim() || undefined,
+          }] : []),
         ],
         days: days.map((planDay) => ({
           menuWeekday: planDay.menuWeekday,
@@ -249,6 +264,8 @@ export function PlanBuilderPage() {
       code: plan.code,
       nameEn: english?.name ?? '',
       nameAr: arabic?.name ?? '',
+      shortDescriptionEn: english?.shortDescription ?? '',
+      shortDescriptionAr: arabic?.shortDescription ?? '',
       planType: plan.planType,
       isCustomizable: plan.isCustomizable,
       durationDays: plan.durationDays,
@@ -437,24 +454,6 @@ export function PlanBuilderPage() {
               </Grid>
               <Grid size={{ xs: 12, md: 3 }}>
                 <TextField
-                  required
-                  fullWidth
-                  label="English name"
-                  value={planDetails.nameEn}
-                  onChange={(event) => setPlanDetails((current) => ({ ...current, nameEn: event.target.value }))}
-                />
-              </Grid>
-              <Grid size={{ xs: 12, md: 3 }}>
-                <TextField
-                  fullWidth
-                  label="Arabic name"
-                  dir="rtl"
-                  value={planDetails.nameAr}
-                  onChange={(event) => setPlanDetails((current) => ({ ...current, nameAr: event.target.value }))}
-                />
-              </Grid>
-              <Grid size={{ xs: 12, md: 3 }}>
-                <TextField
                   select
                   fullWidth
                   label={t('weeklySchedule.templateType')}
@@ -473,6 +472,62 @@ export function PlanBuilderPage() {
               <Grid size={{ xs: 12, md: 3 }}>
                 <Typography variant="body2" color="text.secondary">{t('weeklySchedule.schedule')}</Typography>
                 <Typography fontWeight={700}>{t('weeklySchedule.saturdayToThursday')}</Typography>
+              </Grid>
+            </Grid>
+            <Divider />
+            <Box>
+              <Typography fontWeight={700}>Translations</Typography>
+              <Typography variant="body2" color="text.secondary">Add the customer-facing name and a short description in each language.</Typography>
+            </Box>
+            <Grid container spacing={2} alignItems="stretch">
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Paper variant="outlined" sx={{ height: '100%', p: 2.5 }}>
+                  <Stack spacing={2}>
+                    <Typography variant="h3">English</Typography>
+                    <TextField
+                      required
+                      fullWidth
+                      label="Plan name"
+                      value={planDetails.nameEn}
+                      onChange={(event) => setPlanDetails((current) => ({ ...current, nameEn: event.target.value }))}
+                    />
+                    <TextField
+                      fullWidth
+                      multiline
+                      minRows={3}
+                      label="Short description"
+                      value={planDetails.shortDescriptionEn}
+                      slotProps={{ htmlInput: { maxLength: 300 } }}
+                      helperText={`${planDetails.shortDescriptionEn.length}/300 characters`}
+                      onChange={(event) => setPlanDetails((current) => ({ ...current, shortDescriptionEn: event.target.value }))}
+                    />
+                  </Stack>
+                </Paper>
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Paper variant="outlined" sx={{ height: '100%', p: 2.5 }} dir="rtl">
+                  <Stack spacing={2}>
+                    <Typography variant="h3">العربية</Typography>
+                    <TextField
+                      fullWidth
+                      label="اسم الخطة"
+                      value={planDetails.nameAr}
+                      error={hasIncompleteArabicTranslation}
+                      helperText={hasIncompleteArabicTranslation ? 'Enter the Arabic plan name to save this translation.' : undefined}
+                      onChange={(event) => setPlanDetails((current) => ({ ...current, nameAr: event.target.value }))}
+                    />
+                    <TextField
+                      fullWidth
+                      multiline
+                      minRows={3}
+                      label="وصف مختصر"
+                      value={planDetails.shortDescriptionAr}
+                      slotProps={{ htmlInput: { maxLength: 300 } }}
+                      helperText={`${planDetails.shortDescriptionAr.length}/300 حرف`}
+                      onChange={(event) => setPlanDetails((current) => ({ ...current, shortDescriptionAr: event.target.value }))}
+                    />
+                  </Stack>
+                </Paper>
               </Grid>
             </Grid>
           </Stack>

@@ -24,14 +24,23 @@ describe('plansApi', () => {
       planType: 'STANDARD',
       durationDays: 20,
       isCustomizable: true,
-      translations: [{ languageCode: 'en', name: 'Classic' }],
+      translations: [
+        { languageCode: 'en', name: 'Classic', shortDescription: 'Balanced meals for every day.' },
+        { languageCode: 'ar', name: 'كلاسيك', shortDescription: 'وجبات متوازنة لكل يوم.' },
+      ],
       days: [],
       publish: true,
     });
 
     expect(apiClient.put).toHaveBeenCalledWith(
       '/admin/meal-plans/plan-1',
-      expect.objectContaining({ publish: true }),
+      expect.objectContaining({
+        publish: true,
+        translations: [
+          { languageCode: 'en', name: 'Classic', shortDescription: 'Balanced meals for every day.' },
+          { languageCode: 'ar', name: 'كلاسيك', shortDescription: 'وجبات متوازنة لكل يوم.' },
+        ],
+      }),
     );
   });
 
