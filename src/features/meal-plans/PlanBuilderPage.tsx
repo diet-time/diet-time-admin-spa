@@ -489,9 +489,23 @@ export function PlanBuilderPage() {
             <Grid container spacing={2} alignItems="stretch">
               <Grid size={{ xs: 12, md: 5 }}>
                 {planImagePreview ? (
-                  <Box component="img" src={planImagePreview} alt="Meal plan preview" sx={{ width: '100%', height: 220, objectFit: 'cover', borderRadius: 2, border: 1, borderColor: 'divider' }} />
+                  <Box
+                    component="img"
+                    src={planImagePreview}
+                    alt="Meal plan preview"
+                    sx={{
+                      display: 'block',
+                      width: '100%',
+                      aspectRatio: '16 / 9',
+                      objectFit: 'contain',
+                      borderRadius: 2,
+                      border: 1,
+                      borderColor: 'divider',
+                      bgcolor: 'background.default',
+                    }}
+                  />
                 ) : (
-                  <Box sx={{ height: 220, display: 'grid', placeItems: 'center', border: 1, borderColor: 'divider', borderRadius: 2, bgcolor: 'background.default', color: 'text.secondary' }}>No plan image uploaded</Box>
+                  <Box sx={{ width: '100%', aspectRatio: '16 / 9', display: 'grid', placeItems: 'center', border: 1, borderColor: 'divider', borderRadius: 2, bgcolor: 'background.default', color: 'text.secondary' }}>No plan image uploaded</Box>
                 )}
               </Grid>
               <Grid size={{ xs: 12, md: 7 }}>
