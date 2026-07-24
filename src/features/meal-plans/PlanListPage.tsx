@@ -106,18 +106,31 @@ export function PlanListPage() {
             <Table size="small" sx={{ width: '100%', tableLayout: 'fixed', '& .MuiTableCell-head': { color: 'text.secondary', fontWeight: 750, bgcolor: '#FBFCFB' }, '& .MuiTableCell-root': { py: 1.75, overflow: 'hidden', textOverflow: 'ellipsis' } }}>
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ width: '32%' }}>Name</TableCell>
-                  <TableCell sx={{ width: '18%' }}>Template type</TableCell>
+                  <TableCell sx={{ width: '19%' }}>Name</TableCell>
+                  <TableCell sx={{ width: '25%' }}>Description</TableCell>
+                  <TableCell sx={{ width: '14%' }}>Template type</TableCell>
                   <TableCell sx={{ width: '12%' }}>Schedule</TableCell>
-                  <TableCell sx={{ width: '14%' }}>Status</TableCell>
-                  <TableCell sx={{ width: '15%' }}>Updated</TableCell>
-                  <TableCell align="center" sx={{ width: '9%', whiteSpace: 'nowrap' }}>Actions</TableCell>
+                  <TableCell sx={{ width: '10%' }}>Status</TableCell>
+                  <TableCell sx={{ width: '12%' }}>Updated</TableCell>
+                  <TableCell align="center" sx={{ width: '8%', whiteSpace: 'nowrap' }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {items.map((plan) => (
                   <TableRow key={plan.id}>
                     <TableCell><Typography fontWeight={700}>{plan.nameEn || 'Unnamed plan'}</Typography></TableCell>
+                    <TableCell>
+                      {plan.shortDescription ? (
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          title={plan.shortDescription}
+                          sx={{ display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2, overflow: 'hidden' }}
+                        >
+                          {plan.shortDescription}
+                        </Typography>
+                      ) : '—'}
+                    </TableCell>
                     <TableCell>{plan.planType.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase())}</TableCell>
                     <TableCell>Saturday to Thursday</TableCell>
                     <TableCell><StatusChip label={statusLabel(plan)} /></TableCell>

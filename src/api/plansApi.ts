@@ -83,6 +83,9 @@ interface PlansListApiItem {
   name?: string;
   nameEn?: string;
   nameAr?: string;
+  shortDescription?: string;
+  shortDescriptionEn?: string;
+  description?: string;
   planType?: string;
   durationDays?: number;
   isCustomizable?: boolean;
@@ -118,6 +121,7 @@ const normalizePlansResponse = (
     code: plan.code ?? '',
     nameEn: plan.nameEn ?? plan.name ?? '',
     nameAr: plan.nameAr,
+    shortDescription: plan.shortDescription ?? plan.shortDescriptionEn ?? plan.description,
     planType: plan.planType ?? '',
     durationDays: plan.durationDays ?? 0,
     customizable: plan.customizable ?? plan.isCustomizable ?? false,

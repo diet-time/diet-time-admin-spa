@@ -4,6 +4,7 @@ import { plansApi } from './plansApi';
 
 vi.mock('./apiClient', () => ({
   apiClient: {
+    get: vi.fn(),
     post: vi.fn(),
     put: vi.fn(),
   },
@@ -42,6 +43,29 @@ describe('plansApi', () => {
         ],
       }),
     );
+  });
+
+  it('includes the short description returned by the plans list endpoint', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({
+      data: {
+        data: [{
+          id: 'plan-1',
+          code: 'PLN_CLASSIC',
+          name: 'Balanced Living',
+          shortDescription: 'Balanced meals for everyday healthy living.',
+          planType: 'STANDARD',
+        }],
+        meta: { page: 1, pageSize: 25, totalCount: 1, totalPages: 1 },
+      },
+    });
+
+    const result = await plansApi.list({ page: 1, pageSize: 25 });
+
+    expect(apiClient.get).toHaveBeenCalledWith(
+      '/admin/meal-plans',
+      expect.objectContaining({ params: { page: 1, pageSize: 25 } }),
+    );
+    expect(result.items[0]?.shortDescription).toBe('Balanced meals for everyday healthy living.');
   });
 
   it('uploads plan images with imageType MEALPLAN', async () => {
