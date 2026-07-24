@@ -104,7 +104,7 @@ export function ImageUploader({ mealId, originalPreviewUrl, thumbnailPreviewUrl,
     {!mealId && <Alert severity="info">Save the meal before uploading images.</Alert>}
     <Grid container spacing={3}>
       <Grid size={{ xs: 12, md: 7 }}>
-        <ImageUploadField mealId={mealId} mediaType="IMAGE" title="Original image" description="Full-size image used on the meal details page." recommendedSize="1600 × 1200" initialPreviewUrl={originalPreviewUrl} onComplete={onComplete} />
+        <ImageUploadField mealId={mealId} mediaType="MEALITEM" title="Original image" description="Full-size image used on the meal details page." recommendedSize="1600 × 1200" initialPreviewUrl={originalPreviewUrl} onComplete={onComplete} />
       </Grid>
       <Grid size={{ xs: 12, md: 5 }}>
         <ImageUploadField mealId={mealId} mediaType="THUMBNAIL" title="Thumbnail" description="Compact image used in meal lists and cards." recommendedSize="600 × 450" initialPreviewUrl={thumbnailPreviewUrl} onComplete={onComplete} />

@@ -1,6 +1,6 @@
 import { apiClient } from './apiClient';
 
-export type MealMediaType = 'IMAGE' | 'THUMBNAIL';
+export type MealMediaType = 'MEALITEM' | 'THUMBNAIL';
 
 export interface MealMedia {
   id: string;
@@ -26,7 +26,7 @@ export async function uploadMealImage(
   const form = new FormData();
   form.append('file', file);
   form.append('mediaType', mediaType);
-  if (mediaType === 'IMAGE') form.append('isPrimary', 'true');
+  if (mediaType === 'MEALITEM') form.append('isPrimary', 'true');
 
   const response = await apiClient.post<{ data: MealMedia }>(`/admin/meals/${mealId}/media/upload`, form, {
     onUploadProgress: (event) => {

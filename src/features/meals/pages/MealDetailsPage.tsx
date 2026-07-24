@@ -32,8 +32,8 @@ export function MealDetailsPage() {
   if (query.isError || !query.data) return <ErrorState message="Unable to load this meal." onRetry={() => void query.refetch()} />;
 
   const meal = query.data;
-  const primaryMedia = meal.media.find((media) => media.mediaType === 'IMAGE' && media.isPrimary)
-    ?? meal.media.find((media) => media.mediaType === 'IMAGE');
+  const primaryMedia = meal.media.find((media) => media.mediaType === 'MEALITEM' && media.isPrimary)
+    ?? meal.media.find((media) => media.mediaType === 'MEALITEM');
   const originalImageUrl = primaryMedia?.publicUrl;
   const thumbnailImageUrl = primaryMedia?.thumbnailUrl
     ?? meal.media.find((media) => media.mediaType === 'THUMBNAIL')?.publicUrl;
