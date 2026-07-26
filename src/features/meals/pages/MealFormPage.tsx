@@ -102,12 +102,6 @@ function IngredientsAndAllergens({ control }: { control: ReturnType<typeof useFo
       </Grid>
     </Grid>
     </Box>
-    <Controller control={control} name="allergenReviewConfirmed" render={({ field }) => (
-      <FormControlLabel
-        control={<Switch checked={field.value} onChange={(_, checked) => field.onChange(checked)} />}
-        label="I confirm that the allergen information has been reviewed."
-      />
-    )} />
   </Stack>;
 }
 function Translations({ register, errors, language, setLanguage }: { register: Register; errors: Errors; language: 'en'|'ar'; setLanguage: (l:'en'|'ar') => void }) { const p = `translations.${language}` as const; return <Stack key={language} spacing={2} dir={language === 'ar' ? 'rtl' : 'ltr'}><Typography variant="h2">Translations</Typography><Tabs value={language} onChange={(_,v:'en'|'ar') => setLanguage(v)}><Tab value="en" label="English" /><Tab value="ar" label="العربية" /></Tabs><TextField label="Name" {...register(`${p}.name`)} error={language === 'en' && !!errors.translations?.en?.name} helperText={language === 'en' ? errors.translations?.en?.name?.message : undefined} /><TextField label="Short description" multiline rows={2} {...register(`${p}.shortDescription`)} /><TextField label="Full description" multiline rows={5} {...register(`${p}.fullDescription`)} /><TextField label="Preparation instructions" multiline rows={3} {...register(`${p}.preparationInstructions`)} /><TextField label="Serving notes" {...register(`${p}.servingNotes`)} /></Stack>; }

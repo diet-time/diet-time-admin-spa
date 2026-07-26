@@ -16,7 +16,7 @@ const sectionHasError = (errors: FieldErrors<MealFormValues>, step: number) => {
     case 1: return !!errors.translations;
     case 2: return !!errors.nutrition;
     case 3: return !!errors.dietary;
-    case 4: return !!(errors.ingredients || errors.allergens || errors.allergenReviewConfirmed);
+    case 4: return !!(errors.ingredients || errors.allergens);
     case 6: return !!errors.prices;
     case 7: return !!errors.availability;
     case 8: return Object.keys(errors).length > 0;

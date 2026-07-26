@@ -4,6 +4,7 @@ import {
   Button,
   Card,
   Checkbox,
+  Chip,
   Divider,
   FormControl,
   IconButton,
@@ -28,6 +29,7 @@ import {
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
+import { Cell, Pie, PieChart } from 'recharts';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { mealsApi } from '@/api/mealsApi';
 import { queryKeys } from '@/api/queryKeys';
@@ -249,7 +251,7 @@ export function MealsPage() {
                       <Typography variant="body2" fontWeight={700}>R{meal.revisionNumber}</Typography>
                     </TableCell>
                     <TableCell>
-                      <AvailabilityPopover from={meal.availableFrom} until={meal.availableUntil} />
+                      <AvailabilityPopover available={meal.isAvailable} from={meal.availableFrom} until={meal.availableUntil} />
                     </TableCell>
                     <TableCell>
                       <DateTimeDisplay value={meal.updatedAt} />
@@ -321,24 +323,18 @@ function MealInfoPopover({ category, calories, protein }: { category: string; ca
 
   return (
     <DetailsPopover label="Details" ariaLabel="View category and nutrition" icon={<InfoOutlined />}>
-      <Stack spacing={1.5}>
+      <Stack spacing={1.75}>
         <Box>
           <Typography variant="caption" color="text.secondary">Category</Typography>
           <Typography fontWeight={700}>{category}</Typography>
         </Box>
         <Divider />
         <Box>
-          <Typography variant="caption" color="text.secondary">Nutrition</Typography>
+          <Typography variant="caption" color="text.secondary">Nutrition at a glance</Typography>
           {hasNutrition ? (
-            <Stack direction="row" spacing={3} mt={0.5}>
-              <Box>
-                <Typography fontWeight={700}>{calories ?? '—'}</Typography>
-                <Typography variant="caption" color="text.secondary">Calories (kcal)</Typography>
-              </Box>
-              <Box>
-                <Typography fontWeight={700}>{protein ?? '—'} g</Typography>
-                <Typography variant="caption" color="text.secondary">Protein</Typography>
-              </Box>
+            <Stack direction="row" spacing={1.25} mt={1}>
+              <MiniNutritionDonut label="Calories" value={calories} unit="kcal" reference={2000} color="#C25B16" />
+              <MiniNutritionDonut label="Protein" value={protein} unit="g" reference={50} color="#287D4A" />
             </Stack>
           ) : (
             <Typography variant="body2" color="text.secondary" mt={0.5}>Nutrition not provided</Typography>
@@ -346,6 +342,54 @@ function MealInfoPopover({ category, calories, protein }: { category: string; ca
         </Box>
       </Stack>
     </DetailsPopover>
+  );
+}
+
+function MiniNutritionDonut({
+  label,
+  value,
+  unit,
+  reference,
+  color,
+}: {
+  label: string;
+  value?: number;
+  unit: string;
+  reference: number;
+  color: string;
+}) {
+  const amount = value ?? 0;
+  const percentage = Math.min(100, Math.max(0, Math.round((amount / reference) * 100)));
+  const data = [{ value: percentage }, { value: 100 - percentage }];
+
+  return (
+    <Stack
+      direction="row"
+      alignItems="center"
+      spacing={0.75}
+      sx={{ flex: 1, minWidth: 0, p: 1, borderRadius: 2, bgcolor: `${color}0A`, border: '1px solid', borderColor: `${color}24` }}
+    >
+      <Box sx={{ position: 'relative', width: 52, height: 52, flexShrink: 0 }}>
+        <PieChart width={52} height={52}>
+          <Pie data={data} dataKey="value" innerRadius={18} outerRadius={25} startAngle={90} endAngle={-270} stroke="none">
+            <Cell fill={color} />
+            <Cell fill={`${color}1C`} />
+          </Pie>
+        </PieChart>
+        <Typography
+          variant="caption"
+          fontWeight={800}
+          sx={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color }}
+        >
+          {value === undefined ? '—' : `${percentage}%`}
+        </Typography>
+      </Box>
+      <Box minWidth={0}>
+        <Typography variant="caption" color="text.secondary">{label}</Typography>
+        <Typography fontWeight={800} lineHeight={1.15}>{value ?? '—'} {value === undefined ? '' : unit}</Typography>
+        <Typography variant="caption" color="text.secondary">% daily value</Typography>
+      </Box>
+    </Stack>
   );
 }
 
@@ -362,20 +406,25 @@ function PricePopover({ price, currency }: { price?: number; currency?: string }
   );
 }
 
-function AvailabilityPopover({ from, until }: { from?: string; until?: string }) {
+function AvailabilityPopover({ available, from, until }: { available: boolean; from?: string; until?: string }) {
+  const status = !available ? 'Unavailable' : from || until ? 'Scheduled window' : 'Always available';
   return (
     <DetailsPopover label="Dates" ariaLabel="View availability window" icon={<CalendarMonthOutlined />} width={300}>
-      <Typography variant="caption" color="text.secondary">Availability window</Typography>
+      <Stack direction="row" alignItems="center" justifyContent="space-between">
+        <Typography variant="caption" color="text.secondary">Availability window</Typography>
+        <Chip size="small" label={status} color={!available ? 'warning' : 'success'} variant="outlined" />
+      </Stack>
       <Stack spacing={1.25} mt={1}>
         <Box>
           <Typography variant="caption" color="text.secondary">Available from</Typography>
-          <Typography fontWeight={700}>{from ? formatDateTime(from) : 'Always available'}</Typography>
+          <Typography fontWeight={700}>{from ? formatDateTime(from) : 'No start date'}</Typography>
         </Box>
         <Divider />
         <Box>
           <Typography variant="caption" color="text.secondary">Available until</Typography>
           <Typography fontWeight={700}>{until ? formatDateTime(until) : 'No end date'}</Typography>
         </Box>
+        <Typography variant="caption" color="text.secondary">Times shown in Qatar time (UTC+3).</Typography>
       </Stack>
     </DetailsPopover>
   );

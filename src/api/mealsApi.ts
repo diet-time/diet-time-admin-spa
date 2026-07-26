@@ -12,6 +12,10 @@ interface MealsListApiItem {
   isAvailable: boolean;
   name: string;
   nameAr?: string;
+  translations?: Array<{
+    languageCode?: string;
+    name?: string;
+  }>;
   thumbnailUrl?: string;
   category?: {
     id: string;
@@ -48,6 +52,11 @@ interface MealsListApiItem {
   }>;
   availableFrom?: string;
   availableUntil?: string;
+  availability?: {
+    isAvailable?: boolean;
+    availableFrom?: string;
+    availableUntil?: string;
+  };
   updatedAt: string;
 }
 
@@ -113,11 +122,13 @@ const normalizeMealsResponse = (response: MealsListApiResponse, filters: MealFil
   return {
     items: sourceItems.map((meal) => {
       const price = currentListPrice(meal);
+      const arabicName = meal.nameAr
+        ?? meal.translations?.find((translation) => translation.languageCode?.toLowerCase() === 'ar')?.name;
       return {
         id: meal.id,
         sku: meal.sku,
         nameEn: meal.name,
-        nameAr: meal.nameAr,
+        nameAr: arabicName?.trim() || undefined,
         thumbnailUrl: meal.thumbnailUrl,
         categoryName: meal.category?.name ?? meal.categoryName ?? 'Not assigned',
         calories: meal.nutrition?.caloriesKcal ?? meal.calories,
@@ -126,9 +137,9 @@ const normalizeMealsResponse = (response: MealsListApiResponse, filters: MealFil
         currency: price.currency,
         status: normalizeStatus(meal.status),
         revisionNumber: meal.versionNumber,
-        isAvailable: meal.isAvailable,
-        availableFrom: meal.availableFrom,
-        availableUntil: meal.availableUntil,
+        isAvailable: meal.availability?.isAvailable ?? meal.isAvailable,
+        availableFrom: meal.availability?.availableFrom ?? meal.availableFrom,
+        availableUntil: meal.availability?.availableUntil ?? meal.availableUntil,
         updatedAt: meal.updatedAt,
       };
     }),
@@ -152,6 +163,7 @@ interface AdminMealDetailResponse {
       isVegan?: boolean;
       isGlutenFree?: boolean;
       isDairyFree?: boolean;
+      isNutFree?: boolean;
       isSpicy?: boolean;
       spiceLevel?: number;
       isAvailable?: boolean;
@@ -224,7 +236,17 @@ const toLocalDateTimeInput = (value?: string | null) => {
   if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
-  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Qatar',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? '';
+  return `${part('year')}-${part('month')}-${part('day')}T${part('hour')}:${part('minute')}`;
 };
 
 const toIsoTimestamp = (value?: string) => {
@@ -287,6 +309,7 @@ const normalizeMealDetail = (response: AdminMealDetailResponse): MealFormValues 
       vegan: meal.isVegan ?? false,
       glutenFree: meal.isGlutenFree ?? false,
       dairyFree: meal.isDairyFree ?? false,
+      nutFree: meal.isNutFree ?? false,
       spicy: meal.isSpicy ?? false,
       spiceLevel: meal.spiceLevel ?? 0,
     },
@@ -305,8 +328,8 @@ const normalizeMealDetail = (response: AdminMealDetailResponse): MealFormValues 
     availability: {
       mode: availabilityMode(isAvailable, meal.availableFrom, meal.availableUntil),
       isAvailable,
-      availableFrom: meal.availableFrom,
-      availableUntil: meal.availableUntil,
+      availableFrom: toLocalDateTimeInput(meal.availableFrom),
+      availableUntil: toLocalDateTimeInput(meal.availableUntil),
     },
     tags: meal.tagIds ?? [],
   };
@@ -321,6 +344,7 @@ const toAdminMealRequest = (meal: MealFormValues) => ({
   isVegan: meal.dietary.vegan,
   isGlutenFree: meal.dietary.glutenFree,
   isDairyFree: meal.dietary.dairyFree,
+  isNutFree: meal.dietary.nutFree,
   isSpicy: meal.dietary.spicy,
   spiceLevel: meal.dietary.spiceLevel,
   isAvailable: meal.availability.isAvailable,
