@@ -322,7 +322,7 @@ function MealInfoPopover({ category, calories, protein }: { category: string; ca
   const hasNutrition = calories !== undefined || protein !== undefined;
 
   return (
-    <DetailsPopover label="Details" ariaLabel="View category and nutrition" icon={<InfoOutlined />}>
+    <DetailsPopover label="Details" ariaLabel="View category and nutrition" icon={<InfoOutlined />} width={320}>
       <Stack spacing={1.75}>
         <Box>
           <Typography variant="caption" color="text.secondary">Category</Typography>
@@ -332,10 +332,20 @@ function MealInfoPopover({ category, calories, protein }: { category: string; ca
         <Box>
           <Typography variant="caption" color="text.secondary">Nutrition at a glance</Typography>
           {hasNutrition ? (
-            <Stack direction="row" spacing={1.25} mt={1}>
-              <MiniNutritionDonut label="Calories" value={calories} unit="kcal" reference={2000} color="#C25B16" />
-              <MiniNutritionDonut label="Protein" value={protein} unit="g" reference={50} color="#287D4A" />
-            </Stack>
+            <>
+              <Stack
+                direction="row"
+                divider={<Divider orientation="vertical" flexItem />}
+                spacing={1.5}
+                mt={1}
+              >
+                <MiniNutritionDonut label="Calories" value={calories} unit="kcal" reference={2000} color="#C25B16" />
+                <MiniNutritionDonut label="Protein" value={protein} unit="g" reference={50} color="#287D4A" />
+              </Stack>
+              <Typography variant="caption" color="text.secondary" display="block" mt={1}>
+                Rings show percentage of the daily reference.
+              </Typography>
+            </>
           ) : (
             <Typography variant="body2" color="text.secondary" mt={0.5}>Nutrition not provided</Typography>
           )}
@@ -366,12 +376,12 @@ function MiniNutritionDonut({
     <Stack
       direction="row"
       alignItems="center"
-      spacing={0.75}
-      sx={{ flex: 1, minWidth: 0, p: 1, borderRadius: 2, bgcolor: `${color}0A`, border: '1px solid', borderColor: `${color}24` }}
+      spacing={1}
+      sx={{ flex: 1, minWidth: 0 }}
     >
-      <Box sx={{ position: 'relative', width: 52, height: 52, flexShrink: 0 }}>
-        <PieChart width={52} height={52}>
-          <Pie data={data} dataKey="value" innerRadius={18} outerRadius={25} startAngle={90} endAngle={-270} stroke="none">
+      <Box sx={{ position: 'relative', width: 46, height: 46, flexShrink: 0 }}>
+        <PieChart width={46} height={46}>
+          <Pie data={data} dataKey="value" innerRadius={16} outerRadius={22} startAngle={90} endAngle={-270} stroke="none">
             <Cell fill={color} />
             <Cell fill={`${color}1C`} />
           </Pie>
@@ -386,8 +396,9 @@ function MiniNutritionDonut({
       </Box>
       <Box minWidth={0}>
         <Typography variant="caption" color="text.secondary">{label}</Typography>
-        <Typography fontWeight={800} lineHeight={1.15}>{value ?? '—'} {value === undefined ? '' : unit}</Typography>
-        <Typography variant="caption" color="text.secondary">% daily value</Typography>
+        <Typography fontWeight={800} lineHeight={1.2} whiteSpace="nowrap">
+          {value ?? '—'}{value === undefined ? '' : ` ${unit}`}
+        </Typography>
       </Box>
     </Stack>
   );
