@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { apiClient } from './apiClient';
-import { planPricingApi } from './planPricingApi';
+import { mealPlanPricePackagesApi, planPricingApi } from './planPricingApi';
 
 vi.mock('./apiClient', () => ({
   apiClient: {
@@ -23,6 +23,9 @@ describe('planPricingApi', () => {
           mealPlanTemplateId: 'plan-1',
           mealPlanCode: 'PLN_CLASSIC',
           mealPlanName: 'Balanced Living',
+          mealPlanPricePackageId: 'package-1',
+          packageCode: 'MONTH',
+          packageNameEn: '1 Month',
           durationDays: 20,
           mealsPerDay: 3,
           snacksPerDay: 1,
@@ -62,7 +65,7 @@ describe('planPricingApi', () => {
     vi.mocked(apiClient.delete).mockResolvedValue({ data: undefined });
     const body = {
       mealPlanTemplateId: 'plan-1',
-      durationDays: 20,
+      mealPlanPricePackageId: 'package-1',
       mealsPerDay: 3,
       snacksPerDay: 1,
       currencyCode: 'QAR',
@@ -81,5 +84,45 @@ describe('planPricingApi', () => {
     expect(apiClient.put).toHaveBeenCalledWith('/admin/meal-plan-pricing/price-1', body);
     expect(apiClient.patch).toHaveBeenCalledWith('/admin/meal-plan-pricing/price-1/status', { isActive: false });
     expect(apiClient.delete).toHaveBeenCalledWith('/admin/meal-plan-pricing/price-1');
+  });
+
+  it('lists price packages in API display order and maps pagination', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({
+      data: {
+        data: [
+          { id: 'package-1', code: 'day', nameEn: '1 Day', nameAr: 'يوم واحد', durationDays: 1, displayOrder: 1, isActive: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-02T00:00:00Z' },
+          { id: 'package-2', code: 'week', nameEn: '1 Week', nameAr: 'أسبوع واحد', durationDays: 6, displayOrder: 2, isActive: false, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-02T00:00:00Z' },
+        ],
+        meta: { page: 1, pageSize: 25, totalCount: 2, totalPages: 1 },
+      },
+    });
+
+    const result = await mealPlanPricePackagesApi.list({ page: 1, pageSize: 25, search: 'week', isActive: false });
+
+    expect(apiClient.get).toHaveBeenCalledWith('/admin/meal-plan-price-packages', expect.objectContaining({ params: { page: 1, pageSize: 25, search: 'week', isActive: false } }));
+    expect(result.items.map((item) => item.code)).toEqual(['DAY', 'WEEK']);
+    expect(result.totalCount).toBe(2);
+  });
+
+  it('loads lookup options and uses package create, update, and status endpoints', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: { data: [
+      { id: 'package-2', code: 'WEEK', nameEn: '1 Week', nameAr: 'أسبوع واحد', durationDays: 6, displayOrder: 2 },
+      { id: 'package-1', code: 'DAY', nameEn: '1 Day', nameAr: 'يوم واحد', durationDays: 1, displayOrder: 1 },
+    ] } });
+    vi.mocked(apiClient.post).mockResolvedValue({ data: { data: { id: 'package-1' } } });
+    vi.mocked(apiClient.put).mockResolvedValue({ data: undefined });
+    vi.mocked(apiClient.patch).mockResolvedValue({ data: undefined });
+    const body = { code: 'WEEK', nameEn: '1 Week', nameAr: 'أسبوع واحد', durationDays: 6, displayOrder: 2, isActive: true };
+
+    const lookup = await mealPlanPricePackagesApi.lookup();
+    await mealPlanPricePackagesApi.create(body);
+    await mealPlanPricePackagesApi.update('package-1', body);
+    await mealPlanPricePackagesApi.setStatus('package-1', false);
+
+    expect(lookup.map((item) => item.id)).toEqual(['package-1', 'package-2']);
+    expect(apiClient.get).toHaveBeenCalledWith('/admin/meal-plan-price-packages/lookup', { signal: undefined });
+    expect(apiClient.post).toHaveBeenCalledWith('/admin/meal-plan-price-packages', body);
+    expect(apiClient.put).toHaveBeenCalledWith('/admin/meal-plan-price-packages/package-1', body);
+    expect(apiClient.patch).toHaveBeenCalledWith('/admin/meal-plan-price-packages/package-1/status', { isActive: false });
   });
 });
