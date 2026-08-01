@@ -21,7 +21,7 @@ Environment variables:
 - `VITE_DEFAULT_LANGUAGE` — `en` or `ar`
 - `VITE_ENABLE_ARABIC` — enables Arabic UI
 - `VITE_IDLE_TIMEOUT_MINUTES` — inactivity timeout, default 30
-- `VITE_UPLOAD_MAX_MB` — browser upload limit, default 8; backend remains authoritative
+- `VITE_UPLOAD_MAX_MB` — browser upload limit, default 15; backend remains authoritative
 
 ## API and authentication
 
