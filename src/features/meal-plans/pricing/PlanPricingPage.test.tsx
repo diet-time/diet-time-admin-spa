@@ -15,6 +15,7 @@ describe('pricing package integration', () => {
     render(<PricingDialog mode="add" plans={[plan]} currencies={['QAR']} packages={packageLookup} packagesLoading={false} packagesError={false} pending={false} onClose={vi.fn()} onSave={onSave} onRetryPackages={vi.fn()} onCreatePackage={vi.fn()} />);
 
     expect(screen.queryByLabelText('Duration in days')).not.toBeInTheDocument();
+    expect(screen.getByText(/Pricing periods cannot overlap/)).toBeInTheDocument();
     await user.click(screen.getByRole('combobox', { name: /Meal plan template/ }));
     await user.click(await screen.findByRole('option', { name: 'Balanced Living (BALANCED)' }));
     await user.click(screen.getByRole('combobox', { name: /Price Package/ }));

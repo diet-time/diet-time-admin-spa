@@ -41,11 +41,11 @@ describe('planPricingApi', () => {
       },
     });
 
-    const result = await planPricingApi.list({ page: 1, pageSize: 25, status: 'ACTIVE' });
+    const result = await planPricingApi.list({ page: 1, pageSize: 25, status: 'ACTIVE', mealPlanPricePackageId: 'package-1' });
 
     expect(apiClient.get).toHaveBeenCalledWith(
       '/admin/meal-plan-pricing',
-      expect.objectContaining({ params: { page: 1, pageSize: 25, status: 'ACTIVE' } }),
+      expect.objectContaining({ params: { page: 1, pageSize: 25, status: 'ACTIVE', mealPlanPricePackageId: 'package-1' } }),
     );
     expect(result.items[0]).toMatchObject({
       mealPlanName: 'Balanced Living',
