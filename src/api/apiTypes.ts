@@ -1,4 +1,13 @@
 export interface ApiErrorBody { title?: string; detail?: string; status?: number; correlationId?: string; errors?: Record<string, string[]> }
+export interface ApiEnvelope<T> { data: T; errors?: Array<{ code: string; message: string; field?: string }> }
+export interface AuthUserApi { id: string; email: string; name: string; roles: string[] }
+export interface AuthSessionApi {
+  accessToken: string;
+  accessTokenExpiresAt: string;
+  refreshToken: string;
+  refreshTokenExpiresAt: string;
+  user: AuthUserApi;
+}
 export interface PagedResponse<T> { items: T[]; page: number; pageSize: number; totalCount: number; totalPages: number }
 export interface Translation { en: string; ar?: string }
 export type RecordStatus = 'Draft' | 'Active' | 'Inactive' | 'Archived';

@@ -25,7 +25,7 @@ Environment variables:
 
 ## API and authentication
 
-All data flows through the Diet Time API; the browser never connects to PostgreSQL. Axios sends credentials for an HttpOnly refresh cookie, keeps short-lived access tokens in memory, refreshes once after a 401, and handles 403 globally. Authentication uses `/auth/login`, `/auth/refresh`, `/auth/logout`, and `/auth/me`.
+All data flows through the Diet Time API; the browser never connects to PostgreSQL. Axios sends credentials for an HttpOnly refresh cookie, keeps short-lived access tokens in memory, restores the session through `/auth/refresh`, retries once after a 401, and handles 403 globally. Authentication uses `/auth/login`, `/auth/refresh`, `/auth/logout`, and `/auth/me`. No authentication token or session flag is stored in `localStorage`.
 
 The backend must allow the exact admin origin (`https://admin.diettime.com`), credentials, required methods/headers, and expose correlation headers. Do not combine wildcard origins with credentials. Backend authorization and validation remain authoritative.
 
