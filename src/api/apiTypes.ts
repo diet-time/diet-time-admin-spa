@@ -17,3 +17,12 @@ export interface MasterRecord { id: string; code: string; nameEn: string; nameAr
 export interface PlanSummary { id: string; code: string; nameEn: string; nameAr?: string; shortDescription?: string; planType: string; durationDays: number; customizable: boolean; published: boolean; active: boolean; validFrom?: string; validUntil?: string; priceFrom?: number; updatedAt: string }
 export interface AuditEntry { id: string; entityType: string; entityId: string; action: string; changedBy: string; changedAt: string; previousValues?: Record<string, unknown>; newValues?: Record<string, unknown>; notes?: string }
 export interface DashboardData { activeMeals: number; draftMeals: number; unavailableMeals: number; publishedPlans: number; draftPlans: number; expiringMeals: number; scheduledPriceChanges: number; missingImages: number; missingArabic: number; missingNutrition: number; mealsByCategory: { name: string; value: number }[]; mealsByTag: { name: string; value: number }[]; plansByStatus: { name: string; value: number }[]; availability: { date: string; available: number; unavailable: number }[] }
+export interface ScreenPermission {
+  screenId: string; groupCode: string; groupName: string; screenCode: string; screenName: string;
+  routeUrl?: string; icon?: string; displayOrder: number; isActive: boolean; canRead: boolean; canWrite: boolean;
+}
+export interface AccessRole { id: string; roleName: string; description?: string; isActive: boolean; screens: ScreenPermission[] }
+export interface AccessUser {
+  profileId: string; userId: string; email: string; firstName: string; lastName: string; mobile?: string;
+  status: string; isActive: boolean; roleIds: string[]; roleNames: string[];
+}

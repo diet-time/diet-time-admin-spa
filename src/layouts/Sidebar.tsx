@@ -1,9 +1,11 @@
-import { CalendarMonthOutlined, CategoryOutlined, ChevronLeft, ChevronRight, DashboardOutlined, DinnerDiningOutlined, ExpandLess, ExpandMore, HistoryOutlined, ImageOutlined, MenuBookOutlined, PaymentsOutlined, RestaurantMenuOutlined, SettingsOutlined, SpaOutlined, WarningAmberOutlined } from '@mui/icons-material';
+import { AdminPanelSettingsOutlined, CalendarMonthOutlined, CategoryOutlined, ChevronLeft, ChevronRight, DashboardOutlined, DinnerDiningOutlined, ExpandLess, ExpandMore, HistoryOutlined, ImageOutlined, MenuBookOutlined, PaymentsOutlined, RestaurantMenuOutlined, SpaOutlined, WarningAmberOutlined } from '@mui/icons-material';
 import { Box, Collapse, Drawer, IconButton, List, ListItemButton, ListItemIcon, ListItemText, Toolbar, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink, useLocation } from 'react-router-dom';
 import { colors } from '@/theme/theme';
+import { useQuery } from '@tanstack/react-query';
+import { accessControlApi } from '@/api/accessControlApi';
 
 const expandedWidth = 264;
 const collapsedWidth = 76;
@@ -33,7 +35,11 @@ const items: NavItem[] = [
   { key: 'pricing', path: '/pricing', icon: <PaymentsOutlined /> },
   { key: 'media', path: '/media', icon: <ImageOutlined /> },
   { key: 'audit', path: '/audit', icon: <HistoryOutlined /> },
-  { key: 'settings', path: '/settings', icon: <SettingsOutlined /> },
+  { key: 'administration', path: '/administration', icon: <AdminPanelSettingsOutlined />, children: [
+    { label: 'Settings', path: '/settings' },
+    { label: 'Users', path: '/users' },
+    { label: 'Roles', path: '/roles' },
+  ] },
 ];
 
 export function Sidebar({ open, collapsed, onClose, onToggle }: {
@@ -46,8 +52,13 @@ export function Sidebar({ open, collapsed, onClose, onToggle }: {
   const theme = useTheme();
   const desktop = useMediaQuery(theme.breakpoints.up('md'));
   const location = useLocation();
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ mealPlans: location.pathname.startsWith('/meal-plans'), operations: location.pathname.startsWith('/operations') });
+  const permissions = useQuery({ queryKey: ['access-control', 'me', 'screens'], queryFn: accessControlApi.myScreens, staleTime: 60_000 });
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ mealPlans: location.pathname.startsWith('/meal-plans'), operations: location.pathname.startsWith('/operations'), administration: ['/settings', '/users', '/roles'].some(path => location.pathname.startsWith(path)) });
   const width = collapsed ? collapsedWidth : expandedWidth;
+  const allowedRoutes = permissions.data ? new Set(permissions.data.filter(permission => permission.canRead).map(permission => permission.routeUrl)) : null;
+  const visibleItems = items.map(item => item.children && allowedRoutes
+    ? { ...item, children: item.children.filter(child => allowedRoutes.has(child.path)) }
+    : item).filter(item => !allowedRoutes || (item.children ? item.children.length > 0 : allowedRoutes.has(item.path)));
 
   const content = (
     <Box sx={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', bgcolor: colors.emerald, color: 'white' }}>
@@ -61,8 +72,10 @@ export function Sidebar({ open, collapsed, onClose, onToggle }: {
         aria-label="Main navigation"
         sx={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', px: 1, py: 1, scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,.4) transparent' }}
       >
-        {items.map((item) => {
-          const active = item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path);
+        {visibleItems.map((item) => {
+          const active = item.path === '/'
+            ? location.pathname === '/'
+            : item.children?.some(child => location.pathname.startsWith(child.path)) ?? location.pathname.startsWith(item.path);
           return (
             <Box key={item.path}>
               <ListItemButton

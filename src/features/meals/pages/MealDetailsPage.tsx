@@ -3,7 +3,7 @@ import { Alert, Box, Button, Card, CardContent, Chip, Grid, Stack, Typography } 
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { mealsApi } from '@/api/mealsApi';
-import { RoleGuard } from '@/auth/RoleGuard';
+import { WriteGuard } from '@/auth/ScreenAccess';
 import { ErrorState, LoadingState } from '@/components/feedback/PageState';
 import { NutritionMetricCard } from '../components/NutritionMetricCard';
 
@@ -45,11 +45,11 @@ export function MealDetailsPage() {
         <Button component={Link} to="/meals" startIcon={<ArrowBack />} sx={{ ml: -1 }}>
           Back to meals
         </Button>
-        <RoleGuard allowedRoles={['Dietitian', 'ContentManager']}>
+        <WriteGuard>
           <Button component={Link} to={`/meals/${mealId}/edit`} variant="contained" startIcon={<Edit />}>
             Edit meal
           </Button>
-        </RoleGuard>
+        </WriteGuard>
       </Stack>
       <Box>
         <Typography variant="h1">{meal.translations.en.name}</Typography>
