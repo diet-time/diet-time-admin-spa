@@ -14,7 +14,6 @@ const publishableMeal = () => ({
     isPrimaryIngredient: true,
     displayOrder: 0,
   }],
-  allergenReviewConfirmed: true,
 });
 
 describe('getMealPublishIssues', () => {
@@ -23,7 +22,6 @@ describe('getMealPublishIssues', () => {
       'Add an Arabic meal name.',
       'Enter calories greater than zero.',
       'Select at least one ingredient.',
-      'Confirm that the allergen information has been reviewed.',
       'Upload at least one meal image.',
     ]);
   });

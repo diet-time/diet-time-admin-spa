@@ -387,7 +387,7 @@ export function PlanBuilderPage() {
   const selectPlanImage = (file?: File) => {
     if (!file) return;
     const allowed = ['image/jpeg', 'image/png', 'image/webp'];
-    const maxSize = Number(import.meta.env.VITE_UPLOAD_MAX_MB ?? 8) * 1024 * 1024;
+    const maxSize = Number(import.meta.env.VITE_UPLOAD_MAX_MB ?? 15) * 1024 * 1024;
     if (!allowed.includes(file.type) || file.size > maxSize) {
       setPlanImageError(`Choose a JPEG, PNG, or WebP image smaller than ${Math.round(maxSize / 1024 / 1024)} MB.`);
       return;

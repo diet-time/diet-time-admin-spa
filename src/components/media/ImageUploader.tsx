@@ -38,7 +38,7 @@ function ImageUploadField({ mealId, mediaType, title, description, recommendedSi
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [previewUrl, setPreviewUrl] = useState(initialPreviewUrl ?? '');
-  const maxSize = Number(import.meta.env.VITE_UPLOAD_MAX_MB ?? 8) * 1024 * 1024;
+  const maxSize = Number(import.meta.env.VITE_UPLOAD_MAX_MB ?? 15) * 1024 * 1024;
 
   useEffect(() => setPreviewUrl(initialPreviewUrl ?? ''), [initialPreviewUrl]);
 
