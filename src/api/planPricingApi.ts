@@ -3,6 +3,12 @@ import type { PagedResponse } from './apiTypes';
 
 export type PlanPriceStatus = 'ACTIVE' | 'SCHEDULED' | 'EXPIRED' | 'INACTIVE';
 
+export interface MealPlanPriceTranslation {
+  languageCode: string;
+  name: string;
+  description?: string | null;
+}
+
 export interface PlanPrice {
   id: string;
   mealPlanTemplateId: string;
@@ -22,9 +28,10 @@ export interface PlanPrice {
   isActive: boolean;
   status: PlanPriceStatus;
   canDelete: boolean;
+  translations?: MealPlanPriceTranslation[];
 }
 
-export interface PlanPriceInput {
+interface PlanPriceInputBase {
   mealPlanTemplateId: string;
   mealPlanPricePackageId: string;
   mealsPerDay: number;
@@ -35,6 +42,17 @@ export interface PlanPriceInput {
   effectiveUntil: string | null;
   isActive: boolean;
 }
+
+export interface PlanPriceCreateInput extends PlanPriceInputBase {
+  translations?: MealPlanPriceTranslation[];
+}
+
+export interface PlanPriceUpdateInput extends PlanPriceInputBase {
+  /** Omit to preserve the translations currently stored by the backend. */
+  translations?: MealPlanPriceTranslation[];
+}
+
+export type PlanPriceInput = PlanPriceCreateInput | PlanPriceUpdateInput;
 
 export interface PlanPriceFilters {
   page: number;
@@ -181,9 +199,9 @@ export const planPricingApi = {
     (await apiClient.get<ApiEnvelope<PlanPriceSummary>>('/admin/meal-plan-pricing/summary', { signal })).data.data,
   currencies: async (signal?: AbortSignal) =>
     (await apiClient.get<ApiEnvelope<string[]>>('/admin/meal-plan-pricing/currencies', { signal })).data.data,
-  create: async (body: PlanPriceInput) =>
+  create: async (body: PlanPriceCreateInput) =>
     (await apiClient.post<ApiEnvelope<{ id: string }>>('/admin/meal-plan-pricing', body)).data.data,
-  update: async (id: string, body: PlanPriceInput) =>
+  update: async (id: string, body: PlanPriceUpdateInput) =>
     (await apiClient.put(`/admin/meal-plan-pricing/${id}`, body)).data,
   setStatus: async (id: string, isActive: boolean) =>
     (await apiClient.patch(`/admin/meal-plan-pricing/${id}/status`, { isActive })).data,

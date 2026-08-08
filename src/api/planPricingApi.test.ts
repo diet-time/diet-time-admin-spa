@@ -36,6 +36,10 @@ describe('planPricingApi', () => {
           isActive: true,
           status: 'ACTIVE',
           canDelete: false,
+          translations: [
+            { languageCode: 'en', name: 'Three Meals – One Week', description: 'Three meals daily.' },
+            { languageCode: 'ar', name: 'ثلاث وجبات – أسبوع واحد', description: 'ثلاث وجبات يومياً.' },
+          ],
         }],
         meta: { page: 1, pageSize: 25, totalCount: 1, totalPages: 1 },
       },
@@ -54,6 +58,7 @@ describe('planPricingApi', () => {
       snacksPerDay: 1,
       amount: 1600,
       status: 'ACTIVE',
+      translations: expect.arrayContaining([expect.objectContaining({ languageCode: 'en', name: 'Three Meals – One Week' })]),
     });
     expect(result.totalCount).toBe(1);
   });
@@ -73,6 +78,10 @@ describe('planPricingApi', () => {
       effectiveFrom: '2026-08-01T00:00:00Z',
       effectiveUntil: null,
       isActive: true,
+      translations: [
+        { languageCode: 'en', name: 'Three Meals – One Week', description: 'Three meals daily.' },
+        { languageCode: 'ar', name: 'ثلاث وجبات – أسبوع واحد', description: 'ثلاث وجبات يومياً.' },
+      ],
     };
 
     await planPricingApi.create(body);
@@ -84,6 +93,21 @@ describe('planPricingApi', () => {
     expect(apiClient.put).toHaveBeenCalledWith('/admin/meal-plan-pricing/price-1', body);
     expect(apiClient.patch).toHaveBeenCalledWith('/admin/meal-plan-pricing/price-1/status', { isActive: false });
     expect(apiClient.delete).toHaveBeenCalledWith('/admin/meal-plan-pricing/price-1');
+  });
+
+  it('loads price-detail translations for editing', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: { data: {
+      id: 'price-1', mealPlanTemplateId: 'plan-1', mealPlanCode: 'PLAN', mealPlanName: 'Plan',
+      mealPlanPricePackageId: 'week', durationDays: 6, mealsPerDay: 3, snacksPerDay: 1,
+      currencyCode: 'QAR', amount: 780, effectiveFrom: '2026-08-08T00:00:00Z', effectiveUntil: null,
+      isActive: true, status: 'ACTIVE', canDelete: false,
+      translations: [{ languageCode: 'en', name: 'Detail name', description: 'Detail description' }],
+    } } });
+
+    const detail = await planPricingApi.get('price-1');
+
+    expect(apiClient.get).toHaveBeenCalledWith('/admin/meal-plan-pricing/price-1', { signal: undefined });
+    expect(detail.translations).toEqual([{ languageCode: 'en', name: 'Detail name', description: 'Detail description' }]);
   });
 
   it('lists price packages in API display order and maps pagination', async () => {
