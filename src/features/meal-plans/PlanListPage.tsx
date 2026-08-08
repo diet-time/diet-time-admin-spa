@@ -29,7 +29,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { plansApi } from '@/api/plansApi';
 import type { PlanSummary } from '@/api/apiTypes';
 import { queryClient } from '@/app/queryClient';
-import { RoleGuard } from '@/auth/RoleGuard';
+import { WriteGuard } from '@/auth/ScreenAccess';
 import { StatusChip } from '@/components/common/StatusChip';
 import { EmptyState, ErrorState, LoadingState } from '@/components/feedback/PageState';
 
@@ -79,9 +79,9 @@ export function PlanListPage() {
           <Typography variant="h1">Meal plan templates</Typography>
           <Typography color="text.secondary">Build, validate, price, and publish customer meal programmes.</Typography>
         </Box>
-        <RoleGuard allowedRoles={['Dietitian']}>
+        <WriteGuard>
           <Button component={Link} to="/meal-plans/new" variant="contained" startIcon={<Add />}>Create plan</Button>
-        </RoleGuard>
+        </WriteGuard>
       </Stack>
       <Card>
         <Box p={2}>

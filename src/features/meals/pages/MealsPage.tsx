@@ -33,7 +33,7 @@ import { Cell, Pie, PieChart } from 'recharts';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { mealsApi } from '@/api/mealsApi';
 import { queryKeys } from '@/api/queryKeys';
-import { RoleGuard } from '@/auth/RoleGuard';
+import { WriteGuard } from '@/auth/ScreenAccess';
 import { EmptyState, ErrorState, LoadingState } from '@/components/feedback/PageState';
 
 const pageSizes = [10, 25, 50];
@@ -109,11 +109,11 @@ export function MealsPage() {
             Find meals quickly and review their catalogue readiness at a glance.
           </Typography>
         </Box>
-        <RoleGuard allowedRoles={['Dietitian', 'ContentManager']}>
+        <WriteGuard>
           <Button component={Link} to="/meals/new" variant="contained" startIcon={<Add />}>
             Create meal
           </Button>
-        </RoleGuard>
+        </WriteGuard>
       </Stack>
 
       <Card sx={{ overflow: 'hidden' }}>
@@ -485,9 +485,9 @@ function RowMenu({ onView, onEdit }: { onView: () => void; onEdit: () => void })
       </Tooltip>
       <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={close}>
         <MenuItem onClick={() => runAndClose(onView)}>View details</MenuItem>
-        <RoleGuard allowedRoles={['Dietitian', 'ContentManager']}>
+        <WriteGuard>
           <MenuItem onClick={() => runAndClose(onEdit)}>Edit meal</MenuItem>
-        </RoleGuard>
+        </WriteGuard>
         <MenuItem onClick={close}>View audit history</MenuItem>
       </Menu>
     </>

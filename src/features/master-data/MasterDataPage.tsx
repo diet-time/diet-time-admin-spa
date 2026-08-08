@@ -29,7 +29,7 @@ import { useState } from 'react';
 import { masterDataApi, type MasterInput, type MasterResource } from '@/api/masterDataApi';
 import type { MasterRecord } from '@/api/apiTypes';
 import { queryClient } from '@/app/queryClient';
-import { RoleGuard } from '@/auth/RoleGuard';
+import { WriteGuard } from '@/auth/ScreenAccess';
 import { EmptyState, ErrorState, LoadingState } from '@/components/feedback/PageState';
 
 const labels: Record<MasterResource, string> = {
@@ -152,11 +152,11 @@ export function MasterDataPage({ resource }: { resource: MasterResource }) {
           <Typography variant="h1">{labels[resource]}</Typography>
           <Typography color="text.secondary">Localized reference data used across catalogue and plans.</Typography>
         </Box>
-        <RoleGuard allowedRoles={['Dietitian', 'ContentManager']}>
+        <WriteGuard>
           <Button variant="contained" startIcon={<Add />} onClick={() => setDialog({ values: emptyValues(resource) })}>
             Add {singularLabels[resource]}
           </Button>
-        </RoleGuard>
+        </WriteGuard>
       </Stack>
 
       <Card>
@@ -223,9 +223,9 @@ export function MasterDataPage({ resource }: { resource: MasterResource }) {
                     <TableCell>{record.usageCount}</TableCell>
                     <TableCell>{formatDate(record.updatedAt || record.createdAt)}</TableCell>
                     <TableCell>
-                      <RoleGuard allowedRoles={['Dietitian', 'ContentManager']}>
+                      <WriteGuard>
                         <IconButton aria-label={`Edit ${record.nameEn}`} onClick={() => editRecord(record)}><EditOutlined /></IconButton>
-                      </RoleGuard>
+                      </WriteGuard>
                     </TableCell>
                   </TableRow>
                 ))}

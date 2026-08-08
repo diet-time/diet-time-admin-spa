@@ -1,29 +1,41 @@
 import { useAuthStore } from '@/app/store/authStore';
+import type { Role } from '@/app/store/authStore';
+import { apiClient, refreshAccessToken, setAccessToken } from '@/api/apiClient';
+import type { ApiEnvelope, AuthSessionApi, AuthUserApi } from '@/api/apiTypes';
 
-const sessionKey = 'diet-time-admin-session';
-const adminUser = {
-  id: 'local-admin',
-  name: 'Admin',
-  email: 'admin@localhost',
-  roles: ['Admin'] as const,
+const supportedRoles = new Set<Role>(['Admin', 'Dietitian', 'ContentManager', 'Finance', 'Operations', 'Viewer']);
+
+const toAuthUser = (user: AuthUserApi) => ({
+  id: user.id,
+  name: user.name,
+  email: user.email,
+  roles: user.roles.filter((role): role is Role => supportedRoles.has(role as Role)),
+});
+
+const applySession = (session: AuthSessionApi) => {
+  setAccessToken(session.accessToken);
+  useAuthStore.getState().setSession(toAuthUser(session.user));
 };
 
-export const loginWithLocalCredentials = (username: string, password: string) => {
-  if (username !== 'admin' || password !== 'admin') return false;
-  localStorage.setItem(sessionKey, 'authenticated');
-  useAuthStore.getState().setSession({ ...adminUser, roles: [...adminUser.roles] });
-  return true;
+export const login = async (email: string, password: string) => {
+  const response = await apiClient.post<ApiEnvelope<AuthSessionApi>>('/auth/login', { email, password });
+  applySession(response.data.data);
 };
 
 export const restoreSession = async () => {
-  if (localStorage.getItem(sessionKey) === 'authenticated') {
-    useAuthStore.getState().setSession({ ...adminUser, roles: [...adminUser.roles] });
-  } else {
+  try {
+    applySession(await refreshAccessToken());
+  } catch {
+    setAccessToken(null);
     useAuthStore.getState().clear();
   }
 };
 
 export const endSession = async () => {
-  localStorage.removeItem(sessionKey);
-  useAuthStore.getState().clear();
+  try {
+    await apiClient.post('/auth/logout', {});
+  } finally {
+    setAccessToken(null);
+    useAuthStore.getState().clear();
+  }
 };
