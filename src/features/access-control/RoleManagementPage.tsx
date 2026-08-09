@@ -1,4 +1,4 @@
-import { Add, EditOutlined, SecurityOutlined } from '@mui/icons-material';
+import { Add, DeleteOutline, EditOutlined, SecurityOutlined } from '@mui/icons-material';
 import {
   Accordion, AccordionDetails, AccordionSummary, Alert, Box, Button, Card, Checkbox, Chip,
   Dialog, DialogActions, DialogContent, DialogTitle, Divider, FormControlLabel, Stack, Table,
@@ -10,6 +10,8 @@ import { useMemo, useState } from 'react';
 import { accessControlApi, type RoleInput } from '@/api/accessControlApi';
 import type { AccessRole, ScreenPermission } from '@/api/apiTypes';
 import { queryClient } from '@/app/queryClient';
+import { useCurrentScreenPermission } from '@/auth/useScreenPermission';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { EmptyState, ErrorState, LoadingState } from '@/components/feedback/PageState';
 
 const groupScreens = (screens: ScreenPermission[]) => Object.entries(screens.reduce<Record<string, ScreenPermission[]>>((groups, screen) => {
@@ -19,8 +21,26 @@ const groupScreens = (screens: ScreenPermission[]) => Object.entries(screens.red
 
 export function RoleManagementPage() {
   const [editing, setEditing] = useState<AccessRole | 'new' | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const { permission } = useCurrentScreenPermission();
+  const canWrite = permission?.canWrite === true;
   const screens = useQuery({ queryKey: ['access-control', 'screens'], queryFn: accessControlApi.screens });
   const roles = useQuery({ queryKey: ['access-control', 'roles'], queryFn: accessControlApi.roles });
+  const selectedRole = roles.data?.find(role => role.id === selectedId);
+  const deactivateRole = useMutation({
+    mutationFn: (role: AccessRole) => accessControlApi.updateRole(role.id, {
+      roleName: role.roleName,
+      description: role.description,
+      isActive: false,
+      screens: role.screens.map(screen => ({ screenId: screen.screenId, canRead: screen.canRead, canWrite: screen.canWrite })),
+    }),
+    onSuccess: async () => {
+      setConfirmDelete(false);
+      setSelectedId(null);
+      await queryClient.invalidateQueries({ queryKey: ['access-control'] });
+    },
+  });
 
   return (
     <Stack spacing={3}>
@@ -29,14 +49,18 @@ export function RoleManagementPage() {
           <Typography variant="h1">Roles</Typography>
           <Typography color="text.secondary">Manage roles and their hierarchical screen permissions.</Typography>
         </Box>
-        <Button variant="contained" startIcon={<Add />} onClick={() => setEditing('new')}>Create role</Button>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Button variant="contained" startIcon={<Add />} disabled={!canWrite} onClick={() => setEditing('new')}>Create</Button>
+          <Button variant="outlined" startIcon={<EditOutlined />} disabled={!canWrite || !selectedRole} onClick={() => selectedRole && setEditing(selectedRole)}>Edit</Button>
+          <Button color="error" variant="outlined" startIcon={<DeleteOutline />} disabled={!canWrite || !selectedRole?.isActive || selectedRole?.roleName.toLowerCase() === 'admin'} onClick={() => setConfirmDelete(true)}>Delete</Button>
+        </Stack>
       </Stack>
 
       {roles.isLoading || screens.isLoading ? <LoadingState /> : roles.isError || screens.isError ? (
         <ErrorState message="Unable to load roles and screen permissions." />
       ) : !roles.data?.length ? <Card><EmptyState /></Card> : (
         <Stack spacing={1.5}>
-          {roles.data.map(role => <RoleAccordion key={role.id} role={role} onEdit={() => setEditing(role)} />)}
+          {roles.data.map(role => <RoleAccordion key={role.id} role={role} selected={role.id === selectedId} onSelect={() => setSelectedId(role.id === selectedId ? null : role.id)} />)}
         </Stack>
       )}
 
@@ -47,18 +71,28 @@ export function RoleManagementPage() {
           onClose={() => setEditing(null)}
         />
       )}
+      {deactivateRole.isError && <Alert severity="error">The role could not be deactivated. The Admin role cannot be deactivated.</Alert>}
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Deactivate role?"
+        impact={selectedRole ? `${selectedRole.roleName} will be marked inactive. Its screen mappings will be retained.` : ''}
+        confirmLabel={deactivateRole.isPending ? 'Deactivating…' : 'Deactivate role'}
+        onCancel={() => setConfirmDelete(false)}
+        onConfirm={() => selectedRole && deactivateRole.mutate(selectedRole)}
+      />
     </Stack>
   );
 }
 
-function RoleAccordion({ role, onEdit }: { role: AccessRole; onEdit: () => void }) {
+function RoleAccordion({ role, selected, onSelect }: { role: AccessRole; selected: boolean; onSelect: () => void }) {
   const assigned = role.screens.filter(screen => screen.canRead || screen.canWrite);
   const groups = useMemo(() => groupScreens(assigned), [assigned]);
   return (
-    <Accordion disableGutters sx={{ border: 1, borderColor: 'divider', borderRadius: '12px !important', '&:before': { display: 'none' } }}>
+    <Accordion disableGutters sx={{ border: 1, borderColor: selected ? 'primary.main' : 'divider', borderRadius: '12px !important', '&:before': { display: 'none' } }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ sm: 'center' }} justifyContent="space-between" width="100%" pr={2} gap={1}>
           <Stack direction="row" alignItems="center" spacing={1.5}>
+            <Checkbox checked={selected} onClick={event => event.stopPropagation()} onChange={onSelect} inputProps={{ 'aria-label': `Select ${role.roleName}` }} />
             <SecurityOutlined color="primary" />
             <Box><Typography fontWeight={750}>{role.roleName}</Typography><Typography variant="body2" color="text.secondary">{role.description || 'No description'}</Typography></Box>
           </Stack>
@@ -70,13 +104,12 @@ function RoleAccordion({ role, onEdit }: { role: AccessRole; onEdit: () => void 
       </AccordionSummary>
       <AccordionDetails>
         <Stack spacing={2}>
-          <Stack direction="row" justifyContent="flex-end"><Button size="small" startIcon={<EditOutlined />} onClick={onEdit}>Edit role</Button></Stack>
           {!groups.length ? <Alert severity="info">No screens are assigned to this role.</Alert> : groups.map(([groupName, groupScreens]) => (
             <Box key={groupName} sx={{ border: 1, borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
               <Typography fontWeight={700} sx={{ px: 2, py: 1.25, bgcolor: 'action.hover' }}>{groupName}</Typography>
               <Divider />
-              <TableContainer><Table size="small"><TableHead><TableRow><TableCell>Screen</TableCell><TableCell>Route</TableCell><TableCell align="center">Read</TableCell><TableCell align="center">Write</TableCell></TableRow></TableHead><TableBody>
-                {(groupScreens ?? []).map(screen => <TableRow key={screen.screenId}><TableCell><Typography fontWeight={600}>{screen.screenName}</Typography><Typography variant="caption" color="text.secondary">{screen.screenCode}</Typography></TableCell><TableCell>{screen.routeUrl}</TableCell><TableCell align="center"><PermissionChip allowed={screen.canRead} /></TableCell><TableCell align="center"><PermissionChip allowed={screen.canWrite} /></TableCell></TableRow>)}
+              <TableContainer><Table size="small"><TableHead><TableRow><TableCell>Screen</TableCell><TableCell align="center">Read</TableCell><TableCell align="center">Write</TableCell></TableRow></TableHead><TableBody>
+                {(groupScreens ?? []).map(screen => <TableRow key={screen.screenId}><TableCell><Typography fontWeight={600}>{screen.screenName}</Typography></TableCell><TableCell align="center"><PermissionChip allowed={screen.canRead} /></TableCell><TableCell align="center"><PermissionChip allowed={screen.canWrite} /></TableCell></TableRow>)}
               </TableBody></Table></TableContainer>
             </Box>
           ))}
