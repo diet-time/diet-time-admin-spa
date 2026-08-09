@@ -48,7 +48,6 @@ export const mealSchema = z.object({
   prices: z.array(priceSchema),
   availability: z.object({ mode: z.enum(['always', 'from', 'until', 'range', 'temporary', 'indefinite']), isAvailable: z.boolean(), availableFrom: z.string().optional(), availableUntil: z.string().optional() }),
   tags: z.array(z.string()),
-  allergenReviewConfirmed: z.boolean(),
 }).superRefine((data, ctx) => {
   if (data.dietary.vegan && !data.dietary.vegetarian) ctx.addIssue({ code: 'custom', path: ['dietary', 'vegetarian'], message: 'Vegan meals must also be marked vegetarian.' });
   if (!data.dietary.spicy && data.dietary.spiceLevel !== 0) ctx.addIssue({ code: 'custom', path: ['dietary', 'spiceLevel'], message: 'Set spice level to zero when the meal is not spicy.' });
@@ -73,5 +72,4 @@ export const defaultMealValues: MealFormValues = {
   prices: [],
   availability: { mode: 'always', isAvailable: true },
   tags: [],
-  allergenReviewConfirmed: false,
 };

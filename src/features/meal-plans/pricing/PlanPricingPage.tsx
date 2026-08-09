@@ -6,6 +6,7 @@ import {
   Card,
   CardContent,
   Chip,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -18,6 +19,7 @@ import {
   MenuItem,
   Stack,
   Switch,
+  Tab,
   Table,
   TableBody,
   TableCell,
@@ -26,17 +28,36 @@ import {
   TablePagination,
   TableRow,
   TextField,
+  Tabs,
   Typography,
 } from '@mui/material';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { format, parseISO } from 'date-fns';
 import { useState } from 'react';
-import { planPricingApi, type PlanPrice, type PlanPriceInput, type PlanPriceStatus } from '@/api/planPricingApi';
+import {
+  mealPlanPricePackagesApi,
+  planPricingApi,
+  type MealPlanPricePackageLookup,
+  type MealPlanPriceTranslation,
+  type PlanPrice,
+  type PlanPriceInput,
+  type PlanPriceStatus,
+} from '@/api/planPricingApi';
 import { plansApi } from '@/api/plansApi';
 import type { PlanSummary } from '@/api/apiTypes';
 import { queryClient } from '@/app/queryClient';
 import { ErrorState, LoadingState } from '@/components/feedback/PageState';
+import { PricePackagesTab } from './PricePackagesTab';
+import {
+  buildPriceTranslations,
+  priceDisplayName,
+  priceTranslation,
+  pricingSaveError,
+  type PricingSaveError,
+  type TranslationErrors,
+  type TranslationField,
+} from './planPricingTranslations';
 
 const statuses: Array<{ value: '' | PlanPriceStatus; label: string }> = [
   { value: '', label: 'All statuses' },
@@ -51,11 +72,12 @@ interface Filters {
   mealPlanTemplateId: string;
   status: '' | PlanPriceStatus;
   currencyCode: string;
+  mealPlanPricePackageId: string;
 }
 
 interface FormValues {
   mealPlanTemplateId: string;
-  durationDays: string;
+  mealPlanPricePackageId: string;
   mealsPerDay: string;
   snacksPerDay: string;
   currencyCode: string;
@@ -63,17 +85,22 @@ interface FormValues {
   effectiveFrom: string;
   effectiveUntil: string;
   isActive: boolean;
+  englishName: string;
+  englishDescription: string;
+  arabicName: string;
+  arabicDescription: string;
 }
 
 interface ApiErrorEnvelope {
-  errors?: Array<{ code?: string; message?: string }>;
+  errors?: Record<string, string[]> | Array<{ code?: string; message?: string; field?: string }>;
 }
 
-const initialFilters: Filters = { search: '', mealPlanTemplateId: '', status: '', currencyCode: '' };
+
+const initialFilters: Filters = { search: '', mealPlanTemplateId: '', status: '', currencyCode: '', mealPlanPricePackageId: '' };
 const toLocalDateTime = (value?: string | null) => value ? format(new Date(value), "yyyy-MM-dd'T'HH:mm") : '';
 const newForm = (currency = 'QAR'): FormValues => ({
   mealPlanTemplateId: '',
-  durationDays: '',
+  mealPlanPricePackageId: '',
   mealsPerDay: '',
   snacksPerDay: '0',
   currencyCode: currency,
@@ -81,10 +108,24 @@ const newForm = (currency = 'QAR'): FormValues => ({
   effectiveFrom: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
   effectiveUntil: '',
   isActive: true,
+  englishName: '',
+  englishDescription: '',
+  arabicName: '',
+  arabicDescription: '',
 });
+const translationForm = (translations?: MealPlanPriceTranslation[]) => {
+  const english = translations?.find((item) => item.languageCode.toLowerCase() === 'en');
+  const arabic = translations?.find((item) => item.languageCode.toLowerCase() === 'ar');
+  return {
+    englishName: english?.name ?? '',
+    englishDescription: english?.description ?? '',
+    arabicName: arabic?.name ?? '',
+    arabicDescription: arabic?.description ?? '',
+  };
+};
 const editForm = (price: PlanPrice): FormValues => ({
   mealPlanTemplateId: price.mealPlanTemplateId,
-  durationDays: String(price.durationDays),
+  mealPlanPricePackageId: price.mealPlanPricePackageId ?? '',
   mealsPerDay: String(price.mealsPerDay),
   snacksPerDay: String(price.snacksPerDay),
   currencyCode: price.currencyCode,
@@ -92,10 +133,12 @@ const editForm = (price: PlanPrice): FormValues => ({
   effectiveFrom: toLocalDateTime(price.effectiveFrom),
   effectiveUntil: toLocalDateTime(price.effectiveUntil),
   isActive: price.isActive,
+  ...translationForm(price.translations),
 });
 const apiErrorMessage = (error: unknown, fallback: string) => {
   if (axios.isAxiosError<ApiErrorEnvelope>(error)) {
-    return error.response?.data?.errors?.[0]?.message ?? fallback;
+    const errors = error.response?.data?.errors;
+    if (Array.isArray(errors)) return errors[0]?.message ?? fallback;
   }
   return fallback;
 };
@@ -104,7 +147,13 @@ const priceLabel = (price: PlanPrice) =>
 const periodLabel = (price: PlanPrice) =>
   `${format(parseISO(price.effectiveFrom), 'dd MMM yyyy')} – ${price.effectiveUntil ? format(parseISO(price.effectiveUntil), 'dd MMM yyyy') : 'Ongoing'}`;
 
+const lookupLabel = (item: MealPlanPricePackageLookup) =>
+  `${item.nameEn} — ${item.durationDays} service ${item.durationDays === 1 ? 'day' : 'days'}`;
+
+
 export function PlanPricingPage() {
+  const [activeTab, setActiveTab] = useState(0);
+  const [packageCreateRequest, setPackageCreateRequest] = useState(0);
   const [page, setPage] = useState(0);
   const [filters, setFilters] = useState<Filters>(initialFilters);
   const [dialog, setDialog] = useState<{ mode: 'add' | 'edit' | 'view'; price?: PlanPrice } | null>(null);
@@ -120,6 +169,7 @@ export function PlanPricingPage() {
       mealPlanTemplateId: filters.mealPlanTemplateId || undefined,
       status: filters.status || undefined,
       currencyCode: filters.currencyCode || undefined,
+      mealPlanPricePackageId: filters.mealPlanPricePackageId || undefined,
     }, signal),
   });
   const summaryQuery = useQuery({
@@ -136,12 +186,25 @@ export function PlanPricingPage() {
     queryFn: ({ signal }) => plansApi.list({ page: 1, pageSize: 100 }, signal),
     staleTime: 60_000,
   });
+  const packageLookupQuery = useQuery({
+    queryKey: ['meal-plan-price-package-lookup'],
+    queryFn: ({ signal }) => mealPlanPricePackagesApi.lookup(signal),
+    staleTime: 5 * 60 * 1000,
+    enabled: activeTab === 0,
+  });
+  const priceDetailQuery = useQuery({
+    queryKey: ['plan-pricing-detail', dialog?.price?.id],
+    queryFn: ({ signal }) => planPricingApi.get(dialog!.price!.id, signal),
+    enabled: !!dialog?.price?.id && dialog.mode !== 'add',
+    gcTime: 0,
+  });
 
   const refresh = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['plan-pricing'] }),
       queryClient.invalidateQueries({ queryKey: ['plan-pricing-summary'] }),
       queryClient.invalidateQueries({ queryKey: ['plan-pricing-currencies'] }),
+      queryClient.invalidateQueries({ queryKey: ['plan-pricing-detail'] }),
     ]);
   };
   const saveMutation = useMutation({
@@ -169,6 +232,7 @@ export function PlanPricingPage() {
   const items = listQuery.data?.items ?? [];
   const plans = plansQuery.data?.items ?? [];
   const currencies = currenciesQuery.data?.length ? currenciesQuery.data : ['QAR'];
+  const packageLookup = packageLookupQuery.data ?? [];
   const summary = summaryQuery.data ?? { active: 0, scheduled: 0, expired: 0, inactive: 0 };
   const clearFilters = () => { setFilters(initialFilters); setPage(0); };
   const closeMenu = () => setRowMenu(null);
@@ -196,9 +260,15 @@ export function PlanPricingPage() {
           <Typography variant="h1">Plan Pricing</Typography>
           <Typography color="text.secondary">Manage pricing packages for each meal plan based on duration, meals per day, snacks per day, currency, and effective dates.</Typography>
         </Box>
-        <Button variant="contained" startIcon={<Add />} onClick={() => setDialog({ mode: 'add' })}>Add Pricing</Button>
+        {activeTab === 0 && <Button variant="contained" startIcon={<Add />} onClick={() => setDialog({ mode: 'add' })}>Add Pricing</Button>}
       </Stack>
 
+      <Tabs value={activeTab} onChange={(_, value: number) => setActiveTab(value)} aria-label="Plan pricing sections">
+        <Tab label="Plan Prices" />
+        <Tab label="Price Packages" />
+      </Tabs>
+
+      {activeTab === 1 ? <PricePackagesTab createRequest={packageCreateRequest} /> : <>
       <Grid container spacing={2}>
         <SummaryCard label="Active Prices" value={summary.active} color="success.main" />
         <SummaryCard label="Scheduled Prices" value={summary.scheduled} color="info.main" />
@@ -215,7 +285,7 @@ export function PlanPricingPage() {
       <Card>
         <CardContent sx={{ pb: '16px !important' }}>
           <Grid container spacing={1.5} alignItems="center">
-            <Grid size={{ xs: 12, md: 4 }}>
+            <Grid size={{ xs: 12, md: 3 }}>
               <TextField
                 fullWidth
                 value={filters.search}
@@ -230,19 +300,25 @@ export function PlanPricingPage() {
                 {plans.map((plan) => <MenuItem key={plan.id} value={plan.id}>{plan.nameEn} ({plan.code})</MenuItem>)}
               </TextField>
             </Grid>
-            <Grid size={{ xs: 6, sm: 3, md: 2 }}>
+            <Grid size={{ xs: 12, sm: 6, md: 2.5 }}>
+              <TextField select fullWidth label="Package" value={filters.mealPlanPricePackageId} disabled={packageLookupQuery.isLoading || packageLookupQuery.isError} onChange={(event) => { setFilters((current) => ({ ...current, mealPlanPricePackageId: event.target.value })); setPage(0); }}>
+                <MenuItem value="">All packages</MenuItem>
+                {packageLookup.map((item) => <MenuItem key={item.id} value={item.id}>{item.nameEn}</MenuItem>)}
+              </TextField>
+            </Grid>
+            <Grid size={{ xs: 6, sm: 3, md: 1.5 }}>
               <TextField select fullWidth label="Status" value={filters.status} onChange={(event) => { setFilters((current) => ({ ...current, status: event.target.value as Filters['status'] })); setPage(0); }}>
                 {statuses.map((status) => <MenuItem key={status.value || 'all'} value={status.value}>{status.label}</MenuItem>)}
               </TextField>
             </Grid>
-            <Grid size={{ xs: 6, sm: 3, md: 1.5 }}>
+            <Grid size={{ xs: 6, sm: 3, md: 1.25 }}>
               <TextField select fullWidth label="Currency" value={filters.currencyCode} onChange={(event) => { setFilters((current) => ({ ...current, currencyCode: event.target.value })); setPage(0); }}>
                 <MenuItem value="">All</MenuItem>
                 {currencies.map((currency) => <MenuItem key={currency} value={currency}>{currency}</MenuItem>)}
               </TextField>
             </Grid>
-            <Grid size={{ xs: 12, md: 2 }}>
-              <Button fullWidth onClick={clearFilters} disabled={!filters.search && !filters.mealPlanTemplateId && !filters.status && !filters.currencyCode}>Clear filters</Button>
+            <Grid size={{ xs: 12, md: 1.25 }}>
+              <Button fullWidth onClick={clearFilters} disabled={!filters.search && !filters.mealPlanTemplateId && !filters.mealPlanPricePackageId && !filters.status && !filters.currencyCode}>Clear filters</Button>
             </Grid>
           </Grid>
         </CardContent>
@@ -261,8 +337,8 @@ export function PlanPricingPage() {
             <Table size="small" sx={{ minWidth: 1100, '& .MuiTableCell-head': { color: 'text.secondary', fontWeight: 750, bgcolor: '#FBFCFB' }, '& .MuiTableCell-root': { py: 1.75 } }}>
               <TableHead>
                 <TableRow>
-                  <TableCell>Meal Plan</TableCell>
-                  <TableCell>Duration</TableCell>
+                  <TableCell>Price Label / Meal Plan</TableCell>
+                  <TableCell>Package</TableCell>
                   <TableCell align="center">Meals / Day</TableCell>
                   <TableCell align="center">Snacks / Day</TableCell>
                   <TableCell>Price</TableCell>
@@ -274,8 +350,12 @@ export function PlanPricingPage() {
               <TableBody>
                 {items.map((price) => (
                   <TableRow key={price.id} hover>
-                    <TableCell><Typography fontWeight={700}>{price.mealPlanName}</Typography><Typography variant="caption" color="text.secondary">{price.mealPlanCode}</Typography></TableCell>
-                    <TableCell>{price.durationDays} days</TableCell>
+                    <TableCell>
+                      <Typography fontWeight={700}>{priceDisplayName(price)}</Typography>
+                      <Typography variant="caption" color="text.secondary" display="block">Meal plan: {price.mealPlanName} ({price.mealPlanCode})</Typography>
+                      {!priceTranslation(price, 'ar')?.name?.trim() && <Typography variant="caption" color="warning.main">AR missing</Typography>}
+                    </TableCell>
+                    <TableCell><PackageCell price={price} /></TableCell>
                     <TableCell align="center">{price.mealsPerDay}</TableCell>
                     <TableCell align="center">{price.snacksPerDay}</TableCell>
                     <TableCell><Typography fontWeight={700}>{priceLabel(price)}</Typography></TableCell>
@@ -300,17 +380,28 @@ export function PlanPricingPage() {
         {rowMenu?.price.canDelete && <MenuItem onClick={selectDelete} sx={{ color: 'error.main' }}><DeleteOutline fontSize="small" sx={{ mr: 1 }} /> Delete</MenuItem>}
       </Menu>
 
-      {dialog && (
+      {dialog && dialog.mode !== 'add' && priceDetailQuery.isLoading && (
+        <Dialog open fullWidth maxWidth="sm" onClose={() => setDialog(null)}><DialogTitle>Loading pricing details</DialogTitle><DialogContent><LoadingState /></DialogContent></Dialog>
+      )}
+      {dialog && dialog.mode !== 'add' && priceDetailQuery.isError && (
+        <Dialog open fullWidth maxWidth="sm" onClose={() => setDialog(null)}><DialogTitle>Unable to load pricing details</DialogTitle><DialogContent><ErrorState message="Unable to load the price translations." onRetry={() => void priceDetailQuery.refetch()} /></DialogContent><DialogActions><Button onClick={() => setDialog(null)}>Close</Button></DialogActions></Dialog>
+      )}
+      {dialog && (dialog.mode === 'add' || priceDetailQuery.data) && (
         <PricingDialog
           key={`${dialog.mode}-${dialog.price?.id ?? 'new'}`}
           mode={dialog.mode}
-          price={dialog.price}
+          price={dialog.mode === 'add' ? undefined : priceDetailQuery.data}
           plans={plans}
           currencies={currencies}
+          packages={packageLookup}
+          packagesLoading={packageLookupQuery.isLoading}
+          packagesError={packageLookupQuery.isError}
           pending={saveMutation.isPending}
-          error={saveMutation.isError ? apiErrorMessage(saveMutation.error, 'The pricing package could not be saved. Review the fields and try again.') : undefined}
+          apiError={saveMutation.isError ? pricingSaveError(saveMutation.error, saveMutation.variables?.body) : undefined}
           onClose={() => { setDialog(null); saveMutation.reset(); }}
           onSave={(body) => saveMutation.mutate({ id: dialog.price?.id, body })}
+          onRetryPackages={() => void packageLookupQuery.refetch()}
+          onCreatePackage={() => { setDialog(null); setActiveTab(1); setPackageCreateRequest((value) => value + 1); }}
         />
       )}
 
@@ -324,6 +415,7 @@ export function PlanPricingPage() {
           <Button color="error" variant="contained" disabled={!deletePrice || deleteMutation.isPending} onClick={() => deletePrice && deleteMutation.mutate(deletePrice.id)}>Delete</Button>
         </DialogActions>
       </Dialog>
+      </>}
     </Stack>
   );
 }
@@ -346,23 +438,52 @@ function PricingStatus({ status }: { status: PlanPriceStatus }) {
   return <Chip size="small" color={color} variant={color === 'default' ? 'outlined' : 'filled'} label={status[0] + status.slice(1).toLowerCase()} />;
 }
 
-function PricingDialog({ mode, price, plans, currencies, pending, error, onClose, onSave }: {
+export function PackageCell({ price }: { price: PlanPrice }) {
+  if (!price.mealPlanPricePackageId || !price.packageNameEn) {
+    return <Typography>Legacy — {price.durationDays} days</Typography>;
+  }
+  return <Box><Typography fontWeight={700}>{price.packageNameEn}</Typography><Typography variant="caption" color="text.secondary">{price.durationDays} service {price.durationDays === 1 ? 'day' : 'days'}</Typography></Box>;
+}
+
+const validateTranslations = (values: FormValues): TranslationErrors => {
+  const errors: TranslationErrors = {};
+  const validate = (language: 'english' | 'arabic', name: string, description: string) => {
+    const nameField = `${language}Name` as TranslationField;
+    const descriptionField = `${language}Description` as TranslationField;
+    if ((name.trim() || description.trim()) && !name.trim()) errors[nameField] = `${language === 'english' ? 'English' : 'Arabic'} name is required when this translation is included.`;
+    else if (name.trim().length > 150) errors[nameField] = 'Name must be 150 characters or fewer.';
+    if (description.trim().length > 500) errors[descriptionField] = 'Description must be 500 characters or fewer.';
+  };
+  validate('english', values.englishName, values.englishDescription);
+  validate('arabic', values.arabicName, values.arabicDescription);
+  return errors;
+};
+
+export function PricingDialog({ mode, price, plans, currencies, packages, packagesLoading, packagesError, pending, apiError, onClose, onSave, onRetryPackages, onCreatePackage }: {
   mode: 'add' | 'edit' | 'view';
   price?: PlanPrice;
   plans: PlanSummary[];
   currencies: string[];
+  packages: MealPlanPricePackageLookup[];
+  packagesLoading: boolean;
+  packagesError: boolean;
   pending: boolean;
-  error?: string;
+  apiError?: PricingSaveError;
   onClose: () => void;
   onSave: (body: PlanPriceInput) => void;
+  onRetryPackages: () => void;
+  onCreatePackage: () => void;
 }) {
   const readOnly = mode === 'view';
   const [values, setValues] = useState<FormValues>(price ? editForm(price) : newForm(currencies[0]));
+  const [translationTab, setTranslationTab] = useState<'en' | 'ar'>('en');
+  const [translationErrors, setTranslationErrors] = useState<TranslationErrors>({});
+  const [confirmEmptyTranslations, setConfirmEmptyTranslations] = useState(false);
   const endBeforeStart = !!values.effectiveUntil && !!values.effectiveFrom
     && new Date(values.effectiveUntil).getTime() < new Date(values.effectiveFrom).getTime();
+  const selectedPackage = packages.find((item) => item.id === values.mealPlanPricePackageId);
   const invalid = !values.mealPlanTemplateId
-    || Number(values.durationDays) <= 0
-    || !Number.isInteger(Number(values.durationDays))
+    || !values.mealPlanPricePackageId
     || Number(values.mealsPerDay) <= 0
     || !Number.isInteger(Number(values.mealsPerDay))
     || Number(values.snacksPerDay) < 0
@@ -371,9 +492,9 @@ function PricingDialog({ mode, price, plans, currencies, pending, error, onClose
     || Number(values.amount) <= 0
     || !values.effectiveFrom
     || endBeforeStart;
-  const submit = () => onSave({
+  const createBody = (): PlanPriceInput => ({
     mealPlanTemplateId: values.mealPlanTemplateId,
-    durationDays: Number(values.durationDays),
+    mealPlanPricePackageId: values.mealPlanPricePackageId,
     mealsPerDay: Number(values.mealsPerDay),
     snacksPerDay: Number(values.snacksPerDay),
     currencyCode: values.currencyCode,
@@ -382,13 +503,42 @@ function PricingDialog({ mode, price, plans, currencies, pending, error, onClose
     effectiveUntil: values.effectiveUntil ? new Date(values.effectiveUntil).toISOString() : null,
     isActive: values.isActive,
   });
+  const saveWithTranslations = (translations?: MealPlanPriceTranslation[]) => {
+    const body = createBody();
+    if (translations !== undefined) body.translations = translations;
+    onSave(body);
+  };
+  const submit = () => {
+    const nextErrors = validateTranslations(values);
+    setTranslationErrors(nextErrors);
+    if (Object.keys(nextErrors).length) {
+      setTranslationTab(nextErrors.englishName || nextErrors.englishDescription ? 'en' : 'ar');
+      return;
+    }
+    const translations = buildPriceTranslations(values);
+    if (!price) {
+      saveWithTranslations(translations.length ? translations : undefined);
+      return;
+    }
+    const originalTranslations = buildPriceTranslations(editForm(price));
+    if (JSON.stringify(translations) === JSON.stringify(originalTranslations)) {
+      saveWithTranslations();
+      return;
+    }
+    if (!translations.length) {
+      setConfirmEmptyTranslations(true);
+      return;
+    }
+    saveWithTranslations(translations);
+  };
+  const fieldErrors = { ...translationErrors, ...apiError?.fields };
 
   return (
     <Dialog open onClose={onClose} fullWidth maxWidth="md">
       <DialogTitle>{mode === 'add' ? 'Add Pricing' : mode === 'edit' ? 'Edit Pricing' : 'Pricing Details'}</DialogTitle>
       <DialogContent>
         <Stack spacing={2.5} mt={1}>
-          {error && <Alert severity="error">{error}</Alert>}
+          {apiError && !Object.keys(apiError.fields).length && <Alert severity="error">{apiError.message}</Alert>}
           <Box>
             <Typography fontWeight={700} mb={1}>Meal Plan Template</Typography>
             <TextField required select fullWidth disabled={readOnly} label="Meal plan template" value={values.mealPlanTemplateId} onChange={(event) => setValues({ ...values, mealPlanTemplateId: event.target.value })}>
@@ -396,9 +546,81 @@ function PricingDialog({ mode, price, plans, currencies, pending, error, onClose
             </TextField>
           </Box>
           <Box>
+            <Typography fontWeight={700}>Price-specific Translations</Typography>
+            <Typography variant="body2" color="text.secondary" mb={1}>These labels describe this price only. They are separate from the selected package name.</Typography>
+            {!readOnly && <Tabs value={translationTab} onChange={(_, value: 'en' | 'ar') => setTranslationTab(value)} aria-label="Price translation languages">
+              <Tab value="en" label="English" />
+              <Tab value="ar" label="العربية" />
+            </Tabs>}
+            {(readOnly || translationTab === 'en') && (
+              <Stack spacing={2} mt={2} role="tabpanel" aria-label="English price translation">
+                {readOnly && <Typography variant="subtitle2">English price label</Typography>}
+                <TextField
+                  fullWidth
+                  disabled={readOnly}
+                  label="English Name"
+                  value={values.englishName}
+                  error={!!fieldErrors.englishName}
+                  helperText={fieldErrors.englishName ?? `${values.englishName.length}/150`}
+                  slotProps={{ htmlInput: { maxLength: 150 } }}
+                  onChange={(event) => setValues({ ...values, englishName: event.target.value })}
+                />
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={3}
+                  disabled={readOnly}
+                  label="English Description"
+                  value={values.englishDescription}
+                  error={!!fieldErrors.englishDescription}
+                  helperText={fieldErrors.englishDescription ?? `${values.englishDescription.length}/500`}
+                  slotProps={{ htmlInput: { maxLength: 500 } }}
+                  onChange={(event) => setValues({ ...values, englishDescription: event.target.value })}
+                />
+              </Stack>
+            )}
+            {(readOnly || translationTab === 'ar') && (
+              <Stack spacing={2} mt={2} role="tabpanel" aria-label="Arabic price translation" dir="rtl">
+                {readOnly && <Typography variant="subtitle2">Arabic price label</Typography>}
+                <TextField
+                  fullWidth
+                  disabled={readOnly}
+                  label="Arabic Name"
+                  value={values.arabicName}
+                  error={!!fieldErrors.arabicName}
+                  helperText={fieldErrors.arabicName ?? `${values.arabicName.length}/150`}
+                  slotProps={{ htmlInput: { maxLength: 150, dir: 'rtl' } }}
+                  onChange={(event) => setValues({ ...values, arabicName: event.target.value })}
+                />
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={3}
+                  disabled={readOnly}
+                  label="Arabic Description"
+                  value={values.arabicDescription}
+                  error={!!fieldErrors.arabicDescription}
+                  helperText={fieldErrors.arabicDescription ?? `${values.arabicDescription.length}/500`}
+                  slotProps={{ htmlInput: { maxLength: 500, dir: 'rtl' } }}
+                  onChange={(event) => setValues({ ...values, arabicDescription: event.target.value })}
+                />
+              </Stack>
+            )}
+          </Box>
+          <Box>
             <Typography fontWeight={700} mb={1}>Package Configuration</Typography>
             <Grid container spacing={2}>
-              <Grid size={{ xs: 12, sm: 4 }}><TextField required fullWidth disabled={readOnly} type="number" label="Duration in days" value={values.durationDays} slotProps={{ htmlInput: { min: 1, step: 1 } }} onChange={(event) => setValues({ ...values, durationDays: event.target.value })} /></Grid>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <TextField required select fullWidth disabled={readOnly || packagesLoading || packagesError || !packages.length} label="Price Package" value={values.mealPlanPricePackageId} onChange={(event) => setValues({ ...values, mealPlanPricePackageId: event.target.value })}>
+                  {!values.mealPlanPricePackageId && price && <MenuItem value="" disabled>Legacy — {price.durationDays} days</MenuItem>}
+                  {price?.mealPlanPricePackageId && !packages.some((item) => item.id === price.mealPlanPricePackageId) && <MenuItem value={price.mealPlanPricePackageId}>{price.packageNameEn ?? price.packageCode ?? `Package — ${price.durationDays} days`}</MenuItem>}
+                  {packages.map((item) => <MenuItem key={item.id} value={item.id}>{lookupLabel(item)}</MenuItem>)}
+                </TextField>
+                {packagesLoading && <Stack direction="row" alignItems="center" gap={1} mt={1}><CircularProgress size={16} /><Typography variant="caption">Loading price packages…</Typography></Stack>}
+                {!packagesLoading && !packagesError && !packages.length && !readOnly && <Alert severity="warning" sx={{ mt: 1 }} action={<Button color="inherit" size="small" onClick={onCreatePackage}>Create Price Package</Button>}>No active price packages are configured.</Alert>}
+                {packagesError && !readOnly && <Alert severity="error" sx={{ mt: 1 }} action={<Button color="inherit" size="small" onClick={onRetryPackages}>Retry</Button>}>Unable to load price packages.</Alert>}
+                {(selectedPackage || price) && <Typography variant="caption" color="text.secondary" display="block" mt={0.75}>Service days: {selectedPackage?.durationDays ?? price?.durationDays}</Typography>}
+              </Grid>
               <Grid size={{ xs: 12, sm: 4 }}><TextField required fullWidth disabled={readOnly} type="number" label="Meals per day" value={values.mealsPerDay} slotProps={{ htmlInput: { min: 1, step: 1 } }} onChange={(event) => setValues({ ...values, mealsPerDay: event.target.value })} /></Grid>
               <Grid size={{ xs: 12, sm: 4 }}><TextField required fullWidth disabled={readOnly} type="number" label="Snacks per day" value={values.snacksPerDay} slotProps={{ htmlInput: { min: 0, step: 1 } }} onChange={(event) => setValues({ ...values, snacksPerDay: event.target.value })} /></Grid>
             </Grid>
@@ -422,13 +644,21 @@ function PricingDialog({ mode, price, plans, currencies, pending, error, onClose
             </Grid>
           </Box>
           <FormControlLabel disabled={readOnly} control={<Switch checked={values.isActive} onChange={(_, checked) => setValues({ ...values, isActive: checked })} />} label="Active" />
-          {!readOnly && <Alert severity="info">Pricing periods cannot overlap for the same plan, duration, meals, snacks, and currency combination.</Alert>}
+          {!readOnly && <Alert severity="info">Pricing periods cannot overlap for the same plan, package, meals, snacks, and currency combination.</Alert>}
         </Stack>
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>{readOnly ? 'Close' : 'Cancel'}</Button>
         {!readOnly && <Button variant="contained" disabled={pending || invalid} onClick={submit}>{pending ? 'Saving…' : 'Save'}</Button>}
       </DialogActions>
+      <Dialog open={confirmEmptyTranslations} onClose={() => setConfirmEmptyTranslations(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Remove all price translations?</DialogTitle>
+        <DialogContent><Typography>Saving an empty translations collection deletes every translated price name and description. The package and meal-plan labels will be used as fallbacks.</Typography></DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmEmptyTranslations(false)}>Keep translations</Button>
+          <Button color="error" variant="contained" onClick={() => { setConfirmEmptyTranslations(false); saveWithTranslations([]); }}>Remove all translations</Button>
+        </DialogActions>
+      </Dialog>
     </Dialog>
   );
 }

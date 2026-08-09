@@ -6,7 +6,7 @@ import { Controller, useController, useWatch, type Control, type FieldErrors, ty
 import type { MealFormValues } from '../schemas/mealSchema';
 
 export const toUtcIso = (localDateTime: string) =>
-  localDateTime ? new Date(localDateTime).toISOString() : undefined;
+  localDateTime ? new Date(`${localDateTime}:00+03:00`).toISOString() : undefined;
 
 export const deriveAvailabilityMode = (
   isAvailable: boolean,
