@@ -1,34 +1,115 @@
-import { Add, EditOutlined } from '@mui/icons-material';
+import {
+  AccountTreeOutlined, Add, DeleteOutline, EditOutlined, KeyboardArrowDown,
+  KeyboardArrowRight, PersonOutline,
+} from '@mui/icons-material';
 import {
   Alert, Autocomplete, Box, Button, Card, Checkbox, Chip, Dialog, DialogActions, DialogContent,
-  DialogTitle, FormControlLabel, Stack, Table, TableBody, TableCell, TableContainer, TableHead,
-  TableRow, TextField, Typography,
+  DialogTitle, FormControlLabel, IconButton, Stack, Table, TableBody, TableCell, TableContainer,
+  TableHead, TableRow, TextField, Tooltip, Typography,
 } from '@mui/material';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { accessControlApi, type UserInput } from '@/api/accessControlApi';
 import type { AccessRole, AccessUser } from '@/api/apiTypes';
 import { queryClient } from '@/app/queryClient';
+import { useCurrentScreenPermission } from '@/auth/useScreenPermission';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { EmptyState, ErrorState, LoadingState } from '@/components/feedback/PageState';
 
 export function UserManagementPage() {
   const [editing, setEditing] = useState<AccessUser | 'new' | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const { permission } = useCurrentScreenPermission();
+  const canWrite = permission?.canWrite === true;
   const users = useQuery({ queryKey: ['access-control', 'users'], queryFn: accessControlApi.users });
   const roles = useQuery({ queryKey: ['access-control', 'roles'], queryFn: accessControlApi.roles });
+  const selectedUser = users.data?.find(user => user.profileId === selectedId);
+  const deactivateUser = useMutation({
+    mutationFn: (user: AccessUser) => accessControlApi.updateUser(user.profileId, {
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      mobile: user.mobile,
+      password: '',
+      isActive: false,
+      roleIds: user.roleIds,
+    }),
+    onSuccess: async () => {
+      setConfirmDelete(false);
+      setSelectedId(null);
+      await queryClient.invalidateQueries({ queryKey: ['access-control', 'users'] });
+    },
+  });
+  const toggleExpanded = (profileId: string) => setExpandedIds(current => {
+    const next = new Set(current);
+    if (next.has(profileId)) next.delete(profileId); else next.add(profileId);
+    return next;
+  });
+
   return (
     <Stack spacing={3}>
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={2}>
-        <Box><Typography variant="h1">Users</Typography><Typography color="text.secondary">Create staff accounts and assign one or more roles.</Typography></Box>
-        <Button variant="contained" startIcon={<Add />} onClick={() => setEditing('new')}>Create user</Button>
+        <Box><Typography variant="h1">Users</Typography><Typography color="text.secondary">Select a user to edit or delete. Expand a row to view assigned roles.</Typography></Box>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Button variant="contained" startIcon={<Add />} disabled={!canWrite} onClick={() => setEditing('new')}>Create</Button>
+          <Button variant="outlined" startIcon={<EditOutlined />} disabled={!canWrite || !selectedUser} onClick={() => selectedUser && setEditing(selectedUser)}>Edit</Button>
+          <Button color="error" variant="outlined" startIcon={<DeleteOutline />} disabled={!canWrite || !selectedUser?.isActive} onClick={() => setConfirmDelete(true)}>Delete</Button>
+        </Stack>
       </Stack>
       <Card>
+        {selectedUser && <Typography variant="body2" color="text.secondary" sx={{ px: 2, py: 1.25, borderBottom: 1, borderColor: 'divider' }}>Selected: <strong>{selectedUser.firstName} {selectedUser.lastName}</strong></Typography>}
+        {deactivateUser.isError && <Alert severity="error" sx={{ m: 2 }}>The user could not be deactivated. You cannot deactivate your own account.</Alert>}
         {users.isLoading || roles.isLoading ? <Box p={3}><LoadingState /></Box> : users.isError || roles.isError ? <Box p={3}><ErrorState message="Unable to load users." /></Box> : !users.data?.length ? <EmptyState /> : (
-          <TableContainer><Table><TableHead><TableRow><TableCell>Name</TableCell><TableCell>Email</TableCell><TableCell>Roles</TableCell><TableCell>Status</TableCell><TableCell align="right">Actions</TableCell></TableRow></TableHead><TableBody>{users.data.map(user => <TableRow key={user.profileId} hover><TableCell>{user.firstName} {user.lastName}</TableCell><TableCell>{user.email}</TableCell><TableCell><Stack direction="row" gap={0.5} flexWrap="wrap">{user.roleNames.map(name => <Chip size="small" key={name} label={name} />)}</Stack></TableCell><TableCell><Chip size="small" color={user.isActive ? 'success' : 'default'} label={user.isActive ? 'Active' : 'Inactive'} /></TableCell><TableCell align="right"><Button startIcon={<EditOutlined />} onClick={() => setEditing(user)}>Edit</Button></TableCell></TableRow>)}</TableBody></Table></TableContainer>
+          <TableContainer>
+            <Table sx={{ minWidth: 760 }} aria-label="Users and assigned roles">
+              <TableHead><TableRow><TableCell padding="checkbox" /><TableCell padding="checkbox" /><TableCell>User</TableCell><TableCell>Email</TableCell><TableCell>Mobile</TableCell><TableCell>Roles</TableCell><TableCell>Status</TableCell></TableRow></TableHead>
+              <TableBody>{users.data.map(user => {
+                const expanded = expandedIds.has(user.profileId);
+                const selected = selectedId === user.profileId;
+                return <Fragment key={user.profileId}>
+                  <TableRow hover selected={selected} onClick={() => setSelectedId(user.profileId)} sx={{ cursor: 'pointer', '& > *': { borderBottom: expanded ? 0 : undefined } }}>
+                    <TableCell padding="checkbox"><Checkbox checked={selected} onClick={event => event.stopPropagation()} onChange={() => setSelectedId(selected ? null : user.profileId)} inputProps={{ 'aria-label': `Select ${user.firstName} ${user.lastName}` }} /></TableCell>
+                    <TableCell padding="checkbox"><Tooltip title={expanded ? 'Hide roles' : 'Show roles'}><IconButton size="small" onClick={event => { event.stopPropagation(); toggleExpanded(user.profileId); }}>{expanded ? <KeyboardArrowDown /> : <KeyboardArrowRight />}</IconButton></Tooltip></TableCell>
+                    <TableCell><Stack direction="row" alignItems="center" spacing={1.25}><Box sx={{ width: 34, height: 34, borderRadius: '50%', display: 'grid', placeItems: 'center', bgcolor: 'primary.50', color: 'primary.main' }}><PersonOutline fontSize="small" /></Box><Box><Typography fontWeight={650}>{user.firstName} {user.lastName}</Typography><Typography variant="caption" color="text.secondary">{user.status}</Typography></Box></Stack></TableCell>
+                    <TableCell>{user.email}</TableCell>
+                    <TableCell>{user.mobile || '—'}</TableCell>
+                    <TableCell><Chip size="small" variant="outlined" label={`${user.roleNames.length} assigned`} /></TableCell>
+                    <TableCell><Chip size="small" color={user.isActive ? 'success' : 'default'} label={user.isActive ? 'Active' : 'Inactive'} /></TableCell>
+                  </TableRow>
+                  {expanded && <RoleChildRows user={user} roles={roles.data ?? []} />}
+                </Fragment>;
+              })}</TableBody>
+            </Table>
+          </TableContainer>
         )}
       </Card>
       {editing && <UserDialog user={editing === 'new' ? undefined : editing} roles={roles.data ?? []} onClose={() => setEditing(null)} />}
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Deactivate user?"
+        impact={selectedUser ? `${selectedUser.firstName} ${selectedUser.lastName} will be marked inactive and will no longer be able to sign in. The user record will be retained.` : ''}
+        confirmLabel={deactivateUser.isPending ? 'Deactivating…' : 'Deactivate user'}
+        onCancel={() => setConfirmDelete(false)}
+        onConfirm={() => selectedUser && deactivateUser.mutate(selectedUser)}
+      />
     </Stack>
   );
+}
+
+function RoleChildRows({ user, roles }: { user: AccessUser; roles: AccessRole[] }) {
+  if (!user.roleNames.length) return <TableRow sx={{ bgcolor: 'action.hover' }}><TableCell colSpan={7} sx={{ pl: 11, color: 'text.secondary' }}>No roles assigned.</TableCell></TableRow>;
+  return <>{user.roleNames.map((roleName, index) => {
+    const role = roles.find(item => item.roleName.toLowerCase() === roleName.toLowerCase());
+    return <TableRow key={roleName} sx={{ bgcolor: 'action.hover' }}>
+      <TableCell /><TableCell />
+      <TableCell sx={{ pl: 5, borderBottom: index === user.roleNames.length - 1 ? undefined : 'none' }}><Stack direction="row" alignItems="center" spacing={1}><AccountTreeOutlined fontSize="small" color="action" /><Box><Typography variant="body2" fontWeight={600}>{roleName}</Typography><Typography variant="caption" color="text.secondary">Assigned role</Typography></Box></Stack></TableCell>
+      <TableCell colSpan={2}>{role?.description || '—'}</TableCell>
+      <TableCell><Chip size="small" label={`${role?.screens.filter(screen => screen.canRead).length ?? 0} screens`} /></TableCell>
+      <TableCell><Chip size="small" color={role?.isActive ? 'success' : 'default'} variant="outlined" label={role?.isActive ? 'Active role' : 'Inactive role'} /></TableCell>
+    </TableRow>;
+  })}</>;
 }
 
 function UserDialog({ user, roles, onClose }: { user?: AccessUser; roles: AccessRole[]; onClose: () => void }) {
