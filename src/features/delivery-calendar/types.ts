@@ -8,22 +8,23 @@ export interface DeliveryCalendarDay {
   closureReason?: string;
   totalDeliveries: number;
   totalCustomers: number;
+  totalMealItems: number;
   overrideCount: number;
 }
 
 export interface CustomerDelivery {
   id: string;
+  orderNumber: string;
   customerName: string;
   planName: string;
-  templateDayNumber: number;
   mealCount: number;
   deliverySlot: string;
-  status: 'Scheduled' | 'Paused' | 'Delivered' | 'Dispatched';
+  status: string;
 }
 
 export interface ProductionGroup {
   mealType: string;
-  meals: Array<{ name: string; quantity: number }>;
+  quantity: number;
 }
 
 export interface CalendarMenuOverride {
@@ -77,4 +78,3 @@ export interface CalendarFilters {
   hasOverride: string;
   closure: string;
 }
-

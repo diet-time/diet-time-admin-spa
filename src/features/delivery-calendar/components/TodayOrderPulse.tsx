@@ -1,4 +1,4 @@
-import { AccessTimeOutlined, ArrowForward, LocalShippingOutlined, PeopleOutline } from '@mui/icons-material';
+import { ArrowForward, LocalDiningOutlined, LocalShippingOutlined, PeopleOutline } from '@mui/icons-material';
 import { Box, Button, Chip, Stack, Typography } from '@mui/material';
 import { format, parseISO } from 'date-fns';
 import type { DeliveryCalendarDay } from '../types';
@@ -38,8 +38,8 @@ export function TodayOrderPulse({ day, onSelect }: { day?: DeliveryCalendarDay; 
             <Box><Typography fontWeight={850} lineHeight={1.1}>{day.totalCustomers}</Typography><Typography variant="caption" color="text.secondary">customers</Typography></Box>
           </Stack>
           <Stack direction="row" alignItems="center" gap={1}>
-            <AccessTimeOutlined sx={{ color: 'warning.main' }} />
-            <Box><Typography fontWeight={850} lineHeight={1.1}>{day.overrideCount}</Typography><Typography variant="caption" color="text.secondary">menu changes</Typography></Box>
+            <LocalDiningOutlined sx={{ color: 'warning.main' }} />
+            <Box><Typography fontWeight={850} lineHeight={1.1}>{day.totalMealItems}</Typography><Typography variant="caption" color="text.secondary">meal items</Typography></Box>
           </Stack>
         </Stack>
         <Stack direction="row" alignItems="center" gap={1}>

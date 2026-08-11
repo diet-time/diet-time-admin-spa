@@ -1,71 +1,104 @@
-import { addDays, eachDayOfInterval, endOfMonth, format, getDate, parseISO, startOfMonth } from 'date-fns';
-import type { CalendarFilters, CalendarMenuOverride, ClosureImpactPreview, ClosureInput, DeliveryCalendarDay, DeliveryDateDetail, OperationalClosure, OperationalStatus } from '@/features/delivery-calendar/types';
+import { format, parseISO } from 'date-fns';
+import { apiClient } from './apiClient';
+import { plansApi } from './plansApi';
+import type {
+  CalendarFilters,
+  CalendarMenuOverride,
+  ClosureImpactPreview,
+  ClosureInput,
+  DeliveryCalendarDay,
+  DeliveryDateDetail,
+  OperationalClosure,
+} from '@/features/delivery-calendar/types';
 
-const plans = [{ id: 'weight-loss', name: 'Weight Loss' }, { id: 'keto', name: 'Keto' }, { id: 'balanced', name: 'Balanced' }];
-let closures: OperationalClosure[] = [{ id: 'closure-1', startDate: '2026-07-18', endDate: '2026-07-18', name: 'Public Holiday', reason: 'Kitchen closed for the public holiday.', applyToAllPlans: true, impactPolicy: 'SHIFT_NEXT', status: 'ACTIVE', createdBy: 'Admin User', createdAt: '2026-07-01T08:00:00Z' }];
-let addedOverrides: CalendarMenuOverride[] = [];
+interface CalendarOrderApi {
+  id: string;
+  orderNumber: string;
+  customerProfileId: string;
+  customerName: string;
+  mealPlanTemplateId: string;
+  planName: string;
+  mealCount: number;
+  deliverySlot: string;
+  status: string;
+}
 
-const statusFor = (date: string, overrideCount: number, deliveries: number): OperationalStatus => {
-  if (closures.some((closure) => date >= closure.startDate && date <= closure.endDate)) return 'CLOSED';
-  if (!deliveries) return 'NO_DELIVERIES';
-  if (getDate(parseISO(date)) % 11 === 0) return 'PARTIAL';
-  return overrideCount ? 'OVERRIDE' : 'SCHEDULED';
-};
+interface CalendarDayApi {
+  date: string;
+  totalOrders: number;
+  totalCustomers: number;
+  totalMealItems: number;
+  orders: CalendarOrderApi[];
+  mealTypeTotals: Array<{ mealType: string; quantity: number }>;
+}
 
-const dayData = (date: string): DeliveryCalendarDay => {
-  const closure = closures.find((item) => date >= item.startDate && date <= item.endDate);
-  const dateNumber = getDate(parseISO(date));
-  const weekend = [5, 6].includes(parseISO(date).getDay());
-  const overrideCount = addedOverrides.filter((item) => item.deliveryDate === date).length + (dateNumber % 7 === 0 ? 2 : 0);
-  const totalDeliveries = closure ? 0 : weekend ? 0 : 34 + (dateNumber % 17);
-  return { date, operationalStatus: statusFor(date, overrideCount, totalDeliveries), holidayName: closure?.name, closureReason: closure?.reason, totalDeliveries, totalCustomers: totalDeliveries ? Math.max(1, totalDeliveries - 5) : 0, overrideCount };
-};
+interface CalendarMonthApi {
+  startDate: string;
+  endDate: string;
+  days: CalendarDayApi[];
+}
 
-const filterDays = (days: DeliveryCalendarDay[], filters: CalendarFilters) => days.map((day) => {
-  const hidden = (filters.status && day.operationalStatus !== filters.status)
-    || (filters.hasOverride === 'yes' && day.overrideCount === 0)
-    || (filters.hasOverride === 'no' && day.overrideCount > 0)
-    || (filters.closure === 'yes' && day.operationalStatus !== 'CLOSED')
-    || (filters.closure === 'no' && day.operationalStatus === 'CLOSED');
-  if (hidden) return { ...day, totalDeliveries: 0, totalCustomers: 0, overrideCount: 0, operationalStatus: 'NO_DELIVERIES' as const };
-  return filters.planId && day.operationalStatus !== 'CLOSED' ? { ...day, totalDeliveries: Math.ceil(day.totalDeliveries / plans.length), totalCustomers: Math.ceil(day.totalCustomers / plans.length) } : day;
+interface ApiEnvelope<T> { data: T }
+
+const toCalendarDay = (day: CalendarDayApi): DeliveryCalendarDay => ({
+  date: day.date,
+  operationalStatus: day.totalOrders > 0 ? 'SCHEDULED' : 'NO_DELIVERIES',
+  totalDeliveries: day.totalOrders,
+  totalCustomers: day.totalCustomers,
+  totalMealItems: day.totalMealItems,
+  overrideCount: 0,
 });
 
+const getMonth = async (month: string, filters: CalendarFilters, signal?: AbortSignal) => {
+  const response = await apiClient.get<ApiEnvelope<CalendarMonthApi>>('/admin/orders/delivery-calendar', {
+    params: {
+      month,
+      planId: filters.planId || undefined,
+      orderStatus: filters.status || undefined,
+    },
+    signal,
+  });
+  return response.data.data;
+};
+
 export const deliveryCalendarApi = {
-  plans: async () => plans,
-  month: async (month: string, filters: CalendarFilters) => {
-    const first = startOfMonth(parseISO(`${month}-01`));
-    return filterDays(eachDayOfInterval({ start: first, end: endOfMonth(first) }).map((date) => dayData(format(date, 'yyyy-MM-dd'))), filters);
+  plans: async () => {
+    const response = await plansApi.list({ page: 1, pageSize: 100, published: true });
+    return response.items.map((plan) => ({ id: plan.id, name: plan.nameEn }));
   },
-  detail: async (date: string): Promise<DeliveryDateDetail> => {
-    const day = dayData(date);
-    const deliveries = day.totalDeliveries ? [
-      { id: `${date}-1`, customerName: 'Ahmed Hassan', planName: 'Weight Loss', templateDayNumber: 1, mealCount: 3, deliverySlot: 'Morning', status: 'Scheduled' as const },
-      { id: `${date}-2`, customerName: 'Sara Ali', planName: 'Weight Loss', templateDayNumber: 6, mealCount: 3, deliverySlot: 'Morning', status: 'Scheduled' as const },
-      { id: `${date}-3`, customerName: 'John Smith', planName: 'Keto', templateDayNumber: 3, mealCount: 4, deliverySlot: 'Afternoon', status: 'Paused' as const },
-    ] : [];
-    const seededOverrides: CalendarMenuOverride[] = day.overrideCount ? [{ id: `${date}-seed`, deliveryDate: date, mealType: 'Lunch', originalMeal: 'Grilled Salmon', replacementMeal: 'Grilled Chicken', reason: 'Ingredient unavailable', createdBy: 'Kitchen Manager', createdAt: `${date}T06:30:00Z` }] : [];
-    return { day, totalMealItems: day.totalDeliveries * 3, deliveries, production: day.totalDeliveries ? [
-      { mealType: 'Breakfast', meals: [{ name: 'Omelette', quantity: 25 }, { name: 'Greek Yogurt', quantity: 21 }] },
-      { mealType: 'Lunch', meals: [{ name: 'Chicken Biryani', quantity: 32 }, { name: 'Grilled Salmon', quantity: 18 }] },
-      { mealType: 'Dinner', meals: [{ name: 'Grilled Chicken', quantity: 29 }] },
-      { mealType: 'Snack', meals: [{ name: 'Fruit Cup', quantity: 24 }] },
-    ] : [], overrides: [...seededOverrides, ...addedOverrides.filter((item) => item.deliveryDate === date)] };
+  month: async (month: string, filters: CalendarFilters, signal?: AbortSignal) =>
+    (await getMonth(month, filters, signal)).days.map(toCalendarDay),
+  detail: async (date: string, signal?: AbortSignal): Promise<DeliveryDateDetail> => {
+    const response = await getMonth(format(parseISO(date), 'yyyy-MM'), {
+      planId: '', status: '', hasOverride: '', closure: '',
+    }, signal);
+    const source = response.days.find((day) => day.date === date);
+    if (!source) throw new Error(`The API did not return calendar data for ${date}.`);
+    return {
+      day: toCalendarDay(source),
+      totalMealItems: source.totalMealItems,
+      deliveries: source.orders.map((order) => ({
+        id: order.id,
+        orderNumber: order.orderNumber,
+        customerName: order.customerName,
+        planName: order.planName,
+        mealCount: order.mealCount,
+        deliverySlot: order.deliverySlot,
+        status: order.status,
+      })),
+      production: source.mealTypeTotals,
+      overrides: [],
+    };
   },
-  previewClosure: async (input: ClosureInput): Promise<ClosureImpactPreview> => {
-    const numberOfDays = eachDayOfInterval({ start: parseISO(input.startDate), end: parseISO(input.endDate) }).length;
-    return { affectedSubscriptions: 42 * numberOfDays, affectedDeliveries: 126 * numberOfDays, subscriptionsExtended: input.impactPolicy === 'CANCEL' ? 0 : 42 * numberOfDays, movedToDate: input.impactPolicy === 'CANCEL' ? undefined : format(addDays(parseISO(input.endDate), 1), 'yyyy-MM-dd') };
+  previewClosure: async (input: ClosureInput) =>
+    (await apiClient.post<ApiEnvelope<ClosureImpactPreview>>('/admin/operations/closures/preview', input)).data.data,
+  createClosure: async (input: ClosureInput) =>
+    (await apiClient.post<ApiEnvelope<OperationalClosure>>('/admin/operations/closures', input)).data.data,
+  closures: async () =>
+    (await apiClient.get<ApiEnvelope<OperationalClosure[]>>('/admin/operations/closures')).data.data,
+  createOverride: async (input: Omit<CalendarMenuOverride, 'id' | 'createdBy' | 'createdAt'>) =>
+    (await apiClient.post<ApiEnvelope<CalendarMenuOverride>>('/admin/orders/menu-overrides', input)).data.data,
+  removeOverride: async (id: string) => {
+    await apiClient.delete(`/admin/orders/menu-overrides/${id}`);
   },
-  createClosure: async (input: ClosureInput) => {
-    const closure: OperationalClosure = { ...input, id: `closure-${Date.now()}`, status: 'ACTIVE', createdBy: 'Admin User', createdAt: new Date().toISOString() };
-    closures = [...closures, closure];
-    return closure;
-  },
-  closures: async () => closures,
-  createOverride: async (input: Omit<CalendarMenuOverride, 'id' | 'createdBy' | 'createdAt'>) => {
-    const override: CalendarMenuOverride = { ...input, id: `override-${Date.now()}`, createdBy: 'Admin User', createdAt: new Date().toISOString() };
-    addedOverrides = [...addedOverrides, override];
-    return override;
-  },
-  removeOverride: async (id: string) => { addedOverrides = addedOverrides.filter((item) => item.id !== id); },
 };
