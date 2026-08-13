@@ -29,7 +29,7 @@ export function CalendarMonthGrid({ days, view, onSelect }: { days: DeliveryCale
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', overflow: 'hidden', borderRadius: '9px 9px 0 0' }}>
         {weekdays.map((weekday, index) => <Box key={weekday.full} sx={{ px: 1.75, py: 1.05, textAlign: 'center', bgcolor: '#064E3B', borderInlineEnd: index === 6 ? 0 : 1, borderColor: 'rgba(255,255,255,.1)' }}><Typography variant="caption" fontWeight={800} color="common.white" letterSpacing="0.08em"><Box component="span" sx={{ display: { xs: 'none', lg: 'inline' } }}>{weekday.full.toUpperCase()}</Box><Box component="span" sx={{ display: { xs: 'inline', lg: 'none' } }}>{weekday.short.toUpperCase()}</Box></Typography></Box>)}
       </Box>
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 0.5, pt: 0.5 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', overflow: 'hidden', border: 1, borderTop: 0, borderColor: 'divider', borderRadius: '0 0 9px 9px' }}>
         {Array.from({ length: blanks }, (_, index) => <CalendarBlankCell key={`blank-${index}`} weekend={index >= 5} />)}
         {visible.map((day) => <CalendarDayCell key={day.date} day={day} maxDeliveries={maxDeliveries} onSelect={onSelect} />)}
         {Array.from({ length: trailingBlanks }, (_, index) => <CalendarBlankCell key={`trailing-blank-${index}`} weekend={(blanks + visible.length + index) % 7 >= 5} />)}
@@ -39,5 +39,5 @@ export function CalendarMonthGrid({ days, view, onSelect }: { days: DeliveryCale
 }
 
 function CalendarBlankCell({ weekend }: { weekend: boolean }) {
-  return <Box aria-hidden="true" sx={{ minHeight: 130, bgcolor: weekend ? '#FAFBFA' : '#FDFEFD', border: 1, borderColor: '#E8ECEA', borderRadius: 1.25 }} />;
+  return <Box aria-hidden="true" sx={{ minHeight: 130, bgcolor: weekend ? '#FAFBFA' : '#FDFEFD', borderInlineEnd: 1, borderBottom: 1, borderColor: 'divider' }} />;
 }
