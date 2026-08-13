@@ -55,4 +55,18 @@ describe('deliveryCalendarApi', () => {
     expect(result.production).toEqual([{ mealType: 'Lunch', quantity: 1 }, { mealType: 'Snack', quantity: 3 }]);
     expect(result.overrides).toEqual([]);
   });
+
+  it('loads a typed kitchen preparation summary for the selected date', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: { data: {
+      date: '2026-08-15', status: 'SCHEDULED', orderCount: 2, customerCount: 2, mealItemCount: 6,
+      mealTypes: [{ mealTypeId: 'type-1', mealTypeName: 'Lunch', quantity: 6, items: [{ menuItemId: 'meal-1', menuItemName: 'Chicken with Rice', quantity: 6 }] }],
+      planBreakdown: [{ mealPlanId: 'plan-1', mealPlanName: 'Balanced Living', orderCount: 2 }],
+    } } });
+
+    const result = await deliveryCalendarApi.preparationSummary('2026-08-15');
+
+    expect(apiClient.get).toHaveBeenCalledWith('/admin/delivery-calendar/2026-08-15/preparation-summary', expect.any(Object));
+    expect(result.mealTypes[0]?.items[0]).toMatchObject({ menuItemName: 'Chicken with Rice', quantity: 6 });
+    expect(result.planBreakdown[0]?.orderCount).toBe(2);
+  });
 });

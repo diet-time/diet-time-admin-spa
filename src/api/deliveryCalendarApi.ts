@@ -8,6 +8,7 @@ import type {
   ClosureInput,
   DeliveryCalendarDay,
   DeliveryDateDetail,
+  DeliveryPreparationSummary,
   OperationalClosure,
 } from '@/features/delivery-calendar/types';
 
@@ -90,6 +91,8 @@ export const deliveryCalendarApi = {
       overrides: [],
     };
   },
+  preparationSummary: async (date: string, signal?: AbortSignal) =>
+    (await apiClient.get<ApiEnvelope<DeliveryPreparationSummary>>(`/admin/delivery-calendar/${date}/preparation-summary`, { signal })).data.data,
   previewClosure: async (input: ClosureInput) =>
     (await apiClient.post<ApiEnvelope<ClosureImpactPreview>>('/admin/operations/closures/preview', input)).data.data,
   createClosure: async (input: ClosureInput) =>

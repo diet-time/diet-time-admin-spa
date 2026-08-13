@@ -27,6 +27,19 @@ export interface ProductionGroup {
   quantity: number;
 }
 
+export interface DeliveryPreparationMenuItem { menuItemId: string; menuItemName: string; quantity: number }
+export interface DeliveryPreparationMealType { mealTypeId: string; mealTypeName: string; quantity: number; items: DeliveryPreparationMenuItem[] }
+export interface DeliveryPreparationPlan { mealPlanId: string; mealPlanName: string; orderCount: number }
+export interface DeliveryPreparationSummary {
+  date: string;
+  status: string;
+  orderCount: number;
+  customerCount: number;
+  mealItemCount: number;
+  mealTypes: DeliveryPreparationMealType[];
+  planBreakdown: DeliveryPreparationPlan[];
+}
+
 export interface CalendarMenuOverride {
   id: string;
   deliveryDate: string;
