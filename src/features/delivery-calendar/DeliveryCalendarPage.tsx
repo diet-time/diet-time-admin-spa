@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { addMonths, format, parseISO } from 'date-fns';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import { deliveryCalendarApi } from '@/api/deliveryCalendarApi';
 import { ErrorState, LoadingState } from '@/components/feedback/PageState';
 import { CalendarMonthGrid } from './components/CalendarMonthGrid';
@@ -16,10 +17,13 @@ const emptyFilters: CalendarFilters = { planId: '', status: '', hasOverride: '',
 
 export function DeliveryCalendarPage() {
   const { t } = useTranslation();
-  const [month, setMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [searchParams] = useSearchParams();
+  const requestedDate = searchParams.get('date') ?? '';
+  const validRequestedDate = /^\d{4}-\d{2}-\d{2}$/.test(requestedDate) ? requestedDate : undefined;
+  const [month, setMonth] = useState(() => validRequestedDate?.slice(0, 7) ?? format(new Date(), 'yyyy-MM'));
   const [filters, setFilters] = useState(emptyFilters);
   const [view, setView] = useState<DeliveryView>('month');
-  const [selectedDate, setSelectedDate] = useState<string>();
+  const [selectedDate, setSelectedDate] = useState<string | undefined>(validRequestedDate);
   const plansQuery = useQuery({ queryKey: ['delivery-calendar-plans'], queryFn: deliveryCalendarApi.plans });
   const calendarQuery = useQuery({ queryKey: ['delivery-calendar', month, filters], queryFn: ({ signal }) => deliveryCalendarApi.month(month, filters, signal) });
   const changeMonth = (offset: number) => setMonth(format(addMonths(parseISO(`${month}-01`), offset), 'yyyy-MM'));
