@@ -33,7 +33,9 @@ Roles represented are Admin, Dietitian, ContentManager, Finance, Operations, and
 
 ## Image upload and time handling
 
-The portal uploads validated JPEG/PNG/WebP files as multipart form data to `POST /admin/meals/{id}/media/upload`. Original images use `mediaType=IMAGE`; separately uploaded list/card thumbnails use `mediaType=THUMBNAIL`. Both are bound from the meal detail response's `media` array and previewed in the form.
+The portal uploads validated JPEG/PNG/WebP files as multipart form data to `POST /admin/meals/{id}/media/upload`. Original images use `mediaType=MEALITEM`; separately uploaded list/card thumbnails use `mediaType=THUMBNAIL`. Both are bound from the meal detail response's `media` array and previewed in the form.
+
+Image deletion uses `DELETE /admin/meals/{mealId}/media/{mediaId}` for meal media, `DELETE /admin/meals/{mealId}/media/{mediaId}/thumbnail` for only its thumbnail, and `DELETE /admin/meal-plans/{planId}/image` for a meal-plan image. A successful response means the backend has deleted the database association and every relevant S3 object. The backend derives object keys from trusted database records rather than accepting an S3 key or URL from the browser. It returns `204 No Content` on success, `404` when the resource does not exist, and a non-success response when S3 deletion fails so the UI does not falsely remove the preview.
 
 Availability fields are presented as Qatar time (`Asia/Qatar`, UTC+3). Local input is converted to ISO-8601 UTC before submission. Backend responses are formatted with the `Asia/Qatar` IANA zone. The backend must repeat range, subscription-impact, plan compatibility, and overlap validation transactionally.
 

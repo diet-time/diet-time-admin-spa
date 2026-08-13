@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { apiClient } from './apiClient';
-import { uploadMealImage } from './mediaApi';
+import { mediaApi, uploadMealImage } from './mediaApi';
 
 vi.mock('./apiClient', () => ({
   apiClient: {
     post: vi.fn(),
+    delete: vi.fn(),
   },
 }));
 
@@ -63,5 +64,21 @@ describe('uploadMealImage', () => {
     const body = vi.mocked(apiClient.post).mock.calls[0]?.[1] as FormData;
     expect(body.get('mediaType')).toBe('THUMBNAIL');
     expect(body.has('isPrimary')).toBe(false);
+  });
+
+  it('deletes meal media through the owning meal endpoint', async () => {
+    vi.mocked(apiClient.delete).mockResolvedValue({ data: undefined });
+
+    await mediaApi.removeFromMeal('meal-1', 'media-2');
+
+    expect(apiClient.delete).toHaveBeenCalledWith('/admin/meals/meal-1/media/media-2');
+  });
+
+  it('deletes only the thumbnail object when removing a thumbnail', async () => {
+    vi.mocked(apiClient.delete).mockResolvedValue({ data: undefined });
+
+    await mediaApi.removeThumbnail('meal-1', 'media-1');
+
+    expect(apiClient.delete).toHaveBeenCalledWith('/admin/meals/meal-1/media/media-1/thumbnail');
   });
 });

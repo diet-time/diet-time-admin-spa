@@ -40,4 +40,5 @@ export async function uploadMealImage(
 
 export const mediaApi = {
   removeFromMeal: async (mealId: string, mediaId: string) => (await apiClient.delete(`/admin/meals/${mealId}/media/${mediaId}`)).data,
+  removeThumbnail: async (mealId: string, mediaId: string) => (await apiClient.delete(`/admin/meals/${mealId}/media/${mediaId}/thumbnail`)).data,
 };

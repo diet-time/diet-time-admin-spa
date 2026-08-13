@@ -7,6 +7,7 @@ vi.mock('./apiClient', () => ({
     get: vi.fn(),
     post: vi.fn(),
     put: vi.fn(),
+    delete: vi.fn(),
   },
 }));
 
@@ -93,5 +94,13 @@ describe('plansApi', () => {
     );
     expect((body as FormData).get('imageType')).toBe('MEALPLAN');
     expect((body as FormData).get('file')).toBe(file);
+  });
+
+  it('deletes the stored plan image without deleting the plan', async () => {
+    vi.mocked(apiClient.delete).mockResolvedValue({ data: undefined });
+
+    await plansApi.deleteImage('plan-1');
+
+    expect(apiClient.delete).toHaveBeenCalledWith('/admin/meal-plans/plan-1/image');
   });
 });

@@ -1,4 +1,4 @@
-import { Add, CloudUploadOutlined, ContentCopy, DeleteOutline, DragIndicator } from '@mui/icons-material';
+import { Add, Close, CloudUploadOutlined, ContentCopy, DeleteOutline, DragIndicator } from '@mui/icons-material';
 import {
   Alert,
   Autocomplete,
@@ -16,6 +16,7 @@ import {
   DialogTitle,
   FormControlLabel,
   Grid,
+  IconButton,
   LinearProgress,
   List,
   ListItemButton,
@@ -38,6 +39,7 @@ import { plansApi } from '@/api/plansApi';
 import type { MealSummary } from '@/api/apiTypes';
 import { queryClient } from '@/app/queryClient';
 import { ErrorState, LoadingState } from '@/components/feedback/PageState';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import {
   MVP_MENU_WEEKDAYS,
   defaultWeekdayDisplayOrder,
@@ -110,6 +112,7 @@ export function PlanBuilderPage() {
   const [planImagePreview, setPlanImagePreview] = useState('');
   const [planImageError, setPlanImageError] = useState('');
   const [planImageProgress, setPlanImageProgress] = useState<number | null>(null);
+  const [deleteImageOpen, setDeleteImageOpen] = useState(false);
   const [planDetails, setPlanDetails] = useState<PlanDetails>({
     code: '',
     nameEn: '',
@@ -255,6 +258,20 @@ export function PlanBuilderPage() {
     },
   });
 
+  const deleteImageMutation = useMutation({
+    mutationFn: () => plansApi.deleteImage(planId!),
+    onSuccess: async () => {
+      setPlanImagePreview('');
+      setPlanImage(null);
+      setPlanImageProgress(null);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['plan', planId] }),
+        queryClient.invalidateQueries({ queryKey: ['plans'] }),
+      ]);
+    },
+    onError: () => setPlanImageError('The meal plan image could not be deleted. Try again.'),
+  });
+
   useEffect(() => {
     const plan = planQuery.data;
     if (!plan) return;
@@ -396,6 +413,19 @@ export function PlanBuilderPage() {
     setPlanImage(file);
     setPlanImageProgress(null);
     setPlanImagePreview(URL.createObjectURL(file));
+  };
+
+  const deletePlanImage = () => {
+    setDeleteImageOpen(false);
+    setPlanImageError('');
+    if (planImage) {
+      if (planImagePreview.startsWith('blob:')) URL.revokeObjectURL(planImagePreview);
+      setPlanImage(null);
+      setPlanImagePreview(planQuery.data?.imageUrl ?? '');
+      setPlanImageProgress(null);
+      return;
+    }
+    if (planId) deleteImageMutation.mutate();
   };
 
   if (planId && planQuery.isFetching) return <LoadingState />;
@@ -544,21 +574,24 @@ export function PlanBuilderPage() {
             <Grid container spacing={2} alignItems="stretch">
               <Grid size={{ xs: 12, md: 5 }}>
                 {planImagePreview ? (
-                  <Box
-                    component="img"
-                    src={planImagePreview}
-                    alt="Meal plan preview"
-                    sx={{
-                      display: 'block',
-                      width: '100%',
-                      aspectRatio: '16 / 9',
-                      objectFit: 'contain',
-                      borderRadius: 2,
-                      border: 1,
-                      borderColor: 'divider',
-                      bgcolor: 'background.default',
-                    }}
-                  />
+                  <Box sx={{ position: 'relative' }}>
+                    <Box
+                      component="img"
+                      src={planImagePreview}
+                      alt="Meal plan preview"
+                      sx={{
+                        display: 'block',
+                        width: '100%',
+                        aspectRatio: '16 / 9',
+                        objectFit: 'contain',
+                        borderRadius: 2,
+                        border: 1,
+                        borderColor: 'divider',
+                        bgcolor: 'background.default',
+                      }}
+                    />
+                    <IconButton aria-label="Delete meal plan image" disabled={deleteImageMutation.isPending} onClick={() => setDeleteImageOpen(true)} sx={{ position: 'absolute', top: 10, insetInlineEnd: 10, width: 34, height: 34, minWidth: 34, minHeight: 34, bgcolor: 'rgba(255,255,255,.94)', color: 'error.main', boxShadow: '0 2px 10px rgba(23,53,45,.18)', '&:hover': { bgcolor: 'error.main', color: 'common.white' } }}>{deleteImageMutation.isPending ? <CircularProgress size={18} color="inherit" /> : <Close fontSize="small" />}</IconButton>
+                  </Box>
                 ) : (
                   <Box sx={{ width: '100%', aspectRatio: '16 / 9', display: 'grid', placeItems: 'center', border: 1, borderColor: 'divider', borderRadius: 2, bgcolor: 'background.default', color: 'text.secondary' }}>No plan image uploaded</Box>
                 )}
@@ -579,6 +612,7 @@ export function PlanBuilderPage() {
               </Grid>
             </Grid>
             {planImageProgress !== null && <Box aria-live="polite"><LinearProgress variant="determinate" value={planImageProgress} /><Typography variant="caption">Plan image upload {planImageProgress}% complete</Typography></Box>}
+            <ConfirmDialog open={deleteImageOpen} title="Delete meal plan image?" impact={planImage ? 'This removes the selected image before it is uploaded.' : 'This permanently removes the image from storage. This action cannot be undone.'} confirmLabel="Delete image" onCancel={() => setDeleteImageOpen(false)} onConfirm={deletePlanImage} />
           </Stack>
         </CardContent>
       </Card>

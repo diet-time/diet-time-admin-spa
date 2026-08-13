@@ -164,6 +164,7 @@ export const plansApi = {
     });
     return response.data.data;
   },
+  deleteImage: async (id: string) => (await apiClient.delete(`/admin/meal-plans/${id}/image`)).data,
   remove: async (id: string) => (await apiClient.delete(`/admin/meal-plans/${id}`)).data,
   getTemplateDays: async (id: string, signal?: AbortSignal) => {
     const response = await apiClient.get<{ data: RawPlanDay[] }>(`/admin/meal-plan-templates/${id}/days`, { signal });
