@@ -51,7 +51,8 @@ test('shows order volume and opens the current day', async ({ page }) => {
 test('keeps the list view readable on mobile', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/operations/delivery-calendar');
-  await page.getByRole('button', { name: 'List' }).click();
+  await page.getByLabel('Calendar view').click();
+  await page.getByRole('option', { name: 'List' }).click();
   await expect(page.getByRole('button', { name: /Open deliveries for/ }).first()).toBeVisible();
   const hasHorizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   expect(hasHorizontalOverflow).toBe(false);
