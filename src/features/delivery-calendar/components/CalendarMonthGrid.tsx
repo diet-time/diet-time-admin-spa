@@ -17,8 +17,7 @@ const mondayIndex = (date: string) => (getDay(parseISO(date)) + 6) % 7;
 
 export function CalendarMonthGrid({ days, view, onSelect }: { days: DeliveryCalendarDay[]; view: DeliveryView; onSelect: (date: string) => void }) {
   if (!days.length) return null;
-  const maxDeliveries = Math.max(1, ...days.map((day) => day.totalDeliveries));
-  if (view === 'list') return <Box>{days.map((day) => <CalendarDayCell key={day.date} day={day} compact maxDeliveries={maxDeliveries} onSelect={onSelect} />)}</Box>;
+  if (view === 'list') return <Box>{days.map((day) => <CalendarDayCell key={day.date} day={day} compact onSelect={onSelect} />)}</Box>;
   const todayIndex = days.findIndex((day) => day.date === format(new Date(), 'yyyy-MM-dd'));
   const weekStart = todayIndex >= 0 ? Math.max(0, todayIndex - mondayIndex(days[todayIndex]!.date)) : 0;
   const visible = view === 'week' ? days.slice(weekStart, weekStart + 7) : days;
@@ -31,7 +30,7 @@ export function CalendarMonthGrid({ days, view, onSelect }: { days: DeliveryCale
       </Box>
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 0.5, pt: 0.5 }}>
         {Array.from({ length: blanks }, (_, index) => <CalendarBlankCell key={`blank-${index}`} weekend={index >= 5} />)}
-        {visible.map((day) => <CalendarDayCell key={day.date} day={day} maxDeliveries={maxDeliveries} onSelect={onSelect} />)}
+        {visible.map((day) => <CalendarDayCell key={day.date} day={day} onSelect={onSelect} />)}
         {Array.from({ length: trailingBlanks }, (_, index) => <CalendarBlankCell key={`trailing-blank-${index}`} weekend={(blanks + visible.length + index) % 7 >= 5} />)}
       </Box>
     </Box>
