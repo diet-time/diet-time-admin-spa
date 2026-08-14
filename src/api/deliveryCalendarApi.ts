@@ -41,6 +41,19 @@ interface CalendarMonthApi {
 
 interface ApiEnvelope<T> { data: T }
 
+const preparationReportFilename = (contentDisposition: string | undefined, date: string) => {
+  const encodedFilename = contentDisposition?.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+  if (encodedFilename) {
+    try {
+      return decodeURIComponent(encodedFilename.replace(/^"|"$/g, ''));
+    } catch {
+      // Fall through to a plain filename or the deterministic fallback.
+    }
+  }
+  const filename = contentDisposition?.match(/filename\s*=\s*(?:"([^"]+)"|([^;]+))/i);
+  return filename?.[1]?.trim() || filename?.[2]?.trim() || `Kitchen-Preparation-${date}.pdf`;
+};
+
 const toCalendarDay = (day: CalendarDayApi): DeliveryCalendarDay => ({
   date: day.date,
   operationalStatus: day.totalOrders > 0 ? 'SCHEDULED' : 'NO_DELIVERIES',
@@ -93,6 +106,13 @@ export const deliveryCalendarApi = {
   },
   preparationSummary: async (date: string, signal?: AbortSignal) =>
     (await apiClient.get<ApiEnvelope<DeliveryPreparationSummary>>(`/admin/delivery-calendar/${date}/preparation-summary`, { signal })).data.data,
+  preparationReport: async (date: string) => {
+    const response = await apiClient.get<Blob>(`/admin/delivery-calendar/${date}/preparation-report`, { responseType: 'blob' });
+    return {
+      blob: response.data,
+      filename: preparationReportFilename(response.headers['content-disposition'], date),
+    };
+  },
   previewClosure: async (input: ClosureInput) =>
     (await apiClient.post<ApiEnvelope<ClosureImpactPreview>>('/admin/operations/closures/preview', input)).data.data,
   createClosure: async (input: ClosureInput) =>

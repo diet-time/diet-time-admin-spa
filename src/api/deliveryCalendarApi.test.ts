@@ -69,4 +69,26 @@ describe('deliveryCalendarApi', () => {
     expect(result.mealTypes[0]?.items[0]).toMatchObject({ menuItemName: 'Chicken with Rice', quantity: 6 });
     expect(result.planBreakdown[0]?.orderCount).toBe(2);
   });
+
+  it('downloads the preparation report as a blob and uses the server filename', async () => {
+    const blob = new Blob(['pdf'], { type: 'application/pdf' });
+    vi.mocked(apiClient.get).mockResolvedValue({
+      data: blob,
+      headers: { 'content-disposition': 'attachment; filename="Kitchen-Report-2026-08-16.pdf"' },
+    });
+
+    const result = await deliveryCalendarApi.preparationReport('2026-08-16');
+
+    expect(apiClient.get).toHaveBeenCalledWith('/admin/delivery-calendar/2026-08-16/preparation-report', { responseType: 'blob' });
+    expect(result).toEqual({ blob, filename: 'Kitchen-Report-2026-08-16.pdf' });
+  });
+
+  it('uses the expected preparation report filename when the server omits one', async () => {
+    const blob = new Blob(['pdf'], { type: 'application/pdf' });
+    vi.mocked(apiClient.get).mockResolvedValue({ data: blob, headers: {} });
+
+    const result = await deliveryCalendarApi.preparationReport('2026-08-16');
+
+    expect(result.filename).toBe('Kitchen-Preparation-2026-08-16.pdf');
+  });
 });

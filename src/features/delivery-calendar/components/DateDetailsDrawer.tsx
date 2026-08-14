@@ -1,5 +1,5 @@
-import { Close, DinnerDiningOutlined, EggAltOutlined, LocalCafeOutlined, LunchDiningOutlined, RestaurantMenuOutlined, VisibilityOutlined } from '@mui/icons-material';
-import { Alert, Box, Card, CardContent, Chip, Divider, Drawer, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Skeleton, Stack, Tab, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tabs, Typography } from '@mui/material';
+import { Close, DinnerDiningOutlined, DownloadOutlined, EggAltOutlined, LocalCafeOutlined, LunchDiningOutlined, RestaurantMenuOutlined, VisibilityOutlined } from '@mui/icons-material';
+import { Alert, Box, Button, Card, CardContent, Chip, CircularProgress, Divider, Drawer, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Skeleton, Snackbar, Stack, Tab, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tabs, Typography } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { format, isBefore, parseISO, startOfDay } from 'date-fns';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -17,13 +17,13 @@ export function DateDetailsDrawer({ date, onClose }: { date?: string; onClose: (
   return <Drawer anchor="right" open={!!date} onClose={onClose} slotProps={{ paper: { sx: { width: { xs: '100%', md: 920 }, maxWidth: '100%' } } }}>
     <Stack direction="row" alignItems="center" p={2} borderBottom={1} borderColor="divider"><Box flex={1}><Typography variant="h2">{date ? format(parseISO(date), 'EEEE, d MMMM yyyy') : 'Order details'}</Typography><Typography color="text.secondary">Orders scheduled for this delivery date</Typography></Box><IconButton onClick={onClose} aria-label="Close details"><Close /></IconButton></Stack>
     {past && <Alert severity="info" sx={{ m: 2, mb: 0 }}>This is a past delivery date.</Alert>}
-    {query.isLoading ? <Box p={3}><LoadingState /></Box> : query.isError || !query.data ? <Box p={3}><ErrorState message="Unable to load order details." onRetry={() => void query.refetch()} /></Box> : <DrawerContent detail={query.data} tab={tab} onTab={setTab} preparation={preparation.data} preparationLoading={preparation.isLoading} preparationError={preparation.isError} onRetryPreparation={() => void preparation.refetch()} />}
+    {query.isLoading ? <Box p={3}><LoadingState /></Box> : query.isError || !query.data ? <Box p={3}><ErrorState message="Unable to load order details." onRetry={() => void query.refetch()} /></Box> : <DrawerContent date={date!} detail={query.data} tab={tab} onTab={setTab} preparation={preparation.data} preparationLoading={preparation.isLoading} preparationError={preparation.isError} onRetryPreparation={() => void preparation.refetch()} />}
   </Drawer>;
 }
 
-function DrawerContent({ detail, tab, onTab, preparation, preparationLoading, preparationError, onRetryPreparation }: { detail: DeliveryDateDetail; tab: number; onTab: (value: number) => void; preparation?: DeliveryPreparationSummary; preparationLoading: boolean; preparationError: boolean; onRetryPreparation: () => void }) {
+function DrawerContent({ date, detail, tab, onTab, preparation, preparationLoading, preparationError, onRetryPreparation }: { date: string; detail: DeliveryDateDetail; tab: number; onTab: (value: number) => void; preparation?: DeliveryPreparationSummary; preparationLoading: boolean; preparationError: boolean; onRetryPreparation: () => void }) {
   const cards = [['Status', detail.day.operationalStatus.replaceAll('_', ' ')], ['Orders', detail.day.totalDeliveries], ['Customers', detail.day.totalCustomers], ['Meal items', detail.totalMealItems]];
-  return <><Stack direction="row" flexWrap="wrap" useFlexGap gap={1.25} p={2}>{cards.map(([label, value]) => <Card key={label} sx={{ minWidth: 120, flex: 1, boxShadow: 'none' }}><CardContent sx={{ p: '12px !important' }}><Typography variant="caption" color="text.secondary">{label}</Typography><Typography fontWeight={800}>{value}</Typography></CardContent></Card>)}</Stack><Tabs value={tab} onChange={(_, value: number) => onTab(value)} variant="scrollable" scrollButtons="auto" aria-label="Date details"><Tab label="Scheduled orders" /><Tab label="Preparation Summary" /></Tabs><Divider />{tab === 0 && <CustomerDeliveriesTable detail={detail} />}{tab === 1 && (preparationLoading ? <PreparationSkeleton /> : preparationError || !preparation ? <Box p={2}><ErrorState message="Unable to load the preparation summary." onRetry={onRetryPreparation} /></Box> : <PreparationSummary summary={preparation} />)}</>;
+  return <><Stack direction="row" flexWrap="wrap" useFlexGap gap={1.25} p={2}>{cards.map(([label, value]) => <Card key={label} sx={{ minWidth: 120, flex: 1, boxShadow: 'none' }}><CardContent sx={{ p: '12px !important' }}><Typography variant="caption" color="text.secondary">{label}</Typography><Typography fontWeight={800}>{value}</Typography></CardContent></Card>)}</Stack><Tabs value={tab} onChange={(_, value: number) => onTab(value)} variant="scrollable" scrollButtons="auto" aria-label="Date details"><Tab label="Scheduled orders" /><Tab label="Preparation Summary" /></Tabs><Divider />{tab === 0 && <CustomerDeliveriesTable detail={detail} />}{tab === 1 && (preparationLoading ? <PreparationSkeleton /> : preparationError || !preparation ? <Box p={2}><ErrorState message="Unable to load the preparation summary." onRetry={onRetryPreparation} /></Box> : <PreparationSummary date={date} summary={preparation} />)}</>;
 }
 
 function CustomerDeliveriesTable({ detail }: { detail: DeliveryDateDetail }) {
@@ -40,9 +40,36 @@ const mealVisual = (name: string): { icon: ReactNode; color: string; tint: strin
   return { icon: <RestaurantMenuOutlined />, color: '#397B69', tint: '#EEF7F4' };
 };
 
-function PreparationSummary({ summary }: { summary: DeliveryPreparationSummary }) {
-  if (!summary.mealTypes.length) return <Stack alignItems="center" textAlign="center" spacing={1} py={7} px={2}><RestaurantMenuOutlined color="primary" sx={{ fontSize: 44 }} /><Typography variant="h3">No preparation required</Typography><Typography color="text.secondary">There are no meals scheduled for preparation on this delivery date.</Typography></Stack>;
-  return <Stack spacing={2} p={2}><Grid container spacing={2} alignItems="flex-start"><Grid size={{ xs: 12, md: 4 }}><Stack spacing={2}><OverviewCard mealTypes={summary.mealTypes} /><PlanBreakdown summary={summary} /></Stack></Grid><Grid size={{ xs: 12, md: 8 }}><Typography variant="overline" fontWeight={800}>Menu items to prepare</Typography><Stack spacing={1.5} mt={0.75}>{summary.mealTypes.map(group => <MealTypeCard key={group.mealTypeId} group={group} />)}</Stack></Grid></Grid><Card sx={{ boxShadow: 'none', bgcolor: '#EEF8F4', borderColor: '#D5EADF' }}><CardContent sx={{ p: '14px 16px !important' }}><Stack direction="row" alignItems="center" gap={1.25}><RestaurantMenuOutlined color="primary" /><Box flex={1}><Typography fontWeight={800}>Total Meal Items to Prepare</Typography><Typography variant="caption" color="text.secondary">Across {summary.orderCount} orders and {summary.customerCount} customers</Typography></Box><Typography variant="h2" color="primary.main">{summary.mealItemCount}</Typography></Stack></CardContent></Card></Stack>;
+export function PreparationSummary({ date, summary }: { date: string; summary: DeliveryPreparationSummary }) {
+  const [downloading, setDownloading] = useState(false);
+  const [feedback, setFeedback] = useState<'success' | 'error'>();
+
+  const downloadReport = async () => {
+    setDownloading(true);
+    setFeedback(undefined);
+    try {
+      const report = await deliveryCalendarApi.preparationReport(date);
+      const url = URL.createObjectURL(report.blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = report.filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setFeedback('success');
+    } catch {
+      setFeedback('error');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const heading = <Stack direction="row" alignItems="center" justifyContent="space-between" gap={1} flexWrap="wrap"><Typography variant="overline" fontWeight={800}>Menu items to prepare</Typography><Button size="small" variant="outlined" startIcon={downloading ? <CircularProgress size={16} color="inherit" /> : <DownloadOutlined />} disabled={downloading} onClick={() => void downloadReport()}>Download PDF</Button></Stack>;
+  const feedbackToast = <Snackbar open={!!feedback} autoHideDuration={4000} onClose={() => setFeedback(undefined)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>{feedback === 'error' ? <Alert severity="error" variant="filled" onClose={() => setFeedback(undefined)}><Typography variant="body2">Unable to download preparation report.</Typography><Typography variant="body2">Please try again.</Typography></Alert> : <Alert severity="success" variant="filled" onClose={() => setFeedback(undefined)}>Preparation report downloaded.</Alert>}</Snackbar>;
+
+  if (!summary.mealTypes.length) return <Stack p={2} spacing={2}>{heading}<Stack alignItems="center" textAlign="center" spacing={1} py={5} px={2}><RestaurantMenuOutlined color="primary" sx={{ fontSize: 44 }} /><Typography variant="h3">No preparation required</Typography><Typography color="text.secondary">There are no meals scheduled for preparation on this delivery date.</Typography></Stack>{feedbackToast}</Stack>;
+  return <Stack spacing={2} p={2}><Grid container spacing={2} alignItems="flex-start"><Grid size={{ xs: 12, md: 4 }}><Stack spacing={2}><OverviewCard mealTypes={summary.mealTypes} /><PlanBreakdown summary={summary} /></Stack></Grid><Grid size={{ xs: 12, md: 8 }}>{heading}<Stack spacing={1.5} mt={0.75}>{summary.mealTypes.map(group => <MealTypeCard key={group.mealTypeId} group={group} />)}</Stack></Grid></Grid><Card sx={{ boxShadow: 'none', bgcolor: '#EEF8F4', borderColor: '#D5EADF' }}><CardContent sx={{ p: '14px 16px !important' }}><Stack direction="row" alignItems="center" gap={1.25}><RestaurantMenuOutlined color="primary" /><Box flex={1}><Typography fontWeight={800}>Total Meal Items to Prepare</Typography><Typography variant="caption" color="text.secondary">Across {summary.orderCount} orders and {summary.customerCount} customers</Typography></Box><Typography variant="h2" color="primary.main">{summary.mealItemCount}</Typography></Stack></CardContent></Card>{feedbackToast}</Stack>;
 }
 
 function OverviewCard({ mealTypes }: { mealTypes: DeliveryPreparationMealType[] }) {
