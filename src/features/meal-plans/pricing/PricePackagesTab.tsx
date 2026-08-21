@@ -1,4 +1,4 @@
-import { Add, EditOutlined, Search } from '@mui/icons-material';
+import { Add, EditOutlined, Search, ToggleOffOutlined, ToggleOnOutlined } from '@mui/icons-material';
 import {
   Alert,
   Box,
@@ -25,6 +25,7 @@ import {
   TablePagination,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -224,8 +225,8 @@ export function PricePackagesTab({ createRequest = 0 }: { createRequest?: number
                   <TableCell><StatusChip label={item.isActive ? 'Active' : 'Inactive'} /></TableCell>
                   <TableCell>{item.updatedAt ? format(parseISO(item.updatedAt), 'dd MMM yyyy') : '—'}</TableCell>
                   <TableCell align="center">
-                    <IconButton aria-label={`Edit ${item.nameEn}`} onClick={() => setDialog({ item })}><EditOutlined /></IconButton>
-                    <Button size="small" color={item.isActive ? 'warning' : 'primary'} aria-label={`${item.isActive ? 'Deactivate' : 'Activate'} ${item.nameEn}`} onClick={() => setConfirmPackage(item)}>{item.isActive ? 'Deactivate' : 'Activate'}</Button>
+                    <Tooltip title="Edit package"><IconButton color="primary" aria-label={`Edit ${item.nameEn}`} onClick={() => setDialog({ item })}><EditOutlined /></IconButton></Tooltip>
+                    <Tooltip title={item.isActive ? 'Deactivate package' : 'Activate package'}><IconButton color={item.isActive ? 'warning' : 'success'} aria-label={`${item.isActive ? 'Deactivate' : 'Activate'} ${item.nameEn}`} onClick={() => setConfirmPackage(item)}>{item.isActive ? <ToggleOffOutlined /> : <ToggleOnOutlined />}</IconButton></Tooltip>
                   </TableCell>
                 </TableRow>
               ))}</TableBody>

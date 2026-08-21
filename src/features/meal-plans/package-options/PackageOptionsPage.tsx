@@ -1,8 +1,8 @@
-import { Add, EditOutlined, Search } from '@mui/icons-material';
+import { Add, EditOutlined, ToggleOffOutlined, ToggleOnOutlined, Search } from '@mui/icons-material';
 import {
   Alert, Box, Button, Card, CardContent, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle,
   FormControlLabel, Grid, IconButton, InputAdornment, Snackbar, Stack, Switch, Table, TableBody,
-  TableCell, TableContainer, TableHead, TableRow, TextField, Typography,
+  TableCell, TableContainer, TableHead, TableRow, TextField, Tooltip, Typography,
 } from '@mui/material';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
@@ -62,7 +62,7 @@ export function PackageOptionsPage() {
       {listQuery.isLoading ? <Box p={3}><LoadingState /></Box> : listQuery.isError ? <Box p={3}><ErrorState message="Unable to load package options." onRetry={() => void listQuery.refetch()} /></Box> : !items.length ?
         <Box py={6} textAlign="center"><Typography variant="h3">No package options found</Typography><Typography color="text.secondary" mt={1}>Add the first meal package offered to customers.</Typography></Box> :
         <TableContainer><Table sx={{ minWidth: 900 }}><TableHead><TableRow><TableCell>Package Name</TableCell><TableCell>Meals</TableCell><TableCell>Snacks</TableCell><TableCell>Allowed Meal Types</TableCell><TableCell>Display Order</TableCell><TableCell>Active</TableCell><TableCell align="right">Actions</TableCell></TableRow></TableHead>
-          <TableBody>{items.map((item) => <TableRow hover key={item.id}><TableCell><Typography fontWeight={700}>{item.name}</Typography></TableCell><TableCell>{item.mealCount}</TableCell><TableCell>{item.snackCount}</TableCell><TableCell>{item.mealTypes?.filter((type) => type.isActive).map((type) => type.mealTypeName).join(', ') || 'View to configure'}</TableCell><TableCell>{item.displayOrder}</TableCell><TableCell><StatusChip label={item.isActive ? 'Active' : 'Inactive'} /></TableCell><TableCell align="right"><IconButton aria-label={`Edit ${item.name}`} onClick={() => setEditing(item)}><EditOutlined /></IconButton><Button size="small" color={item.isActive ? 'warning' : 'primary'} onClick={() => setStatusTarget(item)}>{item.isActive ? 'Deactivate' : 'Activate'}</Button></TableCell></TableRow>)}</TableBody>
+          <TableBody>{items.map((item) => <TableRow hover key={item.id}><TableCell><Typography fontWeight={700}>{item.name}</Typography></TableCell><TableCell>{item.mealCount}</TableCell><TableCell>{item.snackCount}</TableCell><TableCell>{item.mealTypes?.filter((type) => type.isActive).map((type) => type.mealTypeName).join(', ') || 'View to configure'}</TableCell><TableCell>{item.displayOrder}</TableCell><TableCell><StatusChip label={item.isActive ? 'Active' : 'Inactive'} /></TableCell><TableCell align="right"><Tooltip title="Edit package"><IconButton color="primary" aria-label={`Edit ${item.name}`} onClick={() => setEditing(item)}><EditOutlined /></IconButton></Tooltip><Tooltip title={item.isActive ? 'Deactivate package' : 'Activate package'}><IconButton color={item.isActive ? 'warning' : 'success'} aria-label={`${item.isActive ? 'Deactivate' : 'Activate'} ${item.name}`} onClick={() => setStatusTarget(item)}>{item.isActive ? <ToggleOffOutlined /> : <ToggleOnOutlined />}</IconButton></Tooltip></TableCell></TableRow>)}</TableBody>
         </Table></TableContainer>}
     </Card>
     {editing && <PackageDialog item={editing === 'new' ? undefined : editing} allPackages={items} mealTypes={mealTypesQuery.data?.items ?? []} pending={save.isPending} onClose={() => { setEditing(null); save.reset(); }} onSave={(values) => save.mutate({ id: editing === 'new' ? undefined : editing.id, values })} />}
