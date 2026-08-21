@@ -15,6 +15,10 @@ export function TopBar({ onMenu }: { onMenu: () => void }) {
   const [anchor, setAnchor] = useState<null | HTMLElement>(null);
   const segment = location.pathname.split('/').filter(Boolean)[0] ?? 'dashboard';
   const titleKey = segment === 'meal-plans' ? 'mealPlans' : segment === 'meal-types' ? 'mealTypes' : segment === 'audit' ? 'audit' : segment;
+  const pageTitle = location.pathname.startsWith('/admin/package-options') ? 'Package Options'
+    : location.pathname.startsWith('/admin/durations') ? 'Durations'
+      : location.pathname.startsWith('/admin/plan-pricing') ? 'Plan Pricing'
+        : t(titleKey);
 
   const toggleLanguage = async () => {
     await i18n.changeLanguage(i18n.language === 'ar' ? 'en' : 'ar');
@@ -28,9 +32,9 @@ export function TopBar({ onMenu }: { onMenu: () => void }) {
     <AppBar position="sticky" color="inherit" elevation={0} sx={{ borderBottom: 1, borderColor: 'divider' }}>
       <Toolbar sx={{ minHeight: '72px !important', gap: { xs: 0.5, sm: 2 }, px: { xs: 1, sm: 3 } }}>
         <IconButton onClick={onMenu} sx={{ display: { md: 'none' } }} aria-label="Open navigation"><Menu /></IconButton>
-        <Box sx={{ minWidth: 0, flex: { xs: 1, md: '0 0 170px' } }}>
-          <Typography variant="h3" noWrap>{t(titleKey)}</Typography>
-          <Box sx={{ display: { xs: 'none', sm: 'block' } }}><Breadcrumbs /></Box>
+        <Box sx={{ minWidth: 0, flex: { xs: 1, md: '0 1 520px' }, maxWidth: { md: 520 } }}>
+          <Typography variant="h3" noWrap>{pageTitle}</Typography>
+          <Box sx={{ display: { xs: 'none', sm: 'block' }, minWidth: 0, overflow: 'hidden' }}><Breadcrumbs /></Box>
         </Box>
         <Box flex={{ xs: 0, md: 1 }} />
         <TextField
