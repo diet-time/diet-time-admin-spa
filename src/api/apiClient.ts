@@ -12,6 +12,10 @@ const baseURL = /\/api\/v\d+\/$/i.test(normalizedConfiguredBaseUrl)
   ? normalizedConfiguredBaseUrl
   : new URL('api/v1/', normalizedConfiguredBaseUrl).toString();
 
+/** Unversioned admin endpoints used by newer meal-configuration controllers. */
+export const adminApiUrl = (path: string) =>
+  new URL(path.replace(/^\/+/, ''), new URL('../admin/', baseURL)).toString();
+
 let accessToken: string | null = null;
 let refreshPromise: Promise<AuthSessionApi> | null = null;
 
