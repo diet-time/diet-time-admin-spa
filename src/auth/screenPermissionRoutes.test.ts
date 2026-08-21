@@ -20,8 +20,6 @@ describe('meal subscription screen permissions', () => {
     const screens = [permission('/meal-plans')];
     expect(canReadPath(screens, '/admin/package-options')).toBe(true);
     expect(canReadPath(screens, '/admin/plan-pricing')).toBe(true);
-    expect(canReadPath(screens, '/admin/weekly-menu')).toBe(true);
-    expect(canReadPath(screens, '/admin/meal-plans/plan-1/weekly-menu')).toBe(true);
   });
 
   it('prefers a dedicated permission when one exists', () => {
@@ -30,8 +28,4 @@ describe('meal subscription screen permissions', () => {
     expect(canReadPath(screens, '/admin/package-options')).toBe(false);
   });
 
-  it('matches parameterized weekly menu routes', () => {
-    const screens = [permission('/admin/meal-plans/:mealPlanId/weekly-menu')];
-    expect(canReadPath(screens, '/admin/meal-plans/abc-123/weekly-menu')).toBe(true);
-  });
 });

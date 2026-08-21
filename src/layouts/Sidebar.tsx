@@ -25,7 +25,6 @@ const items: NavItem[] = [
     { label: 'Plan Templates', path: '/meal-plans' },
     { label: 'Package Options', path: '/admin/package-options' },
     { label: 'Plan Pricing', path: '/admin/plan-pricing' },
-    { label: 'Weekly Menu', path: '/admin/weekly-menu' },
   ] },
   { key: 'operations', path: '/operations', icon: <CalendarMonthOutlined />, children: [
     { label: 'Delivery Calendar', path: '/operations/delivery-calendar' },
@@ -56,7 +55,7 @@ export function Sidebar({ open, collapsed, onClose, onToggle }: {
   const desktop = useMediaQuery(theme.breakpoints.up('md'));
   const location = useLocation();
   const permissions = useQuery({ queryKey: ['access-control', 'me', 'screens'], queryFn: accessControlApi.myScreens, staleTime: 60_000 });
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ mealPlans: location.pathname.startsWith('/meal-plans') || ['/admin/package-options', '/admin/plan-pricing', '/admin/weekly-menu', '/admin/meal-plans/'].some(path => location.pathname.startsWith(path)), operations: location.pathname.startsWith('/operations'), administration: ['/settings', '/users', '/roles'].some(path => location.pathname.startsWith(path)) });
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ mealPlans: location.pathname.startsWith('/meal-plans') || ['/admin/package-options', '/admin/plan-pricing'].some(path => location.pathname.startsWith(path)), operations: location.pathname.startsWith('/operations'), administration: ['/settings', '/users', '/roles'].some(path => location.pathname.startsWith(path)) });
   const width = collapsed ? collapsedWidth : expandedWidth;
   const visibleItems = items.map(item => item.children && permissions.data
     ? { ...item, children: item.children.filter(child => canReadPath(permissions.data, child.path)) }
@@ -77,8 +76,7 @@ export function Sidebar({ open, collapsed, onClose, onToggle }: {
         {visibleItems.map((item) => {
           const active = item.path === '/'
             ? location.pathname === '/'
-            : (item.key === 'mealPlans' && location.pathname.startsWith('/admin/meal-plans/'))
-              || (item.children?.some(child => location.pathname.startsWith(child.path)) ?? location.pathname.startsWith(item.path));
+            : item.children?.some(child => location.pathname.startsWith(child.path)) ?? location.pathname.startsWith(item.path);
           return (
             <Box key={item.path}>
               <ListItemButton
