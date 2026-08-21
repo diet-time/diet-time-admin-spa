@@ -6,6 +6,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { colors } from '@/theme/theme';
 import { useQuery } from '@tanstack/react-query';
 import { accessControlApi } from '@/api/accessControlApi';
+import { canReadPath } from '@/auth/screenPermissionRoutes';
 
 const expandedWidth = 264;
 const collapsedWidth = 76;
@@ -57,10 +58,9 @@ export function Sidebar({ open, collapsed, onClose, onToggle }: {
   const permissions = useQuery({ queryKey: ['access-control', 'me', 'screens'], queryFn: accessControlApi.myScreens, staleTime: 60_000 });
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ mealPlans: location.pathname.startsWith('/meal-plans') || ['/admin/package-options', '/admin/plan-pricing', '/admin/weekly-menu', '/admin/meal-plans/'].some(path => location.pathname.startsWith(path)), operations: location.pathname.startsWith('/operations'), administration: ['/settings', '/users', '/roles'].some(path => location.pathname.startsWith(path)) });
   const width = collapsed ? collapsedWidth : expandedWidth;
-  const allowedRoutes = permissions.data ? new Set(permissions.data.filter(permission => permission.canRead).map(permission => permission.routeUrl)) : null;
-  const visibleItems = items.map(item => item.children && allowedRoutes
-    ? { ...item, children: item.children.filter(child => allowedRoutes.has(child.path)) }
-    : item).filter(item => !allowedRoutes || (item.children ? item.children.length > 0 : allowedRoutes.has(item.path)));
+  const visibleItems = items.map(item => item.children && permissions.data
+    ? { ...item, children: item.children.filter(child => canReadPath(permissions.data, child.path)) }
+    : item).filter(item => !permissions.data || (item.children ? item.children.length > 0 : canReadPath(permissions.data, item.path)));
 
   const content = (
     <Box sx={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', bgcolor: colors.emerald, color: 'white' }}>

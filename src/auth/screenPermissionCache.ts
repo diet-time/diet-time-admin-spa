@@ -1,4 +1,5 @@
 import type { ScreenPermission } from '@/api/apiTypes';
+import { permissionForPath } from './screenPermissionRoutes';
 
 let loaded = false;
 let screens: ScreenPermission[] = [];
@@ -7,7 +8,5 @@ export const setCachedScreenPermissions = (value: ScreenPermission[]) => { scree
 export const clearCachedScreenPermissions = () => { screens = []; loaded = false; };
 export const canWriteFromPath = (pathname: string) => {
   if (!loaded) return true;
-  return screens
-    .filter(screen => screen.routeUrl && (pathname === screen.routeUrl || (screen.routeUrl !== '/' && pathname.startsWith(`${screen.routeUrl}/`))))
-    .sort((a, b) => (b.routeUrl?.length ?? 0) - (a.routeUrl?.length ?? 0))[0]?.canWrite ?? false;
+  return permissionForPath(screens, pathname)?.canWrite ?? false;
 };
