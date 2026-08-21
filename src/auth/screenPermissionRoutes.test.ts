@@ -19,6 +19,7 @@ describe('meal subscription screen permissions', () => {
   it('uses the existing meal plans permission for new screens', () => {
     const screens = [permission('/meal-plans')];
     expect(canReadPath(screens, '/admin/package-options')).toBe(true);
+    expect(canReadPath(screens, '/admin/durations')).toBe(true);
     expect(canReadPath(screens, '/admin/plan-pricing')).toBe(true);
   });
 

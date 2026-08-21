@@ -24,6 +24,7 @@ const items: NavItem[] = [
   { key: 'mealPlans', path: '/meal-plans', icon: <MenuBookOutlined />, children: [
     { label: 'Plan Templates', path: '/meal-plans' },
     { label: 'Package Options', path: '/admin/package-options' },
+    { label: 'Durations', path: '/admin/durations' },
     { label: 'Plan Pricing', path: '/admin/plan-pricing' },
   ] },
   { key: 'operations', path: '/operations', icon: <CalendarMonthOutlined />, children: [
@@ -55,7 +56,7 @@ export function Sidebar({ open, collapsed, onClose, onToggle }: {
   const desktop = useMediaQuery(theme.breakpoints.up('md'));
   const location = useLocation();
   const permissions = useQuery({ queryKey: ['access-control', 'me', 'screens'], queryFn: accessControlApi.myScreens, staleTime: 60_000 });
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ mealPlans: location.pathname.startsWith('/meal-plans') || ['/admin/package-options', '/admin/plan-pricing'].some(path => location.pathname.startsWith(path)), operations: location.pathname.startsWith('/operations'), administration: ['/settings', '/users', '/roles'].some(path => location.pathname.startsWith(path)) });
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ mealPlans: location.pathname.startsWith('/meal-plans') || ['/admin/package-options', '/admin/durations', '/admin/plan-pricing'].some(path => location.pathname.startsWith(path)), operations: location.pathname.startsWith('/operations'), administration: ['/settings', '/users', '/roles'].some(path => location.pathname.startsWith(path)) });
   const width = collapsed ? collapsedWidth : expandedWidth;
   const visibleItems = items.map(item => item.children && permissions.data
     ? { ...item, children: item.children.filter(child => canReadPath(permissions.data, child.path)) }

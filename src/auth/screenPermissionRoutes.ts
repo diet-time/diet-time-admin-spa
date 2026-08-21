@@ -2,6 +2,7 @@ import type { ScreenPermission } from '@/api/apiTypes';
 
 const legacyPermissionRoutes = (pathname: string) => {
   if (pathname === '/admin/package-options') return ['/meal-plans'];
+  if (pathname === '/admin/durations') return ['/meal-plans/pricing', '/meal-plans'];
   if (pathname === '/admin/plan-pricing') return ['/meal-plans/pricing', '/meal-plans'];
   return [];
 };

@@ -25,7 +25,7 @@ describe('PricePackagesTab', () => {
 
   it('loads the tab and preserves API package ordering', async () => {
     renderTab();
-    expect(await screen.findByRole('heading', { name: 'Price Packages' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Durations' })).toBeInTheDocument();
     const rows = await screen.findAllByRole('row');
     expect(within(rows[1]!).getByText('DAY')).toBeInTheDocument();
     expect(within(rows[2]!).getByText('WEEK')).toBeInTheDocument();
@@ -35,27 +35,27 @@ describe('PricePackagesTab', () => {
     const user = userEvent.setup();
     renderTab();
     await screen.findByText('WEEK');
-    await user.type(screen.getByPlaceholderText('Search package code or name'), 'week');
+    await user.type(screen.getByPlaceholderText('Search duration code or name'), 'week');
     await user.click(screen.getByLabelText('Status'));
     await user.click(await screen.findByRole('option', { name: 'Inactive' }));
     await waitFor(() => expect(mealPlanPricePackagesApi.list).toHaveBeenLastCalledWith(expect.objectContaining({ search: 'week', isActive: false }), expect.any(AbortSignal)));
   });
 
-  it('validates required package fields and accepts Arabic input in create requests', async () => {
+  it('validates required duration fields and accepts Arabic input in create requests', async () => {
     const user = userEvent.setup();
     renderTab();
     await screen.findByText('WEEK');
-    await user.click(screen.getByRole('button', { name: 'Add Package' }));
-    await user.click(screen.getByRole('button', { name: 'Save Package' }));
-    expect(screen.getByText('Package code is required.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Add Duration' }));
+    await user.click(screen.getByRole('button', { name: 'Save Duration' }));
+    expect(screen.getByText('Duration code is required.')).toBeInTheDocument();
 
-    await user.type(screen.getByLabelText(/Package Code/), 'month');
+    await user.type(screen.getByLabelText(/Duration Code/), 'month');
     await user.type(screen.getByLabelText(/English Name/), '1 Month');
     await user.type(screen.getByLabelText(/Arabic Name/), 'شهر واحد');
     await user.type(screen.getByLabelText(/Service Days/), '24');
     await user.clear(screen.getByLabelText(/Display Order/));
     await user.type(screen.getByLabelText(/Display Order/), '4');
-    await user.click(screen.getByRole('button', { name: 'Save Package' }));
+    await user.click(screen.getByRole('button', { name: 'Save Duration' }));
 
     await waitFor(() => expect(mealPlanPricePackagesApi.create).toHaveBeenCalledWith({ code: 'MONTH', nameEn: '1 Month', nameAr: 'شهر واحد', durationDays: 24, displayOrder: 4, isActive: true }));
   });
@@ -66,7 +66,7 @@ describe('PricePackagesTab', () => {
     await screen.findByText('WEEK');
     await user.click(screen.getByRole('button', { name: 'Edit 1 Week' }));
     expect(screen.getByLabelText(/Service Days/)).toBeDisabled();
-    expect(screen.getByText(/cannot be changed because this package is already used/)).toBeInTheDocument();
+    expect(screen.getByText(/cannot be changed because this duration is already used/)).toBeInTheDocument();
   });
 
   it('activates or deactivates packages after confirmation', async () => {

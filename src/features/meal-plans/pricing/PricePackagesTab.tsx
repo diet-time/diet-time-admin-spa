@@ -74,8 +74,8 @@ const packageForm = (item: MealPlanPricePackage): PackageFormValues => ({
 
 const validatePackage = (values: PackageFormValues): PackageFormErrors => {
   const errors: PackageFormErrors = {};
-  if (!values.code.trim()) errors.code = 'Package code is required.';
-  else if (values.code.trim().length > 50) errors.code = 'Package code must be 50 characters or fewer.';
+  if (!values.code.trim()) errors.code = 'Duration code is required.';
+  else if (values.code.trim().length > 50) errors.code = 'Duration code must be 50 characters or fewer.';
   if (!values.nameEn.trim()) errors.nameEn = 'English name is required.';
   if (!values.nameAr.trim()) errors.nameAr = 'Arabic name is required.';
   if (!Number.isInteger(Number(values.durationDays)) || Number(values.durationDays) <= 0) errors.durationDays = 'Service days must be a whole number greater than zero.';
@@ -88,15 +88,15 @@ interface ValidationEnvelope {
 }
 
 const packageApiError = (error: unknown) => {
-  if (!axios.isAxiosError<ValidationEnvelope>(error)) return { message: 'Unable to save the price package. Please try again.', fields: {} as PackageFormErrors };
+  if (!axios.isAxiosError<ValidationEnvelope>(error)) return { message: 'Unable to save the duration. Please try again.', fields: {} as PackageFormErrors };
   const errors = error.response?.data?.errors;
   const fields: PackageFormErrors = {};
-  let message = 'Unable to save the price package. Please try again.';
+  let message = 'Unable to save the duration. Please try again.';
   if (Array.isArray(errors)) {
     const first = errors[0];
     const code = first?.code?.toLowerCase() ?? '';
-    if (code.includes('duplicate')) fields.code = 'A package with this code already exists.';
-    else if (code.includes('duration') || code.includes('referenced')) fields.durationDays = 'Service days cannot be changed because the package is already used.';
+    if (code.includes('duplicate')) fields.code = 'A duration with this code already exists.';
+    else if (code.includes('duration') || code.includes('referenced')) fields.durationDays = 'Service days cannot be changed because the duration is already used.';
     message = first?.message ?? message;
   } else if (errors) {
     for (const [field, messages] of Object.entries(errors)) {
@@ -148,7 +148,7 @@ export function PricePackagesTab({ createRequest = 0 }: { createRequest?: number
       id ? mealPlanPricePackagesApi.update(id, body) : mealPlanPricePackagesApi.create(body),
     onSuccess: async (_, variables) => {
       setDialog(null);
-      setSuccess(variables.id ? 'Price package updated successfully.' : 'Price package created successfully.');
+      setSuccess(variables.id ? 'Duration updated successfully.' : 'Duration created successfully.');
       await refreshPackages();
     },
   });
@@ -157,7 +157,7 @@ export function PricePackagesTab({ createRequest = 0 }: { createRequest?: number
     mutationFn: (item: MealPlanPricePackage) => mealPlanPricePackagesApi.setStatus(item.id, !item.isActive),
     onSuccess: async (_, item) => {
       setConfirmPackage(null);
-      setSuccess(`Price package ${item.isActive ? 'deactivated' : 'activated'} successfully.`);
+      setSuccess(`Duration ${item.isActive ? 'deactivated' : 'activated'} successfully.`);
       await refreshPackages();
     },
   });
@@ -169,13 +169,13 @@ export function PricePackagesTab({ createRequest = 0 }: { createRequest?: number
     <Stack spacing={2.5}>
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'flex-start' }} gap={2}>
         <Box>
-          <Typography variant="h2">Price Packages</Typography>
-          <Typography color="text.secondary">Manage customer-facing pricing durations used when configuring meal-plan prices.</Typography>
+          <Typography variant="h2">Durations</Typography>
+          <Typography color="text.secondary">Manage the service durations available when configuring meal-plan prices.</Typography>
         </Box>
-        <Button variant="contained" startIcon={<Add />} onClick={() => setDialog({})}>Add Package</Button>
+        <Button variant="contained" startIcon={<Add />} onClick={() => setDialog({})}>Add Duration</Button>
       </Stack>
 
-      {statusMutation.isError && <Alert severity="error">Unable to update the price package status. Please try again.</Alert>}
+      {statusMutation.isError && <Alert severity="error">Unable to update the duration status. Please try again.</Alert>}
 
       <Card>
         <CardContent sx={{ pb: '16px !important' }}>
@@ -184,7 +184,7 @@ export function PricePackagesTab({ createRequest = 0 }: { createRequest?: number
               <TextField
                 fullWidth
                 value={search}
-                placeholder="Search package code or name"
+                placeholder="Search duration code or name"
                 slotProps={{ input: { startAdornment: <InputAdornment position="start"><Search /></InputAdornment> } }}
                 onChange={(event) => { setSearch(event.target.value); setPage(0); }}
               />
@@ -203,17 +203,17 @@ export function PricePackagesTab({ createRequest = 0 }: { createRequest?: number
         </CardContent>
 
         {listQuery.isLoading ? <Box p={2}><LoadingState /></Box> : listQuery.isError ? (
-          <Box p={2}><ErrorState message="Unable to load price packages." onRetry={() => void listQuery.refetch()} /></Box>
+          <Box p={2}><ErrorState message="Unable to load durations." onRetry={() => void listQuery.refetch()} /></Box>
         ) : !items.length ? (
           <Stack alignItems="center" spacing={2} py={5}>
-            <Typography variant="h3">No price packages found.</Typography>
-            <Button variant="contained" startIcon={<Add />} onClick={() => setDialog({})}>Add Package</Button>
+            <Typography variant="h3">No durations found.</Typography>
+            <Button variant="contained" startIcon={<Add />} onClick={() => setDialog({})}>Add Duration</Button>
           </Stack>
         ) : (
           <TableContainer sx={{ overflowX: 'auto' }}>
             <Table size="small" sx={{ minWidth: 950, '& .MuiTableCell-head': { color: 'text.secondary', fontWeight: 750, bgcolor: '#FBFCFB' }, '& .MuiTableCell-root': { py: 1.75 } }}>
               <TableHead><TableRow>
-                <TableCell>Display Order</TableCell><TableCell>Package Code</TableCell><TableCell>English Name</TableCell><TableCell>Arabic Name</TableCell><TableCell>Service Days</TableCell><TableCell>Status</TableCell><TableCell>Updated At</TableCell><TableCell align="center">Actions</TableCell>
+                <TableCell>Display Order</TableCell><TableCell>Duration Code</TableCell><TableCell>English Name</TableCell><TableCell>Arabic Name</TableCell><TableCell>Service Days</TableCell><TableCell>Status</TableCell><TableCell>Updated At</TableCell><TableCell align="center">Actions</TableCell>
               </TableRow></TableHead>
               <TableBody>{items.map((item) => (
                 <TableRow key={item.id} hover>
@@ -225,8 +225,8 @@ export function PricePackagesTab({ createRequest = 0 }: { createRequest?: number
                   <TableCell><StatusChip label={item.isActive ? 'Active' : 'Inactive'} /></TableCell>
                   <TableCell>{item.updatedAt ? format(parseISO(item.updatedAt), 'dd MMM yyyy') : '—'}</TableCell>
                   <TableCell align="center">
-                    <Tooltip title="Edit package"><IconButton color="primary" aria-label={`Edit ${item.nameEn}`} onClick={() => setDialog({ item })}><EditOutlined /></IconButton></Tooltip>
-                    <Tooltip title={item.isActive ? 'Deactivate package' : 'Activate package'}><IconButton color={item.isActive ? 'warning' : 'success'} aria-label={`${item.isActive ? 'Deactivate' : 'Activate'} ${item.nameEn}`} onClick={() => setConfirmPackage(item)}>{item.isActive ? <ToggleOffOutlined /> : <ToggleOnOutlined />}</IconButton></Tooltip>
+                    <Tooltip title="Edit duration"><IconButton color="primary" aria-label={`Edit ${item.nameEn}`} onClick={() => setDialog({ item })}><EditOutlined /></IconButton></Tooltip>
+                    <Tooltip title={item.isActive ? 'Deactivate duration' : 'Activate duration'}><IconButton color={item.isActive ? 'warning' : 'success'} aria-label={`${item.isActive ? 'Deactivate' : 'Activate'} ${item.nameEn}`} onClick={() => setConfirmPackage(item)}>{item.isActive ? <ToggleOffOutlined /> : <ToggleOnOutlined />}</IconButton></Tooltip>
                   </TableCell>
                 </TableRow>
               ))}</TableBody>
@@ -249,7 +249,7 @@ export function PricePackagesTab({ createRequest = 0 }: { createRequest?: number
 
       <Dialog open={!!confirmPackage} onClose={() => !statusMutation.isPending && setConfirmPackage(null)} maxWidth="xs" fullWidth>
         <DialogTitle>{confirmPackage?.isActive ? <>Deactivate &ldquo;{confirmPackage.nameEn}&rdquo;?</> : <>Activate &ldquo;{confirmPackage?.nameEn}&rdquo;?</>}</DialogTitle>
-        <DialogContent><Typography>{confirmPackage?.isActive ? 'This package will no longer be available when creating new prices. Existing pricing records will remain unchanged.' : 'This package will be available when creating new prices.'}</Typography></DialogContent>
+        <DialogContent><Typography>{confirmPackage?.isActive ? 'This duration will no longer be available when creating new prices. Existing pricing records will remain unchanged.' : 'This duration will be available when creating new prices.'}</Typography></DialogContent>
         <DialogActions>
           <Button disabled={statusMutation.isPending} onClick={() => setConfirmPackage(null)}>Cancel</Button>
           <Button variant="contained" color={confirmPackage?.isActive ? 'warning' : 'primary'} disabled={!confirmPackage || statusMutation.isPending} onClick={() => confirmPackage && statusMutation.mutate(confirmPackage)}>{confirmPackage?.isActive ? 'Deactivate' : 'Activate'}</Button>
@@ -289,15 +289,15 @@ function PackageDialog({ item, pending, apiError, onClose, onSave }: {
 
   return (
     <Dialog open fullWidth maxWidth="sm" disableEscapeKeyDown={pending} onClose={(_, reason) => { if (!pending && reason !== 'backdropClick') onClose(); }}>
-      <DialogTitle>{item ? 'Edit Price Package' : 'Add Price Package'}</DialogTitle>
+      <DialogTitle>{item ? 'Edit Duration' : 'Add Duration'}</DialogTitle>
       <DialogContent>
         <Stack spacing={2.25} mt={1}>
           {apiError && !Object.keys(apiError.fields).length && <Alert severity="error">{apiError.message}</Alert>}
-          <TextField required label="Package Code" placeholder="WEEK" value={values.code} disabled={pending || !!item} error={!!fieldErrors.code} helperText={fieldErrors.code} slotProps={{ htmlInput: { maxLength: 50 } }} onChange={(event) => setValues({ ...values, code: event.target.value.toUpperCase() })} />
+          <TextField required label="Duration Code" placeholder="WEEK" value={values.code} disabled={pending || !!item} error={!!fieldErrors.code} helperText={fieldErrors.code} slotProps={{ htmlInput: { maxLength: 50 } }} onChange={(event) => setValues({ ...values, code: event.target.value.toUpperCase() })} />
           <TextField required label="English Name" placeholder="1 Week" value={values.nameEn} disabled={pending} error={!!fieldErrors.nameEn} helperText={fieldErrors.nameEn} onChange={(event) => setValues({ ...values, nameEn: event.target.value })} />
           <TextField required label="Arabic Name" placeholder="أسبوع واحد" value={values.nameAr} disabled={pending} error={!!fieldErrors.nameAr} helperText={fieldErrors.nameAr} slotProps={{ htmlInput: { dir: 'rtl' } }} onChange={(event) => setValues({ ...values, nameAr: event.target.value })} />
           <Grid container spacing={2}>
-            <Grid size={{ xs: 12, sm: 6 }}><TextField required fullWidth type="number" label="Service Days" value={values.durationDays} disabled={pending || serviceDaysLocked} error={!!fieldErrors.durationDays} helperText={fieldErrors.durationDays ?? (serviceDaysLocked ? 'Service days cannot be changed because this package is already used by meal-plan pricing.' : 'Number of meal-service days included in this package.')} slotProps={{ htmlInput: { min: 1, step: 1 } }} onChange={(event) => setValues({ ...values, durationDays: event.target.value })} /></Grid>
+            <Grid size={{ xs: 12, sm: 6 }}><TextField required fullWidth type="number" label="Service Days" value={values.durationDays} disabled={pending || serviceDaysLocked} error={!!fieldErrors.durationDays} helperText={fieldErrors.durationDays ?? (serviceDaysLocked ? 'Service days cannot be changed because this duration is already used by meal-plan pricing.' : 'Number of meal-service days included in this duration.')} slotProps={{ htmlInput: { min: 1, step: 1 } }} onChange={(event) => setValues({ ...values, durationDays: event.target.value })} /></Grid>
             <Grid size={{ xs: 12, sm: 6 }}><TextField required fullWidth type="number" label="Display Order" value={values.displayOrder} disabled={pending} error={!!fieldErrors.displayOrder} helperText={fieldErrors.displayOrder} slotProps={{ htmlInput: { min: 0, step: 1 } }} onChange={(event) => setValues({ ...values, displayOrder: event.target.value })} /></Grid>
           </Grid>
           <FormControlLabel disabled={pending} control={<Switch checked={values.isActive} onChange={(_, checked) => setValues({ ...values, isActive: checked })} />} label="Active" />
@@ -305,7 +305,7 @@ function PackageDialog({ item, pending, apiError, onClose, onSave }: {
       </DialogContent>
       <DialogActions>
         <Button disabled={pending} onClick={onClose}>Cancel</Button>
-        <Button variant="contained" disabled={pending} onClick={submit}>{pending ? 'Saving…' : 'Save Package'}</Button>
+        <Button variant="contained" disabled={pending} onClick={submit}>{pending ? 'Saving…' : 'Save Duration'}</Button>
       </DialogActions>
     </Dialog>
   );
