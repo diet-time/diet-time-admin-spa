@@ -1,6 +1,7 @@
 import { Add, Close, CloudUploadOutlined, ContentCopy, DeleteOutline, DragIndicator } from '@mui/icons-material';
 import {
   Alert,
+  Avatar,
   Autocomplete,
   Box,
   Button,
@@ -53,6 +54,7 @@ interface PlanOption {
   id: string;
   name: string;
   default: boolean;
+  imageUrl?: string;
   additionalPrice: number;
   available: boolean;
   displayOrder: number;
@@ -325,6 +327,7 @@ export function PlanBuilderPage() {
           id: option.mealItemId,
           name: option.mealName,
           default: option.isDefault,
+          imageUrl: option.imageUrl ?? undefined,
           additionalPrice: option.additionalPrice,
           available: option.isAvailable,
           displayOrder: option.displayOrder,
@@ -428,7 +431,7 @@ export function PlanBuilderPage() {
   const addMeal = () => {
     if (!slot || !selectedMeal || slot.options.some((option) => option.id === selectedMeal.id)) return;
     updateSlot({
-      options: [...slot.options, { id: selectedMeal.id, name: selectedMeal.nameEn, default: false, additionalPrice: 0, available: true, displayOrder: slot.options.length }],
+      options: [...slot.options, { id: selectedMeal.id, name: selectedMeal.nameEn, default: false, imageUrl: selectedMeal.thumbnailUrl, additionalPrice: 0, available: true, displayOrder: slot.options.length }],
     });
     setSelectedMeal(null);
     setMealSearch('');
@@ -864,6 +867,7 @@ export function PlanBuilderPage() {
                     <Chip
                       key={option.id}
                       label={option.name}
+                      avatar={option.imageUrl ? <Avatar src={option.imageUrl} alt={option.name} variant="rounded" sx={{ width: 32, height: 32 }} /> : undefined}
                       onDelete={viewOnly ? undefined : () => updateSlot({ options: slot.options.filter((item) => item.id !== option.id) })}
                       sx={{ bgcolor: 'rgba(0,103,78,.08)', '& .MuiChip-deleteIcon': { color: 'rgba(0,103,78,.45)' } }}
                     />
@@ -876,10 +880,6 @@ export function PlanBuilderPage() {
                   <Typography color="text.secondary">Add enough active options to meet the slot minimum.</Typography>
                 </Box>
               )}
-              <Divider />
-              <Alert severity="info" sx={{ mt: 2 }}>
-                Archived meals cannot be added. Availability conflicts and duplicate meal/variant combinations are validated before save and publish.
-              </Alert>
             </Grid>
           </Grid>
         </CardContent>

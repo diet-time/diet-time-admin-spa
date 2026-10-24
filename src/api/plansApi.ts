@@ -40,7 +40,7 @@ export interface PlanDetail {
       maximumSelection: number;
       isRequired: boolean;
       isActive: boolean;
-      options: Array<{ id: string; mealItemId: string; mealName: string; isDefault: boolean; additionalPrice: number; isAvailable: boolean; displayOrder: number }>;
+      options: Array<{ id: string; mealItemId: string; mealName: string; isDefault: boolean; additionalPrice: number; isAvailable: boolean; displayOrder: number; imageUrl?: string | null }>;
     }>;
   }>;
 }
