@@ -26,13 +26,15 @@ import {
   Paper,
   Stack,
   TextField,
+  Tabs,
+  Tab,
   Typography,
 } from '@mui/material';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { masterDataApi } from '@/api/masterDataApi';
 import { mealsApi } from '@/api/mealsApi';
 import { plansApi } from '@/api/plansApi';
@@ -66,6 +68,7 @@ interface Slot {
 
 interface MenuDay {
   id: string;
+  weekNumber: number;
   menuWeekday: MenuWeekday;
   displayOrder: number;
   isActive: boolean;
@@ -87,6 +90,7 @@ const planTypes = ['STANDARD', 'WEIGHT_LOSS', 'WEIGHT_GAIN', 'KETO', 'DIABETIC',
 
 const initial: MenuDay[] = MVP_MENU_WEEKDAYS.map((menuWeekday) => ({
   id: `new-day-${menuWeekday}`,
+  weekNumber: 1,
   menuWeekday,
   displayOrder: defaultWeekdayDisplayOrder(menuWeekday),
   isActive: true,
@@ -96,9 +100,13 @@ const initial: MenuDay[] = MVP_MENU_WEEKDAYS.map((menuWeekday) => ({
 export function PlanBuilderPage() {
   const { t } = useTranslation();
   const { planId } = useParams();
+  const [searchParams] = useSearchParams();
+  const viewOnly = searchParams.get('view') === 'menu';
   const navigate = useNavigate();
   const [days, setDays] = useState(initial);
   const [selectedDay, setSelectedDay] = useState(0);
+  const [selectedWeek, setSelectedWeek] = useState(1);
+  const [copyFromWeek, setCopyFromWeek] = useState(2);
   const [selectedSlot, setSelectedSlot] = useState(0);
   const [mealSearch, setMealSearch] = useState('');
   const [selectedMeal, setSelectedMeal] = useState<MealSummary | null>(null);
@@ -123,7 +131,8 @@ export function PlanBuilderPage() {
     isCustomizable: true,
     durationDays: 20,
   });
-  const day = days[selectedDay];
+  const weekDays = days.map((value, index) => ({ value, index })).filter(({ value }) => value.weekNumber === selectedWeek);
+  const day = days[selectedDay]?.weekNumber === selectedWeek ? days[selectedDay] : undefined;
   const slot = day?.slots[selectedSlot];
 
   const mealTypesQuery = useQuery({
@@ -156,10 +165,12 @@ export function PlanBuilderPage() {
     refetchOnMount: 'always',
   });
   const createDayMutation = useMutation({
-    mutationFn: (body: { menuWeekday: MenuWeekday; displayOrder: number; isActive: boolean }) =>
+    mutationFn: (body: { weekNumber: number; menuWeekday: MenuWeekday; displayOrder: number; isActive: boolean }) =>
       plansApi.createTemplateDay(planId!, body),
     onSuccess: async () => {
-      await planQuery.refetch();
+      const result = await planQuery.refetch();
+      const createdIndex = result.data?.days.findIndex((item) => item.weekNumber === selectedWeek && item.menuWeekday === newWeekday) ?? -1;
+      if (createdIndex >= 0) setSelectedDay(createdIndex);
       setAddDayOpen(false);
     },
     onError: (error) => {
@@ -178,9 +189,14 @@ export function PlanBuilderPage() {
   const selectedMealTypeId = slot?.mealTypeId
     ?? mealTypes.find((mealType) => mealType.nameEn === slot?.title)?.id
     ?? '';
-  const issues = days.flatMap((planDay) => planDay.slots
-    .filter((planSlot) => planSlot.required && planSlot.options.length < planSlot.min)
-    .map((planSlot) => `${t(`weekdays.${planDay.menuWeekday}`)} ${planSlot.title} needs at least ${planSlot.min} active option(s).`));
+  const issues = Array.from({ length: 4 }, (_, index) => index + 1).flatMap((week) => {
+    const weekConfig = days.filter((planDay) => planDay.weekNumber === week);
+    const missingDays = MVP_MENU_WEEKDAYS.filter((weekday) => !weekConfig.some((planDay) => planDay.menuWeekday === weekday && planDay.isActive));
+    const missingSlots = weekConfig.filter((planDay) => planDay.isActive && !planDay.slots.some((planSlot) => planSlot.required));
+    return [...(missingDays.length ? [`Week ${week} is missing service days: ${missingDays.join(', ')}.`] : []), ...missingSlots.map((planDay) => `Week ${week} ${t(`weekdays.${planDay.menuWeekday}`)} needs a required meal slot.`), ...weekConfig.flatMap((planDay) => planDay.slots
+      .filter((planSlot) => planSlot.required && planSlot.options.length < planSlot.min)
+      .map((planSlot) => `Week ${week} ${t(`weekdays.${planDay.menuWeekday}`)} ${planSlot.title} needs at least ${planSlot.min} active option(s).`))];
+  });
   const mealTypeIdFor = (planSlot: Slot) => planSlot.mealTypeId
     ?? mealTypes.find((mealType) => mealType.nameEn === planSlot.title)?.id;
   const hasIncompleteArabicTranslation = !!planDetails.shortDescriptionAr.trim()
@@ -194,6 +210,7 @@ export function PlanBuilderPage() {
     mutationFn: async (publish: boolean) => {
       const input = {
         code: planDetails.code.trim().toUpperCase(),
+        cycleWeeks: 4,
         planType: planDetails.planType,
         durationDays: planDetails.durationDays,
         isCustomizable: planDetails.isCustomizable,
@@ -212,6 +229,7 @@ export function PlanBuilderPage() {
           }] : []),
         ],
         days: days.map((planDay) => ({
+          weekNumber: planDay.weekNumber,
           menuWeekday: planDay.menuWeekday,
           displayOrder: planDay.displayOrder,
           isActive: planDay.isActive,
@@ -289,6 +307,7 @@ export function PlanBuilderPage() {
     });
     setDays(plan.days.map((planDay) => ({
       id: planDay.id,
+      weekNumber: planDay.weekNumber ?? 1,
       menuWeekday: planDay.menuWeekday,
       displayOrder: planDay.displayOrder,
       isActive: planDay.isActive,
@@ -324,9 +343,10 @@ export function PlanBuilderPage() {
   };
 
   const openAddDay = () => {
-    const available = MVP_MENU_WEEKDAYS.find((weekday) => !isWeekdayConfigured(days, weekday));
+    const currentWeekDays = days.filter((item) => item.weekNumber === selectedWeek);
+    const available = MVP_MENU_WEEKDAYS.find((weekday) => !isWeekdayConfigured(currentWeekDays, weekday));
     setNewWeekday(available ?? '');
-    setNewDisplayOrder(available ? defaultWeekdayDisplayOrder(available) : days.length + 1);
+    setNewDisplayOrder(available ? defaultWeekdayDisplayOrder(available) : currentWeekDays.length + 1);
     setNewDayActive(true);
     setDayError('');
     setAddDayOpen(true);
@@ -335,14 +355,15 @@ export function PlanBuilderPage() {
   const addDay = async () => {
     if (!newWeekday) { setDayError(t('weeklySchedule.weekdayRequired')); return; }
     if (newDisplayOrder <= 0) { setDayError(t('weeklySchedule.invalidDisplayOrder')); return; }
-    if (isWeekdayConfigured(days, newWeekday)) { setDayError(t('weeklySchedule.duplicateWeekday')); return; }
+    const currentWeekDays = days.filter((item) => item.weekNumber === selectedWeek);
+    if (isWeekdayConfigured(currentWeekDays, newWeekday)) { setDayError(t('weeklySchedule.duplicateWeekday')); return; }
     if (planId) {
-      await createDayMutation.mutateAsync({ menuWeekday: newWeekday, displayOrder: newDisplayOrder, isActive: newDayActive }).catch(() => undefined);
+      await createDayMutation.mutateAsync({ weekNumber: selectedWeek, menuWeekday: newWeekday, displayOrder: newDisplayOrder, isActive: newDayActive }).catch(() => undefined);
       return;
     }
-    const next = sortMenuDays([...days, { id: `new-day-${Date.now()}`, menuWeekday: newWeekday, displayOrder: newDisplayOrder, isActive: newDayActive, slots: [] }]);
+    const next = [...days, { id: `new-day-${Date.now()}`, weekNumber: selectedWeek, menuWeekday: newWeekday, displayOrder: newDisplayOrder, isActive: newDayActive, slots: [] }];
     setDays(next);
-    setSelectedDay(next.findIndex((item) => item.menuWeekday === newWeekday));
+    setSelectedDay(next.findIndex((item) => item.weekNumber === selectedWeek && item.menuWeekday === newWeekday));
     setSelectedSlot(0);
     setAddDayOpen(false);
   };
@@ -370,6 +391,19 @@ export function PlanBuilderPage() {
       return next.map((item, index) => ({ ...item, displayOrder: index + 1 }));
     });
     setSelectedDay(to);
+  };
+
+  const copyWeek = () => {
+    const sourceDays = days.filter((item) => item.weekNumber === copyFromWeek);
+    const targetDays = days.filter((item) => item.weekNumber === selectedWeek);
+    if (!sourceDays.length) return;
+    if (targetDays.length && !window.confirm(`Replace all menu data in Week ${selectedWeek} with Week ${copyFromWeek}?`)) return;
+    const sourceIds = new Set(sourceDays.map((item) => item.id));
+    const copy = sourceDays.map((item) => ({ ...item, id: `new-day-${crypto.randomUUID()}`, weekNumber: selectedWeek, slots: item.slots.map((entry) => ({ ...entry, id: `new-slot-${crypto.randomUUID()}`, options: entry.options.map((option) => ({ ...option })) })) }));
+    const next = [...days.filter((item) => !sourceIds.has(item.id) && item.weekNumber !== selectedWeek), ...copy];
+    setDays(next);
+    setSelectedDay(next.findIndex((item) => item.weekNumber === selectedWeek));
+    setSelectedSlot(0);
   };
 
   const addSlot = () => {
@@ -441,21 +475,21 @@ export function PlanBuilderPage() {
           <Typography color="text.secondary">{t('weeklySchedule.hierarchy')}</Typography>
         </Box>
         <Stack direction="row" gap={1} flexWrap="wrap">
-          <Button onClick={() => navigate('/meal-plans')}>Cancel</Button>
-          <Button
+          <Button onClick={() => navigate('/meal-plans')}>{viewOnly ? 'Close' : 'Cancel'}</Button>
+          {!viewOnly && <Button
             variant="outlined"
             disabled={!canSave || saveMutation.isPending}
             onClick={() => saveMutation.mutate(false)}
           >
             {saveMutation.isPending ? 'Saving…' : 'Save draft'}
-          </Button>
-          <Button
+          </Button>}
+          {!viewOnly && <Button
             variant="contained"
             disabled={!canSave || issues.length > 0 || saveMutation.isPending}
             onClick={() => saveMutation.mutate(true)}
           >
             {saveMutation.isPending && saveMutation.variables ? 'Publishing…' : 'Publish'}
-          </Button>
+          </Button>}
         </Stack>
       </Stack>
       {issues.length > 0 && (
@@ -473,9 +507,10 @@ export function PlanBuilderPage() {
             </Box>
             <Grid container spacing={2} alignItems="center">
               <Grid size={{ xs: 12, md: 3 }}>
-                <TextField
+              <TextField
                   required
                   fullWidth
+                disabled={viewOnly}
                   label="Plan code"
                   value={planDetails.code}
                   slotProps={{ htmlInput: { maxLength: 50 } }}
@@ -486,6 +521,7 @@ export function PlanBuilderPage() {
                 <TextField
                   select
                   fullWidth
+                  disabled={viewOnly}
                   label={t('weeklySchedule.templateType')}
                   value={planDetails.planType}
                   onChange={(event) => setPlanDetails((current) => ({ ...current, planType: event.target.value }))}
@@ -495,7 +531,7 @@ export function PlanBuilderPage() {
               </Grid>
               <Grid size={{ xs: 12, md: 3 }}>
                 <FormControlLabel
-                  control={<Checkbox checked={planDetails.isCustomizable} onChange={(_, checked) => setPlanDetails((current) => ({ ...current, isCustomizable: checked }))} />}
+                  control={<Checkbox disabled={viewOnly} checked={planDetails.isCustomizable} onChange={(_, checked) => setPlanDetails((current) => ({ ...current, isCustomizable: checked }))} />}
                   label="Customer customizable"
                 />
               </Grid>
@@ -517,12 +553,14 @@ export function PlanBuilderPage() {
                     <TextField
                       required
                       fullWidth
+                      disabled={viewOnly}
                       label="Plan name"
                       value={planDetails.nameEn}
                       onChange={(event) => setPlanDetails((current) => ({ ...current, nameEn: event.target.value }))}
                     />
                     <TextField
                       fullWidth
+                      disabled={viewOnly}
                       multiline
                       minRows={3}
                       label="Short description"
@@ -540,6 +578,7 @@ export function PlanBuilderPage() {
                     <Typography variant="h3">العربية</Typography>
                     <TextField
                       fullWidth
+                      disabled={viewOnly}
                       label="اسم الخطة"
                       value={planDetails.nameAr}
                       error={hasIncompleteArabicTranslation}
@@ -548,6 +587,7 @@ export function PlanBuilderPage() {
                     />
                     <TextField
                       fullWidth
+                      disabled={viewOnly}
                       multiline
                       minRows={3}
                       label="وصف مختصر"
@@ -590,7 +630,7 @@ export function PlanBuilderPage() {
                         bgcolor: 'background.default',
                       }}
                     />
-                    <IconButton aria-label="Delete meal plan image" disabled={deleteImageMutation.isPending} onClick={() => setDeleteImageOpen(true)} sx={{ position: 'absolute', top: 10, insetInlineEnd: 10, width: 34, height: 34, minWidth: 34, minHeight: 34, bgcolor: 'rgba(255,255,255,.94)', color: 'error.main', boxShadow: '0 2px 10px rgba(23,53,45,.18)', '&:hover': { bgcolor: 'error.main', color: 'common.white' } }}>{deleteImageMutation.isPending ? <CircularProgress size={18} color="inherit" /> : <Close fontSize="small" />}</IconButton>
+                    {!viewOnly && <IconButton aria-label="Delete meal plan image" disabled={deleteImageMutation.isPending} onClick={() => setDeleteImageOpen(true)} sx={{ position: 'absolute', top: 10, insetInlineEnd: 10, width: 34, height: 34, minWidth: 34, minHeight: 34, bgcolor: 'rgba(255,255,255,.94)', color: 'error.main', boxShadow: '0 2px 10px rgba(23,53,45,.18)', '&:hover': { bgcolor: 'error.main', color: 'common.white' } }}>{deleteImageMutation.isPending ? <CircularProgress size={18} color="inherit" /> : <Close fontSize="small" />}</IconButton>}
                   </Box>
                 ) : (
                   <Box sx={{ width: '100%', aspectRatio: '16 / 9', display: 'grid', placeItems: 'center', border: 1, borderColor: 'divider', borderRadius: 2, bgcolor: 'background.default', color: 'text.secondary' }}>No plan image uploaded</Box>
@@ -602,22 +642,46 @@ export function PlanBuilderPage() {
                     <CloudUploadOutlined color="primary" sx={{ fontSize: 44 }} />
                     <Typography fontWeight={700}>Choose a meal plan image</Typography>
                     <Typography variant="body2" color="text.secondary">JPEG, PNG or WebP · recommended 1600 × 900</Typography>
-                    <Button component="label" variant="outlined">
+                    {!viewOnly && <Button component="label" variant="outlined">
                       Browse image
                       <input hidden type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => selectPlanImage(event.target.files?.[0])} />
-                    </Button>
+                    </Button>}
                     {planImage && <Typography variant="caption">{planImage.name} · uploads with the next save or publish</Typography>}
                   </Stack>
                 </Paper>
               </Grid>
             </Grid>
             {planImageProgress !== null && <Box aria-live="polite"><LinearProgress variant="determinate" value={planImageProgress} /><Typography variant="caption">Plan image upload {planImageProgress}% complete</Typography></Box>}
-            <ConfirmDialog open={deleteImageOpen} title="Delete meal plan image?" impact={planImage ? 'This removes the selected image before it is uploaded.' : 'This permanently removes the image from storage. This action cannot be undone.'} confirmLabel="Delete image" onCancel={() => setDeleteImageOpen(false)} onConfirm={deletePlanImage} />
+            {!viewOnly && <ConfirmDialog open={deleteImageOpen} title="Delete meal plan image?" impact={planImage ? 'This removes the selected image before it is uploaded.' : 'This permanently removes the image from storage. This action cannot be undone.'} confirmLabel="Delete image" onCancel={() => setDeleteImageOpen(false)} onConfirm={deletePlanImage} />}
           </Stack>
         </CardContent>
       </Card>
       <Card sx={{ overflow: 'hidden' }}>
         <CardContent sx={{ p: '0 !important' }}>
+          <Box sx={{ px: 2.5, pt: 2 }}>
+            <Tabs value={selectedWeek} onChange={(_, week: number) => {
+              setSelectedWeek(week);
+              setCopyFromWeek((current) => current === week ? week === 1 ? 2 : 1 : current);
+              const firstDay = days.findIndex((item) => item.weekNumber === week);
+              setSelectedDay(Math.max(0, firstDay));
+              setSelectedSlot(0);
+            }} variant="scrollable" allowScrollButtonsMobile>
+              {[1, 2, 3, 4].map((week) => {
+                const configuredDays = days.filter((item) => item.weekNumber === week);
+                const complete = MVP_MENU_WEEKDAYS.every((weekday) => configuredDays.some((item) => item.menuWeekday === weekday && item.isActive))
+                  && configuredDays.filter((item) => item.isActive).every((item) => item.slots.some((entry) => entry.required) && item.slots.filter((entry) => entry.required).every((entry) => entry.options.length >= entry.min));
+                const status = !configuredDays.length ? 'Not configured' : complete ? 'Complete' : 'Incomplete';
+                return <Tab key={week} value={week} label={`Week ${week} · ${status}`} />;
+              })}
+            </Tabs>
+            <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ sm: 'center' }} gap={1} py={1.5}>
+              <Typography variant="body2" color="text.secondary">Copy menu from</Typography>
+              <TextField select size="small" disabled={viewOnly} value={copyFromWeek} onChange={(event) => setCopyFromWeek(Number(event.target.value))} sx={{ minWidth: 130 }}>
+                {[1, 2, 3, 4].filter((week) => week !== selectedWeek).map((week) => <MenuItem key={week} value={week}>Week {week}</MenuItem>)}
+              </TextField>
+              {!viewOnly && <Button startIcon={<ContentCopy />} onClick={copyWeek} disabled={!days.some((item) => item.weekNumber === copyFromWeek)}>Copy menu</Button>}
+            </Stack>
+          </Box>
           <Grid container spacing={0}>
             <Grid
               size={{ xs: 12, lg: 3 }}
@@ -625,18 +689,18 @@ export function PlanBuilderPage() {
             >
               <Stack direction="row" justifyContent="space-between" alignItems="center">
                 <Typography variant="h3">{t('weeklySchedule.title')}</Typography>
-                <Button startIcon={<Add />} onClick={openAddDay}>{t('weeklySchedule.addMenuDay')}</Button>
+                {!viewOnly && <Button startIcon={<Add />} onClick={openAddDay}>{t('weeklySchedule.addMenuDay')}</Button>}
               </Stack>
               <List sx={{ mt: 1.5, p: 0 }}>
-                {days.map((planDay, index) => (
+                {weekDays.map(({ value: planDay, index }) => (
                   <ListItemButton
                     key={planDay.id}
                     selected={index === selectedDay}
-                    draggable
-                    onDragStart={() => setDraggedDay(index)}
+                    draggable={!viewOnly}
+                    onDragStart={() => { if (!viewOnly) setDraggedDay(index); }}
                     onDragEnd={() => setDraggedDay(null)}
                     onDragOver={(event) => event.preventDefault()}
-                    onDrop={() => { if (draggedDay !== null) reorderDay(draggedDay, index); setDraggedDay(null); }}
+                    onDrop={() => { if (!viewOnly && draggedDay !== null) reorderDay(draggedDay, index); setDraggedDay(null); }}
                     onClick={() => { setSelectedDay(index); setSelectedSlot(0); setSelectedMeal(null); }}
                     sx={{ mb: 1, borderRadius: 2, border: 1, borderColor: index === selectedDay ? 'rgba(0,103,78,.18)' : 'transparent', '&.Mui-selected': { bgcolor: 'rgba(0,103,78,.08)' }, '&.Mui-selected:hover': { bgcolor: 'rgba(0,103,78,.11)' } }}
                   >
@@ -646,15 +710,16 @@ export function PlanBuilderPage() {
                       secondary={`${planDay.slots.length} ${t('weeklySchedule.slots')} · ${t(planDay.isActive ? 'weeklySchedule.active' : 'weeklySchedule.inactive')}`}
                     />
                     <ContentCopy fontSize="small" color="action" sx={{ mx: 0.5 }} />
-                    <DeleteOutline
+                    {!viewOnly && <DeleteOutline
                       fontSize="small"
                       color="action"
                       role="button"
                       aria-label={t('weeklySchedule.deleteMenuDay')}
                       onClick={(event) => { event.stopPropagation(); void deleteDay(index); }}
-                    />
+                    />}
                   </ListItemButton>
                 ))}
+                {!weekDays.length && <Box py={4} px={2}><Typography fontWeight={700}>Week {selectedWeek} is not configured yet</Typography><Typography color="text.secondary" variant="body2">Add the Saturday to Thursday service days for this week.</Typography></Box>}
               </List>
             </Grid>
             <Grid
@@ -663,7 +728,7 @@ export function PlanBuilderPage() {
             >
               <Stack direction="row" justifyContent="space-between">
                 <Typography variant="h3">Meal slots</Typography>
-                <Button startIcon={<Add />} onClick={addSlot}>Add slot</Button>
+                {!viewOnly && <Button startIcon={<Add />} onClick={addSlot}>Add slot</Button>}
               </Stack>
               {day?.slots.map((planSlot, index) => (
                 <ListItemButton
@@ -685,13 +750,13 @@ export function PlanBuilderPage() {
                   <TextField
                     fullWidth
                     select
+                    disabled={viewOnly || mealTypesQuery.isLoading || mealTypesQuery.isError}
                     label="Meal type"
                     value={selectedMealTypeId}
                     onChange={(event) => {
                       const mealType = mealTypes.find((item) => item.id === event.target.value);
                       if (mealType) updateSlot({ mealTypeId: mealType.id, title: mealType.nameEn });
                     }}
-                    disabled={mealTypesQuery.isLoading || mealTypesQuery.isError}
                     error={mealTypesQuery.isError}
                     helperText={mealTypesQuery.isError ? 'Unable to load meal types.' : undefined}
                   >
@@ -708,6 +773,7 @@ export function PlanBuilderPage() {
                     <Grid size={6}>
                       <TextField
                         fullWidth
+                        disabled={viewOnly}
                         type="number"
                         label="Minimum"
                         value={slot.min}
@@ -718,6 +784,7 @@ export function PlanBuilderPage() {
                     <Grid size={6}>
                       <TextField
                         fullWidth
+                        disabled={viewOnly}
                         type="number"
                         label="Maximum"
                         value={slot.max}
@@ -727,7 +794,7 @@ export function PlanBuilderPage() {
                     </Grid>
                   </Grid>
                   <FormControlLabel
-                    control={<Checkbox checked={slot.required} onChange={(_, checked) => updateSlot({ required: checked })} />}
+                    control={<Checkbox disabled={viewOnly} checked={slot.required} onChange={(_, checked) => updateSlot({ required: checked })} />}
                     label="Required slot"
                     sx={{ m: 0 }}
                   />
@@ -737,14 +804,14 @@ export function PlanBuilderPage() {
             <Grid size={{ xs: 12, lg: 5 }} sx={{ p: { xs: 2.5, md: 3 }, minHeight: { lg: 560 } }}>
               <Stack direction="row" justifyContent="space-between">
                 <Typography variant="h3">Meal options</Typography>
-                <Button
+                {!viewOnly && <Button
                   startIcon={<Add />}
                   variant="contained"
                   disabled={!slot || !selectedMeal || slot.options.some((option) => option.id === selectedMeal.id)}
                   onClick={addMeal}
                 >
                   Add selected
-                </Button>
+                </Button>}
               </Stack>
               <Autocomplete
                 sx={{ mt: 2, mb: 1 }}
@@ -752,7 +819,7 @@ export function PlanBuilderPage() {
                 value={selectedMeal}
                 inputValue={mealSearch}
                 loading={mealsQuery.isLoading || mealsQuery.isFetching}
-                disabled={!slot}
+                disabled={viewOnly || !slot}
                 openOnFocus
                 filterOptions={(options) => options}
                 getOptionLabel={(meal) => meal.nameEn}
@@ -794,7 +861,7 @@ export function PlanBuilderPage() {
                     <Chip
                       key={option.id}
                       label={option.name}
-                      onDelete={() => updateSlot({ options: slot.options.filter((item) => item.id !== option.id) })}
+                      onDelete={viewOnly ? undefined : () => updateSlot({ options: slot.options.filter((item) => item.id !== option.id) })}
                       sx={{ bgcolor: 'rgba(0,103,78,.08)', '& .MuiChip-deleteIcon': { color: 'rgba(0,103,78,.45)' } }}
                     />
                   ))}
@@ -833,8 +900,8 @@ export function PlanBuilderPage() {
               }}
             >
               {MVP_MENU_WEEKDAYS.map((weekday) => (
-                <MenuItem key={weekday} value={weekday} disabled={isWeekdayConfigured(days, weekday)}>
-                  {t(`weekdays.${weekday}`)}{isWeekdayConfigured(days, weekday) ? ` — ${t('weeklySchedule.alreadyAdded')}` : ''}
+                <MenuItem key={weekday} value={weekday} disabled={isWeekdayConfigured(days.filter((item) => item.weekNumber === selectedWeek), weekday)}>
+                  {t(`weekdays.${weekday}`)}{isWeekdayConfigured(days.filter((item) => item.weekNumber === selectedWeek), weekday) ? ` — ${t('weeklySchedule.alreadyAdded')}` : ''}
                 </MenuItem>
               ))}
             </TextField>

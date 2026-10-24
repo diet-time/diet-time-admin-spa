@@ -5,9 +5,9 @@ export interface PlanFilters { page: number; pageSize: number; search?: string; 
 export interface PlanTranslationInput { languageCode: 'en' | 'ar'; name: string; shortDescription?: string; fullDescription?: string }
 export interface PlanStructureOptionInput { mealItemId: string; additionalPrice: number; isDefault: boolean; isAvailable: boolean; displayOrder: number }
 export interface PlanStructureSlotInput { mealTypeId: string; displayOrder: number; minimumSelection: number; maximumSelection: number; isRequired: boolean; selectionCutoffTime?: string | null; allowsPaidUpgrade: boolean; options: PlanStructureOptionInput[] }
-export interface PlanStructureDayInput { menuWeekday: MenuWeekday; displayOrder: number; isActive: boolean; slots: PlanStructureSlotInput[] }
-export interface PlanInput { code: string; planType: string; durationDays: number; isCustomizable: boolean; validFrom?: string | null; validUntil?: string | null; translations: PlanTranslationInput[]; days?: PlanStructureDayInput[]; publish?: boolean }
-export interface PlanDayInput { menuWeekday: MenuWeekday; displayOrder: number; isActive: boolean }
+export interface PlanStructureDayInput { weekNumber: number; menuWeekday: MenuWeekday; displayOrder: number; isActive: boolean; slots: PlanStructureSlotInput[] }
+export interface PlanInput { code: string; cycleWeeks?: number; planType: string; durationDays: number; isCustomizable: boolean; validFrom?: string | null; validUntil?: string | null; translations: PlanTranslationInput[]; days?: PlanStructureDayInput[]; publish?: boolean }
+export interface PlanDayInput { weekNumber: number; menuWeekday: MenuWeekday; displayOrder: number; isActive: boolean }
 export interface PlanSlotInput { mealTypeId: string; displayOrder: number; minimumSelection: number; maximumSelection: number; isRequired: boolean; selectionCutoffTime?: string | null; allowsPaidUpgrade: boolean }
 export interface SlotOptionInput { mealItemId: string; additionalPrice: number; isDefault: boolean; isAvailable: boolean; displayOrder: number }
 export interface PlanDetail {
@@ -27,6 +27,7 @@ export interface PlanDetail {
     id: string;
     templateId: string;
     menuWeekday: MenuWeekday;
+    weekNumber: number;
     displayOrder: number;
     isActive: boolean;
     slotCount: number;
@@ -43,9 +44,10 @@ export interface PlanDetail {
   }>;
 }
 
-interface RawPlanDay extends Omit<PlanDetail['days'][number], 'menuWeekday' | 'displayOrder' | 'templateId' | 'isActive' | 'slotCount'> {
+interface RawPlanDay extends Omit<PlanDetail['days'][number], 'menuWeekday' | 'weekNumber' | 'displayOrder' | 'templateId' | 'isActive' | 'slotCount'> {
   templateId?: string;
   menuWeekday: string;
+  weekNumber?: number;
   displayOrder: number;
   isActive?: boolean;
   slotCount?: number;
@@ -57,6 +59,7 @@ const normalizePlanDay = (day: RawPlanDay, templateId: string): PlanDetail['days
   ...day,
   templateId: day.templateId ?? templateId,
   menuWeekday: normalizeMenuWeekday(day.menuWeekday),
+  weekNumber: day.weekNumber ?? 1,
   displayOrder: day.displayOrder,
   isActive: day.isActive ?? true,
   slotCount: day.slotCount ?? day.slots.length,
@@ -98,6 +101,8 @@ interface PlansListApiItem {
   validUntil?: string;
   priceFrom?: number;
   updatedAt?: string;
+  imageUrl?: string;
+  versionNumber?: number;
 }
 
 interface PlansListApiResponse {
@@ -131,6 +136,8 @@ const normalizePlansResponse = (
     validUntil: plan.validUntil,
     priceFrom: plan.priceFrom,
     updatedAt: plan.updatedAt ?? '',
+    imageUrl: plan.imageUrl,
+    versionNumber: plan.versionNumber,
   }));
 
   return {
@@ -166,14 +173,14 @@ export const plansApi = {
   },
   deleteImage: async (id: string) => (await apiClient.delete(`/admin/meal-plans/${id}/image`)).data,
   remove: async (id: string) => (await apiClient.delete(`/admin/meal-plans/${id}`)).data,
-  getTemplateDays: async (id: string, signal?: AbortSignal) => {
-    const response = await apiClient.get<{ data: RawPlanDay[] }>(`/admin/meal-plan-templates/${id}/days`, { signal });
-    return sortMenuDays(response.data.data.map((day) => normalizePlanDay({ ...day, slots: day.slots ?? [] }, id)));
+  getTemplateDays: async (id: string, weekNumber?: number, signal?: AbortSignal) => {
+    const response = await apiClient.get<{ data: RawPlanDay[] }>(`/admin/meal-plan-templates/${id}/days`, { params: { weekNumber }, signal });
+    return sortMenuDays(response.data.data.map((day) => normalizePlanDay({ ...day, slots: day.slots ?? [] }, id)).filter((day) => weekNumber === undefined || day.weekNumber === weekNumber));
   },
   createTemplateDay: async (id: string, body: PlanDayInput) => responseId((await apiClient.post<IdResponse>(`/admin/meal-plan-templates/${id}/days`, body)).data),
   updateTemplateDay: async (id: string, dayId: string, body: PlanDayInput) => (await apiClient.put(`/admin/meal-plan-templates/${id}/days/${dayId}`, body)).data,
   deleteTemplateDay: async (id: string, dayId: string) => (await apiClient.delete(`/admin/meal-plan-templates/${id}/days/${dayId}`)).data,
-  getTemplateDayByWeekday: async (id: string, weekday: MenuWeekday, signal?: AbortSignal) => (await apiClient.get(`/admin/meal-plan-templates/${id}/days/by-weekday/${weekday}`, { signal })).data,
+  getTemplateDayByWeekday: async (id: string, weekday: MenuWeekday, weekNumber?: number, signal?: AbortSignal) => (await apiClient.get(`/admin/meal-plan-templates/${id}/days/by-weekday/${weekday}`, { params: { weekNumber }, signal })).data,
   addSlot: async (dayId: string, body: PlanSlotInput) => responseId((await apiClient.post<IdResponse>(`/admin/meal-plan-days/${dayId}/slots`, body)).data),
   addOption: async (slotId: string, body: SlotOptionInput) => responseId((await apiClient.post<IdResponse>(`/admin/meal-plan-slots/${slotId}/options`, body)).data),
 };
