@@ -4,9 +4,9 @@ import { normalizeMenuWeekday, sortMenuDays, type MenuWeekday } from '@/features
 export interface PlanFilters { page: number; pageSize: number; search?: string; published?: boolean }
 export interface PlanTranslationInput { languageCode: 'en' | 'ar'; name: string; shortDescription?: string; fullDescription?: string }
 export interface PlanStructureOptionInput { mealItemId: string; additionalPrice: number; isDefault: boolean; isAvailable: boolean; displayOrder: number }
-export interface PlanStructureSlotInput { mealTypeId: string; displayOrder: number; minimumSelection: number; maximumSelection: number; isRequired: boolean; selectionCutoffTime?: string | null; allowsPaidUpgrade: boolean; options: PlanStructureOptionInput[] }
+export interface PlanStructureSlotInput { mealTypeId: string; displayOrder: number; minimumSelection: number; maximumSelection: number; isRequired: boolean; selectionCutoffTime?: string | null; allowsPaidUpgrade: boolean; options: PlanStructureOptionInput[]; isActive?: boolean }
 export interface PlanStructureDayInput { weekNumber: number; menuWeekday: MenuWeekday; displayOrder: number; isActive: boolean; slots: PlanStructureSlotInput[] }
-export interface PlanInput { code: string; cycleWeeks?: number; planType: string; durationDays: number; isCustomizable: boolean; validFrom?: string | null; validUntil?: string | null; translations: PlanTranslationInput[]; days?: PlanStructureDayInput[]; publish?: boolean }
+export interface PlanInput { code: string; cycleWeeks?: number; weekNumber?: number; planType: string; durationDays: number; isCustomizable: boolean; validFrom?: string | null; validUntil?: string | null; translations: PlanTranslationInput[]; days?: PlanStructureDayInput[]; publish?: boolean }
 export interface PlanDayInput { weekNumber: number; menuWeekday: MenuWeekday; displayOrder: number; isActive: boolean }
 export interface PlanSlotInput { mealTypeId: string; displayOrder: number; minimumSelection: number; maximumSelection: number; isRequired: boolean; selectionCutoffTime?: string | null; allowsPaidUpgrade: boolean }
 export interface SlotOptionInput { mealItemId: string; additionalPrice: number; isDefault: boolean; isAvailable: boolean; displayOrder: number }
@@ -39,10 +39,13 @@ export interface PlanDetail {
       minimumSelection: number;
       maximumSelection: number;
       isRequired: boolean;
-      options: Array<{ id: string; mealItemId: string; mealName: string; isDefault: boolean }>;
+      isActive: boolean;
+      options: Array<{ id: string; mealItemId: string; mealName: string; isDefault: boolean; additionalPrice: number; isAvailable: boolean; displayOrder: number }>;
     }>;
   }>;
 }
+export interface MenuWeekValidation { weekNumber: number; isComplete: boolean; errors: Array<{ weekNumber: number; weekday?: string | null; code: string; message: string }> }
+export interface MenuValidation { templateId: string; versionGroupId: string; versionNumber: number; isLatest: boolean; isPublished: boolean; weeks: MenuWeekValidation[] }
 
 interface RawPlanDay extends Omit<PlanDetail['days'][number], 'menuWeekday' | 'weekNumber' | 'displayOrder' | 'templateId' | 'isActive' | 'slotCount'> {
   templateId?: string;
@@ -157,6 +160,10 @@ export const plansApi = {
   get: async (id: string, signal?: AbortSignal) => {
     const response = await apiClient.get<{ data: RawPlanDetail }>(`/admin/meal-plans/${id}`, { signal });
     return normalizePlanDetail(response.data.data);
+  },
+  validateMenu: async (id: string, signal?: AbortSignal) => {
+    const response = await apiClient.get<{ data: MenuValidation }>(`/admin/meal-plan-templates/${id}/validation`, { signal });
+    return response.data.data;
   },
   create: async (body: PlanInput) => responseId((await apiClient.post<IdResponse>('/admin/meal-plans', body)).data),
   update: async (id: string, body: PlanInput) => (await apiClient.put<VersionedUpdateApiResponse>(`/admin/meal-plans/${id}`, body)).data.data,

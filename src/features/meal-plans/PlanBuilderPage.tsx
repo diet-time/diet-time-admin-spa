@@ -31,7 +31,6 @@ import {
   Typography,
 } from '@mui/material';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import axios from 'axios';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -54,6 +53,9 @@ interface PlanOption {
   id: string;
   name: string;
   default: boolean;
+  additionalPrice: number;
+  available: boolean;
+  displayOrder: number;
 }
 
 interface Slot {
@@ -63,6 +65,7 @@ interface Slot {
   min: number;
   max: number;
   required: boolean;
+  active: boolean;
   options: PlanOption[];
 }
 
@@ -105,8 +108,12 @@ export function PlanBuilderPage() {
   const navigate = useNavigate();
   const [days, setDays] = useState(initial);
   const [selectedDay, setSelectedDay] = useState(0);
-  const [selectedWeek, setSelectedWeek] = useState(1);
+  const [selectedWeek, setSelectedWeek] = useState(() => {
+    const week = Number(searchParams.get('week'));
+    return week >= 1 && week <= 4 ? week : 1;
+  });
   const [copyFromWeek, setCopyFromWeek] = useState(2);
+  const [saveNotice, setSaveNotice] = useState('');
   const [selectedSlot, setSelectedSlot] = useState(0);
   const [mealSearch, setMealSearch] = useState('');
   const [selectedMeal, setSelectedMeal] = useState<MealSummary | null>(null);
@@ -164,28 +171,15 @@ export function PlanBuilderPage() {
     staleTime: 0,
     refetchOnMount: 'always',
   });
-  const createDayMutation = useMutation({
-    mutationFn: (body: { weekNumber: number; menuWeekday: MenuWeekday; displayOrder: number; isActive: boolean }) =>
-      plansApi.createTemplateDay(planId!, body),
-    onSuccess: async () => {
-      const result = await planQuery.refetch();
-      const createdIndex = result.data?.days.findIndex((item) => item.weekNumber === selectedWeek && item.menuWeekday === newWeekday) ?? -1;
-      if (createdIndex >= 0) setSelectedDay(createdIndex);
-      setAddDayOpen(false);
-    },
-    onError: (error) => {
-      const code = axios.isAxiosError<{ code?: string; message?: string }>(error) ? error.response?.data?.code : undefined;
-      const message = axios.isAxiosError<{ code?: string; message?: string }>(error) ? error.response?.data?.message : undefined;
-      setDayError(code === 'DUPLICATE_TEMPLATE_WEEKDAY' ? t('weeklySchedule.duplicateWeekday') : message ?? t('weeklySchedule.saveError'));
-    },
+  const menuValidationQuery = useQuery({
+    queryKey: ['plan-menu-validation', planId],
+    queryFn: ({ signal }) => plansApi.validateMenu(planId!, signal),
+    enabled: !!planId,
+    staleTime: 0,
   });
-  const deleteDayMutation = useMutation({
-    mutationFn: (dayId: string) => plansApi.deleteTemplateDay(planId!, dayId),
-    onSuccess: async () => { await planQuery.refetch(); },
-  });
-
   const mealTypes = (mealTypesQuery.data?.items ?? []).filter((mealType) => mealType.isActive);
   const meals = mealsQuery.data?.items ?? [];
+  const selectedWeekValidation = menuValidationQuery.data?.weeks.find((week) => week.weekNumber === selectedWeek);
   const selectedMealTypeId = slot?.mealTypeId
     ?? mealTypes.find((mealType) => mealType.nameEn === slot?.title)?.id
     ?? '';
@@ -211,6 +205,7 @@ export function PlanBuilderPage() {
       const input = {
         code: planDetails.code.trim().toUpperCase(),
         cycleWeeks: 4,
+        weekNumber: selectedWeek,
         planType: planDetails.planType,
         durationDays: planDetails.durationDays,
         isCustomizable: planDetails.isCustomizable,
@@ -241,12 +236,13 @@ export function PlanBuilderPage() {
             isRequired: planSlot.required,
             selectionCutoffTime: null,
             allowsPaidUpgrade: false,
+            isActive: planSlot.active,
             options: planSlot.options.map((option, optionIndex) => ({
               mealItemId: option.id,
-              additionalPrice: 0,
+              additionalPrice: option.additionalPrice,
               isDefault: option.default,
-              isAvailable: true,
-              displayOrder: optionIndex,
+              isAvailable: option.available,
+              displayOrder: option.displayOrder ?? optionIndex,
             })),
           })),
         })),
@@ -270,9 +266,15 @@ export function PlanBuilderPage() {
       }
       return savedPlanId;
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['plans'] });
-      navigate('/meal-plans');
+    onSuccess: async (savedPlanId, publish) => {
+      setSaveNotice(publish ? 'Menu published successfully.' : 'Draft saved successfully.');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['plans'] }),
+        queryClient.invalidateQueries({ queryKey: ['plan', savedPlanId] }),
+        queryClient.invalidateQueries({ queryKey: ['plan-menu-validation', savedPlanId] }),
+      ]);
+      if (publish) navigate('/meal-plans');
+      else navigate(`/meal-plans/${savedPlanId}/edit?week=${selectedWeek}`);
     },
   });
 
@@ -318,14 +320,19 @@ export function PlanBuilderPage() {
         min: planSlot.minimumSelection,
         max: planSlot.maximumSelection,
         required: planSlot.isRequired,
+        active: planSlot.isActive,
         options: planSlot.options.map((option) => ({
           id: option.mealItemId,
           name: option.mealName,
           default: option.isDefault,
+          additionalPrice: option.additionalPrice,
+          available: option.isAvailable,
+          displayOrder: option.displayOrder,
         })),
       })),
     })));
-    setSelectedDay(0);
+    const currentWeekFirstDay = plan.days.findIndex((planDay) => planDay.weekNumber === selectedWeek);
+    setSelectedDay(Math.max(0, currentWeekFirstDay));
     setSelectedSlot(0);
     setSelectedMeal(null);
     setPlanImagePreview(plan.imageUrl ?? '');
@@ -357,10 +364,6 @@ export function PlanBuilderPage() {
     if (newDisplayOrder <= 0) { setDayError(t('weeklySchedule.invalidDisplayOrder')); return; }
     const currentWeekDays = days.filter((item) => item.weekNumber === selectedWeek);
     if (isWeekdayConfigured(currentWeekDays, newWeekday)) { setDayError(t('weeklySchedule.duplicateWeekday')); return; }
-    if (planId) {
-      await createDayMutation.mutateAsync({ weekNumber: selectedWeek, menuWeekday: newWeekday, displayOrder: newDisplayOrder, isActive: newDayActive }).catch(() => undefined);
-      return;
-    }
     const next = [...days, { id: `new-day-${Date.now()}`, weekNumber: selectedWeek, menuWeekday: newWeekday, displayOrder: newDisplayOrder, isActive: newDayActive, slots: [] }];
     setDays(next);
     setSelectedDay(next.findIndex((item) => item.weekNumber === selectedWeek && item.menuWeekday === newWeekday));
@@ -371,10 +374,6 @@ export function PlanBuilderPage() {
   const deleteDay = async (index: number) => {
     const target = days[index];
     if (!target) return;
-    if (planId && !target.id.startsWith('new-day-')) {
-      await deleteDayMutation.mutateAsync(target.id);
-      return;
-    }
     const next = days.filter((_, dayIndex) => dayIndex !== index);
     setDays(next);
     setSelectedDay(Math.max(0, Math.min(index, next.length - 1)));
@@ -398,9 +397,8 @@ export function PlanBuilderPage() {
     const targetDays = days.filter((item) => item.weekNumber === selectedWeek);
     if (!sourceDays.length) return;
     if (targetDays.length && !window.confirm(`Replace all menu data in Week ${selectedWeek} with Week ${copyFromWeek}?`)) return;
-    const sourceIds = new Set(sourceDays.map((item) => item.id));
     const copy = sourceDays.map((item) => ({ ...item, id: `new-day-${crypto.randomUUID()}`, weekNumber: selectedWeek, slots: item.slots.map((entry) => ({ ...entry, id: `new-slot-${crypto.randomUUID()}`, options: entry.options.map((option) => ({ ...option })) })) }));
-    const next = [...days.filter((item) => !sourceIds.has(item.id) && item.weekNumber !== selectedWeek), ...copy];
+    const next = [...days.filter((item) => item.weekNumber !== selectedWeek), ...copy];
     setDays(next);
     setSelectedDay(next.findIndex((item) => item.weekNumber === selectedWeek));
     setSelectedSlot(0);
@@ -419,6 +417,7 @@ export function PlanBuilderPage() {
             min: 1,
             max: 1,
             required: true,
+            active: true,
             options: [],
           }],
         }
@@ -429,7 +428,7 @@ export function PlanBuilderPage() {
   const addMeal = () => {
     if (!slot || !selectedMeal || slot.options.some((option) => option.id === selectedMeal.id)) return;
     updateSlot({
-      options: [...slot.options, { id: selectedMeal.id, name: selectedMeal.nameEn, default: false }],
+      options: [...slot.options, { id: selectedMeal.id, name: selectedMeal.nameEn, default: false, additionalPrice: 0, available: true, displayOrder: slot.options.length }],
     });
     setSelectedMeal(null);
     setMealSearch('');
@@ -495,6 +494,9 @@ export function PlanBuilderPage() {
       {issues.length > 0 && (
         <Alert severity="error"><strong>Publishing checklist:</strong> {issues.join(' ')}</Alert>
       )}
+      {saveNotice && <Alert severity="success">{saveNotice}</Alert>}
+      {menuValidationQuery.isError && planId && <Alert severity="warning">Saved week status is unavailable. The API will validate all four weeks when you publish.</Alert>}
+      {selectedWeekValidation && !selectedWeekValidation.isComplete && selectedWeekValidation.errors.length > 0 && <Alert severity="info">Week {selectedWeek} validation: {selectedWeekValidation.errors.map((error) => error.message).join(' ')}</Alert>}
       {saveMutation.isError && (
         <Alert severity="error">{saveMutation.variables ? 'The meal plan could not be saved and published. Review the plan and try again.' : 'The draft could not be saved. Review the plan details and try again.'}</Alert>
       )}
@@ -668,9 +670,10 @@ export function PlanBuilderPage() {
             }} variant="scrollable" allowScrollButtonsMobile>
               {[1, 2, 3, 4].map((week) => {
                 const configuredDays = days.filter((item) => item.weekNumber === week);
+                const apiWeek = menuValidationQuery.data?.weeks.find((item) => item.weekNumber === week);
                 const complete = MVP_MENU_WEEKDAYS.every((weekday) => configuredDays.some((item) => item.menuWeekday === weekday && item.isActive))
                   && configuredDays.filter((item) => item.isActive).every((item) => item.slots.some((entry) => entry.required) && item.slots.filter((entry) => entry.required).every((entry) => entry.options.length >= entry.min));
-                const status = !configuredDays.length ? 'Not configured' : complete ? 'Complete' : 'Incomplete';
+                const status = apiWeek ? apiWeek.isComplete ? 'Complete' : configuredDays.length ? 'Incomplete' : 'Not configured' : !configuredDays.length ? 'Not configured' : complete ? 'Complete' : 'Incomplete';
                 return <Tab key={week} value={week} label={`Week ${week} · ${status}`} />;
               })}
             </Tabs>
@@ -881,7 +884,7 @@ export function PlanBuilderPage() {
           </Grid>
         </CardContent>
       </Card>
-      <Dialog open={addDayOpen} onClose={() => { if (!createDayMutation.isPending) setAddDayOpen(false); }} fullWidth maxWidth="xs">
+      <Dialog open={addDayOpen} onClose={() => setAddDayOpen(false)} fullWidth maxWidth="xs">
         <DialogTitle>{t('weeklySchedule.addMenuDay')}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} mt={1}>
@@ -918,9 +921,9 @@ export function PlanBuilderPage() {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setAddDayOpen(false)} disabled={createDayMutation.isPending}>{t('weeklySchedule.cancel')}</Button>
-          <Button variant="contained" onClick={() => void addDay()} disabled={createDayMutation.isPending || !newWeekday}>
-            {createDayMutation.isPending ? t('weeklySchedule.saving') : t('weeklySchedule.addMenuDay')}
+          <Button onClick={() => setAddDayOpen(false)}>{t('weeklySchedule.cancel')}</Button>
+          <Button variant="contained" onClick={() => void addDay()} disabled={!newWeekday}>
+            {t('weeklySchedule.addMenuDay')}
           </Button>
         </DialogActions>
       </Dialog>

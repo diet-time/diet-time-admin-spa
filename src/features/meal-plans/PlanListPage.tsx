@@ -19,8 +19,8 @@ export function PlanListPage() {
     .filter((item) => item.nameEn.trim().toLocaleLowerCase() === 'complete balance');
   const publishedPlan = completeBalanceVersions.filter((item) => item.published && item.active).sort(compareVersions)[0];
   const draftPlan = completeBalanceVersions.filter((item) => !item.published).sort(compareVersions)[0];
-  const plan = publishedPlan ?? draftPlan;
-  const planStatus = publishedPlan ? 'Published' : 'Draft';
+  const plan = [publishedPlan, draftPlan].filter((item): item is PlanSummary => !!item).sort(compareVersions)[0];
+  const planStatus = plan?.published ? 'Published' : 'Draft';
   const detailQuery = useQuery({
     queryKey: ['plan-card-detail', plan?.id],
     queryFn: ({ signal }) => plansApi.get(plan!.id, signal),
@@ -52,7 +52,7 @@ export function PlanListPage() {
                   <Chip label="24 delivery days per complete cycle" variant="outlined" />
                   <Chip label="Saturday – Thursday" variant="outlined" />
                 </Stack>
-                {!publishedPlan && <Alert severity="warning">This menu is saved as a draft and is not available to customers until it is published.</Alert>}
+                {!plan.published && <Alert severity="warning">This menu is saved as a draft and is not available to customers until it is published.</Alert>}
                 {plan.shortDescription && <Typography color="text.secondary">{plan.shortDescription}</Typography>}
                 <Stack direction={{ xs: 'column', sm: 'row' }} gap={1}>
                   <Button variant="contained" startIcon={<EditOutlined />} onClick={() => navigate(`/meal-plans/${plan.id}/edit`)}>Edit Menu</Button>
