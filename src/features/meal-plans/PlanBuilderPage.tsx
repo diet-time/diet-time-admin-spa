@@ -862,16 +862,20 @@ export function PlanBuilderPage() {
                   <Typography variant="caption" color="text.secondary" display="block" mb={1}>
                     {slot.options.length} {slot.options.length === 1 ? 'meal' : 'meals'} added to this slot
                   </Typography>
-                  <Stack direction="row" flexWrap="wrap" useFlexGap gap={1}>
-                  {slot.options.map((option) => (
-                    <Chip
-                      key={option.id}
-                      label={option.name}
-                      avatar={option.imageUrl ? <Avatar src={option.imageUrl} alt={option.name} variant="rounded" sx={{ width: 32, height: 32 }} /> : undefined}
-                      onDelete={viewOnly ? undefined : () => updateSlot({ options: slot.options.filter((item) => item.id !== option.id) })}
-                      sx={{ bgcolor: 'rgba(0,103,78,.08)', '& .MuiChip-deleteIcon': { color: 'rgba(0,103,78,.45)' } }}
-                    />
-                  ))}
+                  <Stack direction="row" flexWrap="wrap" useFlexGap gap={1.5}>
+                    {slot.options.map((option) => (
+                      <Paper key={option.id} variant="outlined" sx={{ width: 148, overflow: 'hidden', borderColor: 'divider', borderRadius: 2 }}>
+                        <Box sx={{ position: 'relative', width: '100%', aspectRatio: '4 / 3', display: 'grid', placeItems: 'center', bgcolor: '#F7F8F6' }}>
+                          {option.imageUrl ? (
+                            <Box component="img" src={option.imageUrl} alt={option.name} sx={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                          ) : (
+                            <Typography variant="caption" color="text.secondary">No image</Typography>
+                          )}
+                          {!viewOnly && <IconButton size="small" aria-label={`Remove ${option.name}`} onClick={() => updateSlot({ options: slot.options.filter((item) => item.id !== option.id) })} sx={{ position: 'absolute', top: 6, insetInlineEnd: 6, bgcolor: 'rgba(255,255,255,.94)', boxShadow: 1, '&:hover': { bgcolor: 'common.white' } }}><Close fontSize="small" /></IconButton>}
+                        </Box>
+                        <Typography variant="caption" title={option.name} sx={{ px: 1, py: 0.75, minHeight: 38, lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2 }}>{option.name}</Typography>
+                      </Paper>
+                    ))}
                   </Stack>
                 </Box>
               ) : (
