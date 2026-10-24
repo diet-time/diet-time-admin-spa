@@ -40,7 +40,17 @@ export function PlanListPage() {
       {plan && (
         <Card>
           <Stack direction={{ xs: 'column', md: 'row' }}>
-            {imageUrl ? <Box component="img" src={imageUrl} alt="Complete Balance" sx={{ width: { xs: '100%', md: 300 }, height: { xs: 190, md: 'auto' }, objectFit: 'cover' }} /> : null}
+            {imageUrl ? (
+              <Box sx={{
+                width: { xs: '100%', md: 300 },
+                minWidth: { md: 300 },
+                aspectRatio: '16 / 9',
+                flexShrink: 0,
+                bgcolor: 'background.default',
+              }}>
+                <Box component="img" src={imageUrl} alt="Complete Balance" sx={{ display: 'block', width: '100%', height: '100%', objectFit: 'contain' }} />
+              </Box>
+            ) : null}
             <CardContent sx={{ flex: 1, p: { xs: 2.5, md: 3 } }}>
               <Stack spacing={2}>
                 <Stack direction="row" justifyContent="space-between" alignItems="flex-start" gap={2}>
