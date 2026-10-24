@@ -864,16 +864,16 @@ export function PlanBuilderPage() {
                   </Typography>
                   <Stack direction="row" flexWrap="wrap" useFlexGap gap={1.5}>
                     {slot.options.map((option) => (
-                      <Paper key={option.id} variant="outlined" sx={{ width: 148, overflow: 'hidden', borderColor: 'divider', borderRadius: 2 }}>
+                      <Paper key={option.id} variant="outlined" sx={{ width: { xs: 170, sm: 190 }, flexShrink: 0, borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
                         <Box sx={{ position: 'relative', width: '100%', aspectRatio: '4 / 3', display: 'grid', placeItems: 'center', bgcolor: '#F7F8F6' }}>
                           {option.imageUrl ? (
                             <Box component="img" src={option.imageUrl} alt={option.name} sx={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                           ) : (
                             <Typography variant="caption" color="text.secondary">No image</Typography>
                           )}
-                          {!viewOnly && <IconButton size="small" aria-label={`Remove ${option.name}`} onClick={() => updateSlot({ options: slot.options.filter((item) => item.id !== option.id) })} sx={{ position: 'absolute', top: 6, insetInlineEnd: 6, bgcolor: 'rgba(255,255,255,.94)', boxShadow: 1, '&:hover': { bgcolor: 'common.white' } }}><Close fontSize="small" /></IconButton>}
+                          {!viewOnly && <IconButton size="small" aria-label={`Remove ${option.name}`} onClick={() => updateSlot({ options: slot.options.filter((item) => item.id !== option.id) })} sx={{ position: 'absolute', top: 7, insetInlineEnd: 7, width: 30, height: 30, bgcolor: 'rgba(255,255,255,.94)', boxShadow: 1, '&:hover': { bgcolor: 'common.white' } }}><Close fontSize="small" /></IconButton>}
                         </Box>
-                        <Typography variant="caption" title={option.name} sx={{ px: 1, py: 0.75, minHeight: 38, lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2 }}>{option.name}</Typography>
+                        <Typography variant="body2" title={option.name} sx={{ px: 1.25, py: 1, minHeight: 50, lineHeight: 1.4, overflowWrap: 'anywhere' }}>{option.name}</Typography>
                       </Paper>
                     ))}
                   </Stack>
