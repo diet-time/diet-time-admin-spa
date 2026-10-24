@@ -25,16 +25,6 @@ const paged = <T>(value: Envelope<T[]> | T[], page = 1, pageSize = 100): PagedRe
   };
 };
 
-export interface PackageMealType {
-  mealTypeId: string;
-  mealTypeCode?: string;
-  mealTypeName: string;
-  maximumQuantity: number;
-  isRequired: boolean;
-  displayOrder: number;
-  isActive: boolean;
-}
-
 export interface PackageOption {
   id: string;
   name: string;
@@ -43,7 +33,6 @@ export interface PackageOption {
   displayOrder: number;
   isActive: boolean;
   pricingUsageCount?: number;
-  mealTypes?: PackageMealType[];
 }
 
 export interface PackageOptionInput {
@@ -54,60 +43,19 @@ export interface PackageOptionInput {
   isActive: boolean;
 }
 
-interface RawPackageMealType {
-  mealTypeId: string;
-  code?: string;
-  mealTypeCode?: string;
-  mealTypeName?: string;
-  maxQuantity?: number;
-  maximumQuantity?: number;
-  isRequired: boolean;
-  displayOrder?: number;
-  selected?: boolean;
-  isActive?: boolean;
-}
-
-interface RawPackageOption extends Omit<PackageOption, 'mealTypes'> { mealTypes?: RawPackageMealType[] }
-
-const packageMealType = (item: RawPackageMealType): PackageMealType => ({
-  mealTypeId: item.mealTypeId,
-  mealTypeCode: item.mealTypeCode ?? item.code,
-  mealTypeName: item.mealTypeName ?? (item.mealTypeCode ?? item.code ?? '').replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()),
-  maximumQuantity: item.maximumQuantity ?? item.maxQuantity ?? 1,
-  isRequired: item.isRequired,
-  displayOrder: item.displayOrder ?? 0,
-  isActive: item.isActive ?? item.selected ?? true,
-});
-
-const packageOption = (item: RawPackageOption): PackageOption => ({
-  ...item,
-  mealTypes: item.mealTypes?.map(packageMealType) ?? [],
-});
-
-const packageMealTypesRequest = (mealTypes: PackageMealType[]) => ({
-  mealTypes: mealTypes.filter((item) => item.isActive).map((item) => ({
-    mealTypeId: item.mealTypeId,
-    isRequired: item.isRequired,
-    maxQuantity: item.maximumQuantity,
-    displayOrder: item.displayOrder,
-  })),
-});
+type RawPackageOption = PackageOption;
 
 export const packageOptionsApi = {
   list: async (params: { page?: number; pageSize?: number; search?: string; isActive?: boolean } = {}, signal?: AbortSignal) =>
-    { const result = paged<RawPackageOption>((await apiClient.get(adminApiUrl('package-options'), { params: { activeOnly: params.isActive === true }, signal })).data, params.page, params.pageSize); return { ...result, items: result.items.filter((item) => !params.search || item.name.toLowerCase().includes(params.search.toLowerCase())).map(packageOption) }; },
+    { const result = paged<RawPackageOption>((await apiClient.get(adminApiUrl('package-options'), { params: { activeOnly: params.isActive === true }, signal })).data, params.page, params.pageSize); return { ...result, items: result.items.filter((item) => !params.search || item.name.toLowerCase().includes(params.search.toLowerCase())) }; },
   get: async (id: string, signal?: AbortSignal) =>
-    packageOption(unwrap<RawPackageOption>((await apiClient.get(adminApiUrl(`package-options/${id}`), { signal })).data)),
+    unwrap<RawPackageOption>((await apiClient.get(adminApiUrl(`package-options/${id}`), { signal })).data),
   create: async (body: PackageOptionInput) =>
     unwrap<{ id: string }>((await apiClient.post(adminApiUrl('package-options'), body)).data),
   update: async (id: string, body: PackageOptionInput) =>
     unwrap<PackageOption>((await apiClient.put(adminApiUrl(`package-options/${id}`), body)).data),
   setStatus: async (id: string, isActive: boolean) =>
     (await apiClient.patch(adminApiUrl(`package-options/${id}/status`), { isActive })).data,
-  mealTypes: async (id: string, signal?: AbortSignal) =>
-    (unwrap<RawPackageMealType[]>((await apiClient.get(adminApiUrl(`package-options/${id}/meal-types`), { signal })).data) ?? []).map(packageMealType),
-  updateMealTypes: async (id: string, mealTypes: PackageMealType[]) =>
-    (await apiClient.put(adminApiUrl(`package-options/${id}/meal-types`), packageMealTypesRequest(mealTypes))).data,
 };
 
 export interface DurationOption {
