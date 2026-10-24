@@ -3,6 +3,7 @@ import { Alert, Box, Button, Card, CardContent, Chip, Skeleton, Stack, Typograph
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { plansApi } from '@/api/plansApi';
+import type { PlanSummary } from '@/api/apiTypes';
 import { StatusChip } from '@/components/common/StatusChip';
 import { EmptyState, ErrorState } from '@/components/feedback/PageState';
 
@@ -10,12 +11,16 @@ export function PlanListPage() {
   const navigate = useNavigate();
   const query = useQuery({
     queryKey: ['plans', 'complete-balance-current'],
-    queryFn: ({ signal }) => plansApi.list({ page: 1, pageSize: 100, published: true }, signal),
+    queryFn: ({ signal }) => plansApi.list({ page: 1, pageSize: 100 }, signal),
   });
-  const plan = (query.data?.items ?? [])
-    .filter((item) => item.nameEn.trim().toLocaleLowerCase() === 'complete balance' && item.published && item.active)
-    .sort((left, right) => (right.versionNumber ?? 0) - (left.versionNumber ?? 0)
-      || right.updatedAt.localeCompare(left.updatedAt))[0];
+  const compareVersions = (left: PlanSummary, right: PlanSummary) =>
+    (right.versionNumber ?? 0) - (left.versionNumber ?? 0) || right.updatedAt.localeCompare(left.updatedAt);
+  const completeBalanceVersions = (query.data?.items ?? [])
+    .filter((item) => item.nameEn.trim().toLocaleLowerCase() === 'complete balance');
+  const publishedPlan = completeBalanceVersions.filter((item) => item.published && item.active).sort(compareVersions)[0];
+  const draftPlan = completeBalanceVersions.filter((item) => !item.published).sort(compareVersions)[0];
+  const plan = publishedPlan ?? draftPlan;
+  const planStatus = publishedPlan ? 'Published' : 'Draft';
   const detailQuery = useQuery({
     queryKey: ['plan-card-detail', plan?.id],
     queryFn: ({ signal }) => plansApi.get(plan!.id, signal),
@@ -40,13 +45,14 @@ export function PlanListPage() {
               <Stack spacing={2}>
                 <Stack direction="row" justifyContent="space-between" alignItems="flex-start" gap={2}>
                   <Box><Typography variant="h2">Complete Balance</Typography><Typography color="text.secondary">Standard Meal Plan</Typography></Box>
-                  <StatusChip label="Published" />
+                  <StatusChip label={planStatus} />
                 </Stack>
                 <Stack direction="row" flexWrap="wrap" useFlexGap gap={1}>
                   <Chip label="4-Week Rotating Menu" color="primary" variant="outlined" />
                   <Chip label="24 delivery days per complete cycle" variant="outlined" />
                   <Chip label="Saturday – Thursday" variant="outlined" />
                 </Stack>
+                {!publishedPlan && <Alert severity="warning">This menu is saved as a draft and is not available to customers until it is published.</Alert>}
                 {plan.shortDescription && <Typography color="text.secondary">{plan.shortDescription}</Typography>}
                 <Stack direction={{ xs: 'column', sm: 'row' }} gap={1}>
                   <Button variant="contained" startIcon={<EditOutlined />} onClick={() => navigate(`/meal-plans/${plan.id}/edit`)}>Edit Menu</Button>

@@ -131,7 +131,7 @@ const normalizePlansResponse = (
     durationDays: plan.durationDays ?? 0,
     customizable: plan.customizable ?? plan.isCustomizable ?? false,
     published: plan.published ?? plan.isPublished ?? false,
-    active: plan.active ?? plan.isActive ?? false,
+    active: plan.active ?? plan.isActive ?? plan.published ?? plan.isPublished ?? false,
     validFrom: plan.validFrom,
     validUntil: plan.validUntil,
     priceFrom: plan.priceFrom,
