@@ -79,7 +79,20 @@ function PackageDialog({ item, allPackages, pending, onClose, onSave }: { item?:
     setErrors(next); if (!Object.keys(next).length) onSave(values);
   };
   return <Dialog open fullWidth maxWidth="sm" onClose={() => !pending && onClose()}><DialogTitle>{item ? 'Edit Package' : 'Add Package'}</DialogTitle><DialogContent><Stack spacing={2.5} mt={1}>
-    <Grid container spacing={2}><Grid size={{ xs: 12, sm: 6 }}><TextField required fullWidth label="Name" value={values.name} error={!!errors.name} helperText={errors.name} onChange={(e) => setValues({ ...values, name: e.target.value })} /></Grid><Grid size={{ xs: 6, sm: 2 }}><TextField required fullWidth type="number" label="Meal Count" value={values.mealCount} error={!!errors.mealCount} helperText={errors.mealCount} onChange={(e) => setValues({ ...values, mealCount: Number(e.target.value) })} /></Grid><Grid size={{ xs: 6, sm: 2 }}><TextField required fullWidth type="number" label="Snack Count" value={values.snackCount} error={!!errors.snackCount} helperText={errors.snackCount} onChange={(e) => setValues({ ...values, snackCount: Number(e.target.value) })} /></Grid><Grid size={{ xs: 12, sm: 2 }}><TextField required fullWidth type="number" label="Order" value={values.displayOrder} error={!!errors.displayOrder} helperText={errors.displayOrder} onChange={(e) => setValues({ ...values, displayOrder: Number(e.target.value) })} /></Grid></Grid>
+    <Grid container spacing={2}>
+      <Grid size={12}>
+        <TextField required fullWidth label="Package Name" value={values.name} error={!!errors.name} helperText={errors.name} onChange={(e) => setValues({ ...values, name: e.target.value })} />
+      </Grid>
+      <Grid size={{ xs: 12, sm: 4 }}>
+        <TextField required fullWidth type="number" label="Meal Count" value={values.mealCount} error={!!errors.mealCount} helperText={errors.mealCount} onChange={(e) => setValues({ ...values, mealCount: Number(e.target.value) })} />
+      </Grid>
+      <Grid size={{ xs: 12, sm: 4 }}>
+        <TextField required fullWidth type="number" label="Snack Count" value={values.snackCount} error={!!errors.snackCount} helperText={errors.snackCount} onChange={(e) => setValues({ ...values, snackCount: Number(e.target.value) })} />
+      </Grid>
+      <Grid size={{ xs: 12, sm: 4 }}>
+        <TextField required fullWidth type="number" label="Display Order" value={values.displayOrder} error={!!errors.displayOrder} helperText={errors.displayOrder} onChange={(e) => setValues({ ...values, displayOrder: Number(e.target.value) })} />
+      </Grid>
+    </Grid>
     <FormControlLabel control={<Switch checked={values.isActive} onChange={(_, checked) => setValues({ ...values, isActive: checked })} />} label="Active" />
   </Stack></DialogContent><DialogActions><Button disabled={pending} onClick={onClose}>Cancel</Button><Button variant="contained" disabled={pending} onClick={submit}>{pending ? 'Saving…' : 'Save Package'}</Button></DialogActions></Dialog>;
 }
