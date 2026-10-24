@@ -428,10 +428,22 @@ export function PlanBuilderPage() {
     setSelectedSlot(day.slots.length);
   };
 
-  const addMeal = () => {
+  const addMeal = async () => {
     if (!slot || !selectedMeal || slot.options.some((option) => option.id === selectedMeal.id)) return;
+    let imageUrl = selectedMeal.imageUrl ?? selectedMeal.thumbnailUrl;
+    if (!imageUrl) {
+      try {
+        const mealDetails = await mealsApi.get(selectedMeal.id);
+        const media = mealDetails.media.filter((item) => item.mediaType === 'MEALITEM');
+        const primaryMedia = media.find((item) => item.isPrimary) ?? media[0];
+        imageUrl = primaryMedia?.publicUrl ?? primaryMedia?.thumbnailUrl
+          ?? mealDetails.media.find((item) => item.mediaType === 'THUMBNAIL')?.publicUrl;
+      } catch {
+        // Keep the meal add usable if its optional image cannot be loaded.
+      }
+    }
     updateSlot({
-      options: [...slot.options, { id: selectedMeal.id, name: selectedMeal.nameEn, default: false, imageUrl: selectedMeal.thumbnailUrl, additionalPrice: 0, available: true, displayOrder: slot.options.length }],
+      options: [...slot.options, { id: selectedMeal.id, name: selectedMeal.nameEn, default: false, imageUrl, additionalPrice: 0, available: true, displayOrder: slot.options.length }],
     });
     setSelectedMeal(null);
     setMealSearch('');

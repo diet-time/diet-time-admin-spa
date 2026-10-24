@@ -12,6 +12,7 @@ interface MealsListApiItem {
   isAvailable: boolean;
   name: string;
   nameAr?: string;
+  imageUrl?: string;
   translations?: Array<{
     languageCode?: string;
     name?: string;
@@ -129,6 +130,7 @@ const normalizeMealsResponse = (response: MealsListApiResponse, filters: MealFil
         sku: meal.sku,
         nameEn: meal.name,
         nameAr: arabicName?.trim() || undefined,
+        imageUrl: meal.imageUrl,
         thumbnailUrl: meal.thumbnailUrl,
         categoryName: meal.category?.name ?? meal.categoryName ?? 'Not assigned',
         calories: meal.nutrition?.caloriesKcal ?? meal.calories,
