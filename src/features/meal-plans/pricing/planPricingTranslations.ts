@@ -28,8 +28,7 @@ const translationField = (field: string, translations?: MealPlanPriceTranslation
   return `${language === 'en' ? 'english' : 'arabic'}${normalized.includes('description') ? 'Description' : 'Name'}` as TranslationField;
 };
 
-export const pricingSaveError = (error: unknown, body?: PlanPriceInput): PricingSaveError => {
-  const fallback = 'The pricing package could not be saved. Review the fields and try again.';
+export const pricingSaveError = (error: unknown, body?: PlanPriceInput, fallback = 'The pricing package could not be saved. Review the fields and try again.'): PricingSaveError => {
   if (!axios.isAxiosError<ApiErrorEnvelope>(error)) return { message: fallback, fields: {} };
   const errors = error.response?.data?.errors;
   const fields: TranslationErrors = {};

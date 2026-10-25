@@ -124,6 +124,10 @@ export const subscriptionPricingApi = {
     unwrap<{ id: string }>((await apiClient.post(adminApiUrl('meal-plan-prices'), priceRequest(body))).data),
   update: async (id: string, body: MealPlanPriceInput) =>
     (await apiClient.put(adminApiUrl(`meal-plan-prices/${id}`), priceRequest(body))).data,
+  // The existing status endpoint changes only the flag, including for legacy
+  // prices whose package or duration mappings cannot pass a full upsert.
+  setStatus: async (id: string, isActive: boolean) =>
+    (await apiClient.patch(`/admin/meal-plan-pricing/${id}/status`, { isActive })).data,
   durations: async (signal?: AbortSignal): Promise<DurationOption[]> => {
     // Duration masters already exist in this SPA as meal-plan price packages.
     const response = await apiClient.get('/admin/meal-plan-price-packages/lookup', { signal });
