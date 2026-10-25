@@ -12,6 +12,10 @@ export interface PlanSlotInput { mealTypeId: string; displayOrder: number; minim
 export interface SlotOptionInput { mealItemId: string; additionalPrice: number; isDefault: boolean; isAvailable: boolean; displayOrder: number }
 export interface PlanDetail {
   id: string;
+  versionGroupId: string;
+  versionNumber: number;
+  isLatest: boolean;
+  cycleWeeks: number;
   code: string;
   planType: string;
   durationDays: number;

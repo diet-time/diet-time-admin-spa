@@ -1,7 +1,6 @@
 import { Add, Close, CloudUploadOutlined, ContentCopy, DeleteOutline, DragIndicator } from '@mui/icons-material';
 import {
   Alert,
-  Avatar,
   Autocomplete,
   Box,
   Button,
@@ -32,7 +31,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { masterDataApi } from '@/api/masterDataApi';
@@ -46,7 +45,6 @@ import {
   MVP_MENU_WEEKDAYS,
   defaultWeekdayDisplayOrder,
   isWeekdayConfigured,
-  sortMenuDays,
   type MenuWeekday,
 } from './menuWeekdays';
 
@@ -106,7 +104,6 @@ export function PlanBuilderPage() {
   const { t } = useTranslation();
   const { planId } = useParams();
   const [searchParams] = useSearchParams();
-  const viewOnly = searchParams.get('view') === 'menu';
   const navigate = useNavigate();
   const [days, setDays] = useState(initial);
   const [selectedDay, setSelectedDay] = useState(0);
@@ -114,7 +111,9 @@ export function PlanBuilderPage() {
     const week = Number(searchParams.get('week'));
     return week >= 1 && week <= 4 ? week : 1;
   });
-  const [copyFromWeek, setCopyFromWeek] = useState(2);
+  const [copyFromWeek, setCopyFromWeek] = useState(() => selectedWeek === 1 ? 2 : 1);
+  const selectedWeekRef = useRef(selectedWeek);
+  selectedWeekRef.current = selectedWeek;
   const [saveNotice, setSaveNotice] = useState('');
   const [selectedSlot, setSelectedSlot] = useState(0);
   const [mealSearch, setMealSearch] = useState('');
@@ -179,18 +178,19 @@ export function PlanBuilderPage() {
     enabled: !!planId,
     staleTime: 0,
   });
+  const viewOnly = searchParams.get('view') === 'menu' || planQuery.data?.isLatest === false;
   const mealTypes = (mealTypesQuery.data?.items ?? []).filter((mealType) => mealType.isActive);
   const meals = mealsQuery.data?.items ?? [];
   const selectedWeekValidation = menuValidationQuery.data?.weeks.find((week) => week.weekNumber === selectedWeek);
   const selectedMealTypeId = slot?.mealTypeId
     ?? mealTypes.find((mealType) => mealType.nameEn === slot?.title)?.id
     ?? '';
-  const issues = Array.from({ length: 4 }, (_, index) => index + 1).flatMap((week) => {
+  const issues = Array.from({ length: planQuery.data?.cycleWeeks ?? 4 }, (_, index) => index + 1).flatMap((week) => {
     const weekConfig = days.filter((planDay) => planDay.weekNumber === week);
     const missingDays = MVP_MENU_WEEKDAYS.filter((weekday) => !weekConfig.some((planDay) => planDay.menuWeekday === weekday && planDay.isActive));
-    const missingSlots = weekConfig.filter((planDay) => planDay.isActive && !planDay.slots.some((planSlot) => planSlot.required));
+    const missingSlots = weekConfig.filter((planDay) => planDay.isActive && !planDay.slots.some((planSlot) => planSlot.active && planSlot.required));
     return [...(missingDays.length ? [`Week ${week} is missing service days: ${missingDays.join(', ')}.`] : []), ...missingSlots.map((planDay) => `Week ${week} ${t(`weekdays.${planDay.menuWeekday}`)} needs a required meal slot.`), ...weekConfig.flatMap((planDay) => planDay.slots
-      .filter((planSlot) => planSlot.required && planSlot.options.length < planSlot.min)
+      .filter((planSlot) => planDay.isActive && planSlot.active && planSlot.required && planSlot.options.filter((option) => option.available).length < Math.max(1, planSlot.min))
       .map((planSlot) => `Week ${week} ${t(`weekdays.${planDay.menuWeekday}`)} ${planSlot.title} needs at least ${planSlot.min} active option(s).`))];
   });
   const mealTypeIdFor = (planSlot: Slot) => planSlot.mealTypeId
@@ -206,13 +206,12 @@ export function PlanBuilderPage() {
     mutationFn: async (publish: boolean) => {
       const input = {
         code: planDetails.code.trim().toUpperCase(),
-        cycleWeeks: 4,
-        weekNumber: selectedWeek,
+        cycleWeeks: planQuery.data?.cycleWeeks ?? 4,
         planType: planDetails.planType,
         durationDays: planDetails.durationDays,
         isCustomizable: planDetails.isCustomizable,
-        validFrom: null,
-        validUntil: null,
+        validFrom: planQuery.data?.validFrom ?? null,
+        validUntil: planQuery.data?.validUntil ?? null,
         translations: [
           {
             languageCode: 'en' as const,
@@ -275,7 +274,7 @@ export function PlanBuilderPage() {
         queryClient.invalidateQueries({ queryKey: ['plan', savedPlanId] }),
         queryClient.invalidateQueries({ queryKey: ['plan-menu-validation', savedPlanId] }),
       ]);
-      if (publish) navigate('/meal-plans');
+      if (publish) navigate(`/meal-plans/${savedPlanId}/edit?view=menu&week=${selectedWeek}`);
       else navigate(`/meal-plans/${savedPlanId}/edit?week=${selectedWeek}`);
     },
   });
@@ -334,12 +333,12 @@ export function PlanBuilderPage() {
         })),
       })),
     })));
-    const currentWeekFirstDay = plan.days.findIndex((planDay) => planDay.weekNumber === selectedWeek);
+    const currentWeekFirstDay = plan.days.findIndex((planDay) => planDay.weekNumber === selectedWeekRef.current);
     setSelectedDay(Math.max(0, currentWeekFirstDay));
     setSelectedSlot(0);
     setSelectedMeal(null);
     setPlanImagePreview(plan.imageUrl ?? '');
-  }, [planQuery.data]);
+  }, [planQuery.data, planQuery.dataUpdatedAt]);
 
   const updateSlot = (changes: Partial<Slot>) => {
     setDays((currentDays) => currentDays.map((currentDay, dayIndex) => dayIndex === selectedDay
@@ -487,19 +486,22 @@ export function PlanBuilderPage() {
         <Box>
           <Typography variant="h1">{planId ? 'Edit meal plan' : 'Create meal plan'}</Typography>
           <Typography color="text.secondary">{t('weeklySchedule.hierarchy')}</Typography>
+          {planQuery.data && <Typography variant="body2" color="text.secondary">
+            Template {planQuery.data.id} · Version {planQuery.data.versionNumber} · {planQuery.data.isPublished ? 'Published' : 'Draft'}
+          </Typography>}
         </Box>
         <Stack direction="row" gap={1} flexWrap="wrap">
           <Button onClick={() => navigate('/meal-plans')}>{viewOnly ? 'Close' : 'Cancel'}</Button>
           {!viewOnly && <Button
             variant="outlined"
-            disabled={!canSave || saveMutation.isPending}
+            disabled={!canSave || saveMutation.isPending || planQuery.data?.isLatest === false}
             onClick={() => saveMutation.mutate(false)}
           >
             {saveMutation.isPending ? 'Saving…' : 'Save draft'}
           </Button>}
           {!viewOnly && <Button
             variant="contained"
-            disabled={!canSave || issues.length > 0 || saveMutation.isPending}
+            disabled={!canSave || issues.length > 0 || saveMutation.isPending || planQuery.data?.isLatest === false}
             onClick={() => saveMutation.mutate(true)}
           >
             {saveMutation.isPending && saveMutation.variables ? 'Publishing…' : 'Publish'}
@@ -510,6 +512,7 @@ export function PlanBuilderPage() {
         <Alert severity="error"><strong>Publishing checklist:</strong> {issues.join(' ')}</Alert>
       )}
       {saveNotice && <Alert severity="success">{saveNotice}</Alert>}
+      {planQuery.data?.isLatest === false && <Alert severity="info">This is a historical published menu. Open the latest version from Plan Templates to make changes.</Alert>}
       {menuValidationQuery.isError && planId && <Alert severity="warning">Saved week status is unavailable. The API will validate all four weeks when you publish.</Alert>}
       {selectedWeekValidation && !selectedWeekValidation.isComplete && selectedWeekValidation.errors.length > 0 && <Alert severity="info">Week {selectedWeek} validation: {selectedWeekValidation.errors.map((error) => error.message).join(' ')}</Alert>}
       {saveMutation.isError && (
@@ -683,11 +686,11 @@ export function PlanBuilderPage() {
               setSelectedDay(Math.max(0, firstDay));
               setSelectedSlot(0);
             }} variant="scrollable" allowScrollButtonsMobile>
-              {[1, 2, 3, 4].map((week) => {
+              {Array.from({ length: planQuery.data?.cycleWeeks ?? 4 }, (_, index) => index + 1).map((week) => {
                 const configuredDays = days.filter((item) => item.weekNumber === week);
                 const apiWeek = menuValidationQuery.data?.weeks.find((item) => item.weekNumber === week);
                 const complete = MVP_MENU_WEEKDAYS.every((weekday) => configuredDays.some((item) => item.menuWeekday === weekday && item.isActive))
-                  && configuredDays.filter((item) => item.isActive).every((item) => item.slots.some((entry) => entry.required) && item.slots.filter((entry) => entry.required).every((entry) => entry.options.length >= entry.min));
+                  && configuredDays.filter((item) => item.isActive).every((item) => item.slots.some((entry) => entry.active && entry.required) && item.slots.filter((entry) => entry.active && entry.required).every((entry) => entry.options.filter((option) => option.available).length >= Math.max(1, entry.min)));
                 const status = apiWeek ? apiWeek.isComplete ? 'Complete' : configuredDays.length ? 'Incomplete' : 'Not configured' : !configuredDays.length ? 'Not configured' : complete ? 'Complete' : 'Incomplete';
                 return <Tab key={week} value={week} label={`Week ${week} · ${status}`} />;
               })}
@@ -756,6 +759,7 @@ export function PlanBuilderPage() {
                   sx={{ mt: index === 0 ? 1.5 : 0.75, borderRadius: 2, border: 1, borderColor: index === selectedSlot ? 'rgba(0,103,78,.18)' : 'transparent', '&.Mui-selected': { bgcolor: 'rgba(0,103,78,.08)' }, '&.Mui-selected:hover': { bgcolor: 'rgba(0,103,78,.11)' } }}
                 >
                   <ListItemText primary={planSlot.title} secondary={`${planSlot.options.length} options · select ${planSlot.min}–${planSlot.max}`} />
+                  {!planSlot.active && <Chip size="small" label="Inactive" />}
                   {planSlot.required && <Chip size="small" label="Required" />}
                 </ListItemButton>
               ))}
@@ -786,6 +790,7 @@ export function PlanBuilderPage() {
                     {mealTypes.map((mealType) => (
                       <MenuItem value={mealType.id} key={mealType.id}>{mealType.nameEn}</MenuItem>
                     ))}
+                    {selectedMealTypeId && !mealTypes.some((mealType) => mealType.id === selectedMealTypeId) && <MenuItem value={selectedMealTypeId} disabled>{slot.title} (inactive or unavailable)</MenuItem>}
                   </TextField>
                   <Grid container spacing={1.5}>
                     <Grid size={6}>
@@ -816,6 +821,12 @@ export function PlanBuilderPage() {
                     label="Required slot"
                     sx={{ m: 0 }}
                   />
+                  <FormControlLabel
+                    control={<Checkbox disabled={viewOnly} checked={slot.active} onChange={(_, checked) => updateSlot({ active: checked })} />}
+                    label="Active slot"
+                    sx={{ m: 0 }}
+                  />
+                  {!viewOnly && <Button color="error" startIcon={<DeleteOutline />} disabled={!slot.active} onClick={() => updateSlot({ active: false })}>Remove slot from menu</Button>}
                 </Stack>
               )}
             </Grid>
@@ -886,6 +897,8 @@ export function PlanBuilderPage() {
                           {!viewOnly && <IconButton size="small" aria-label={`Remove ${option.name}`} onClick={() => updateSlot({ options: slot.options.filter((item) => item.id !== option.id) })} sx={{ position: 'absolute', top: 7, insetInlineEnd: 7, width: 30, height: 30, bgcolor: 'rgba(255,255,255,.94)', boxShadow: 1, '&:hover': { bgcolor: 'common.white' } }}><Close fontSize="small" /></IconButton>}
                         </Box>
                         <Typography variant="body2" title={option.name} sx={{ px: 1.25, py: 1, minHeight: 50, lineHeight: 1.4, overflowWrap: 'anywhere' }}>{option.name}</Typography>
+                        {!option.available && <Chip size="small" label="Unavailable" sx={{ m: 1 }} />}
+                        {!viewOnly && !option.available && <Button size="small" onClick={() => updateSlot({ options: slot.options.map((item) => item.id === option.id ? { ...item, available: true } : item) })}>Restore option</Button>}
                       </Paper>
                     ))}
                   </Stack>

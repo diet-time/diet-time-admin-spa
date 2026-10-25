@@ -1,25 +1,21 @@
 import { EditOutlined, MenuBookOutlined, PaidOutlined, VisibilityOutlined } from '@mui/icons-material';
-import { Alert, Box, Button, Card, CardContent, Chip, Skeleton, Stack, Typography } from '@mui/material';
+import { Alert, Box, Button, Card, CardContent, Chip, MenuItem, Skeleton, Stack, TextField, Typography } from '@mui/material';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { plansApi } from '@/api/plansApi';
-import type { PlanSummary } from '@/api/apiTypes';
 import { StatusChip } from '@/components/common/StatusChip';
 import { EmptyState, ErrorState } from '@/components/feedback/PageState';
 
 export function PlanListPage() {
   const navigate = useNavigate();
   const query = useQuery({
-    queryKey: ['plans', 'complete-balance-current'],
+    queryKey: ['plans', 'template-versions'],
     queryFn: ({ signal }) => plansApi.list({ page: 1, pageSize: 100 }, signal),
   });
-  const compareVersions = (left: PlanSummary, right: PlanSummary) =>
-    (right.versionNumber ?? 0) - (left.versionNumber ?? 0) || right.updatedAt.localeCompare(left.updatedAt);
-  const completeBalanceVersions = (query.data?.items ?? [])
-    .filter((item) => item.nameEn.trim().toLocaleLowerCase() === 'complete balance');
-  const publishedPlan = completeBalanceVersions.filter((item) => item.published && item.active).sort(compareVersions)[0];
-  const draftPlan = completeBalanceVersions.filter((item) => !item.published).sort(compareVersions)[0];
-  const plan = [publishedPlan, draftPlan].filter((item): item is PlanSummary => !!item).sort(compareVersions)[0];
+  const plans = query.data?.items ?? [];
+  const [selectedPlanId, setSelectedPlanId] = useState('');
+  const plan = plans.find((item) => item.id === selectedPlanId) ?? plans[0];
   const planStatus = plan?.published ? 'Published' : 'Draft';
   const detailQuery = useQuery({
     queryKey: ['plan-card-detail', plan?.id],
@@ -36,7 +32,10 @@ export function PlanListPage() {
       </Box>
       {query.isLoading ? <Card><CardContent><Skeleton variant="rounded" height={220} /></CardContent></Card> : null}
       {query.isError ? <ErrorState message="Unable to load the current meal plan." onRetry={() => void query.refetch()} /> : null}
-      {!query.isLoading && !query.isError && !plan ? <EmptyState title="No published Complete Balance plan found" /> : null}
+      {!query.isLoading && !query.isError && !plan ? <EmptyState title="No meal plan templates found" /> : null}
+      {plans.length > 0 && <TextField select label="Template version" value={plan?.id ?? ''} onChange={(event) => setSelectedPlanId(event.target.value)}>
+        {plans.map((item) => <MenuItem key={item.id} value={item.id}>{item.nameEn} · Version {item.versionNumber} · {item.published ? 'Published' : 'Draft'} · {item.id}</MenuItem>)}
+      </TextField>}
       {plan && (
         <Card>
           <Stack direction={{ xs: 'column', md: 'row' }}>
@@ -48,13 +47,13 @@ export function PlanListPage() {
                 flexShrink: 0,
                 bgcolor: 'background.default',
               }}>
-                <Box component="img" src={imageUrl} alt="Complete Balance" sx={{ display: 'block', width: '100%', height: '100%', objectFit: 'contain' }} />
+                <Box component="img" src={imageUrl} alt={plan.nameEn} sx={{ display: 'block', width: '100%', height: '100%', objectFit: 'contain' }} />
               </Box>
             ) : null}
             <CardContent sx={{ flex: 1, p: { xs: 2.5, md: 3 } }}>
               <Stack spacing={2}>
                 <Stack direction="row" justifyContent="space-between" alignItems="flex-start" gap={2}>
-                  <Box><Typography variant="h2">Complete Balance</Typography><Typography color="text.secondary">Standard Meal Plan</Typography></Box>
+                  <Box><Typography variant="h2">{plan.nameEn}</Typography><Typography color="text.secondary">Version {plan.versionNumber} · {plan.id}</Typography></Box>
                   <StatusChip label={planStatus} />
                 </Stack>
                 <Stack direction="row" flexWrap="wrap" useFlexGap gap={1}>
