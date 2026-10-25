@@ -76,6 +76,10 @@ export interface MealPlanPrice {
   price: number;
   currency: string;
   isActive: boolean;
+  mealCount?: number;
+  snackCount?: number;
+  serviceDays?: number;
+  isAvailable?: boolean;
 }
 
 export interface MealPlanPriceInput {
@@ -87,7 +91,8 @@ export interface MealPlanPriceInput {
   isActive: boolean;
 }
 
-interface RawMealPlanPrice extends Omit<MealPlanPrice, 'packageOptionName' | 'currency'> {
+interface RawMealPlanPrice extends Omit<MealPlanPrice, 'packageOptionName' | 'packageOptionId' | 'currency'> {
+  packageOptionId?: string | null;
   packageOptionName?: string;
   packageName?: string;
   currency?: string;
@@ -96,6 +101,7 @@ interface RawMealPlanPrice extends Omit<MealPlanPrice, 'packageOptionName' | 'cu
 
 const mealPlanPrice = (item: RawMealPlanPrice): MealPlanPrice => ({
   ...item,
+  packageOptionId: item.packageOptionId ?? '',
   packageOptionName: item.packageOptionName ?? item.packageName ?? 'Package',
   currency: item.currency ?? item.currencyCode ?? 'QAR',
 });
