@@ -30,7 +30,20 @@ export interface ProductionGroup {
 export interface DeliveryPreparationMenuItem { menuItemId: string; menuItemName: string; quantity: number }
 export interface DeliveryPreparationMealType { mealTypeId: string; mealTypeName: string; quantity: number; items: DeliveryPreparationMenuItem[] }
 export interface DeliveryPreparationPlan { mealPlanId: string; mealPlanName: string; orderCount: number }
+export interface KitchenSelection {
+  serviceDayId: string;
+  orderReference: string;
+  customerReference: string;
+  finalizationStatus: string;
+  selectionSources: string[];
+  dishes: { mealName: string; category: string; quantity: number }[];
+  dietaryRestrictions: string[];
+  reviewReason?: string;
+}
 export interface DeliveryPreparationSummary {
+  isPreliminary?: boolean;
+  operationalExceptions?: string[];
+  selections?: KitchenSelection[];
   date: string;
   status: string;
   orderCount: number;
