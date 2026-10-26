@@ -1,3 +1,4 @@
+import { discountError, discountPreview } from './packageDiscount';
 import { Add, EditOutlined, InfoOutlined, ToggleOffOutlined, ToggleOnOutlined } from '@mui/icons-material';
 import { Alert, Box, Button, Card, Dialog, DialogActions, DialogContent, DialogTitle, Grid, IconButton, MenuItem, Snackbar, Stack, Switch, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Tooltip, Typography, FormControlLabel } from '@mui/material';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -17,7 +18,8 @@ const money = (value: number, currency: string) => new Intl.NumberFormat('en-QA'
 const isStatusOnlyChange = (item: MealPlanPrice | undefined, values: MealPlanPriceInput) => !!item
   && item.isActive !== values.isActive
   && item.mealPlanId === values.mealPlanId && item.durationId === values.durationId
-  && item.packageOptionId === values.packageOptionId && item.price === values.price && item.currency === values.currency;
+  && item.packageOptionId === values.packageOptionId && item.price === values.price && item.currency === values.currency
+  && (item.discountedPrice ?? null) === (values.discountedPrice ?? null);
 const availabilityHint = (price: MealPlanPrice) => !price.packageOptionId
   ? 'Choose a package option in Edit Price before offering this price to customers.'
   : !price.durationId
@@ -113,7 +115,11 @@ export function SubscriptionPlanPricingPage() {
                   <TableCell><Tooltip title={`Plan ID: ${price.mealPlanId}`}><Box component="span">{price.mealPlanName}{plan && <Typography variant="caption" display="block" color="text.secondary">Version {plan.versionNumber ?? '?'} · {plan.published ? 'Published' : 'Draft'}</Typography>}</Box></Tooltip></TableCell>
                   <TableCell><Tooltip title={price.serviceDays ? daysLabel : ''}><Box component="span">{price.durationName}</Box></Tooltip></TableCell>
                   <TableCell><Tooltip title={counts}><Typography fontWeight={700}>{price.packageOptionName}</Typography></Tooltip></TableCell>
-                  <TableCell>{money(price.price, price.currency)}</TableCell>
+                  <TableCell>{price.discountedPrice != null ? <Stack spacing={0.25}>
+                    <Typography fontWeight={800}>{money(price.effectivePrice ?? price.discountedPrice, price.currency)}</Typography>
+                    <Typography variant="body2" sx={{ textDecoration: 'line-through' }}>{money(price.price, price.currency)}</Typography>
+                    <Typography variant="caption">{(price.discountPercentage ?? discountPreview(price.price, price.discountedPrice)?.percentage ?? 0).toFixed(2)}% OFF · Saves {money(price.discountAmount ?? discountPreview(price.price, price.discountedPrice)?.savings ?? 0, price.currency)}</Typography>
+                  </Stack> : money(price.price, price.currency)}</TableCell>
                   <TableCell><Stack direction="row" spacing={0.75} alignItems="center"><StatusChip label={price.isActive ? 'Active' : 'Inactive'} />
                     {price.isActive && price.isAvailable === false && <Tooltip title={availabilityHint(price)}><IconButton size="small" aria-label={`Availability details for ${price.packageOptionName}`}><InfoOutlined fontSize="small" /></IconButton></Tooltip>}
                   </Stack></TableCell>
@@ -154,11 +160,13 @@ function PriceDialog({ item, plans, durations, packages, existing, pending, erro
   onClose: () => void;
   onSave: (body: MealPlanPriceInput) => void;
 }) {
-  const [values, setValues] = useState<MealPlanPriceInput>(item ? { mealPlanId: item.mealPlanId, durationId: item.durationId, packageOptionId: item.packageOptionId, price: item.price, currency: item.currency, isActive: item.isActive } : { mealPlanId: '', durationId: '', packageOptionId: '', price: 0, currency: 'QAR', isActive: true });
+  const [values, setValues] = useState<MealPlanPriceInput>(item ? { mealPlanId: item.mealPlanId, durationId: item.durationId, packageOptionId: item.packageOptionId, price: item.price, discountedPrice: item.discountedPrice ?? null, currency: item.currency, isActive: item.isActive } : { mealPlanId: '', durationId: '', packageOptionId: '', price: 0, discountedPrice: null, currency: 'QAR', isActive: true });
   const [submitted, setSubmitted] = useState(false);
   const duplicate = useMemo(() => values.isActive && existing.some((price) => price.id !== item?.id && price.isActive && price.mealPlanId === values.mealPlanId && price.durationId === values.durationId && price.packageOptionId === values.packageOptionId), [existing, item?.id, values]);
+  const priceError = discountError(values.price, values.discountedPrice);
+  const preview = discountPreview(values.price, values.discountedPrice);
   const invalid = !isStatusOnlyChange(item, values)
-    && (!values.mealPlanId || !values.durationId || !values.packageOptionId || !(values.price > 0) || !values.currency.trim() || duplicate);
+    && (!values.mealPlanId || !values.durationId || !values.packageOptionId || !!priceError || !values.currency.trim() || duplicate);
   return <Dialog open fullWidth maxWidth="sm" onClose={() => !pending && onClose()}>
     <DialogTitle>{item ? 'Edit Price' : 'Add Price'}</DialogTitle>
     <DialogContent><Stack spacing={2} mt={1}>
@@ -177,9 +185,15 @@ function PriceDialog({ item, plans, durations, packages, existing, pending, erro
         {packages.map((option) => <MenuItem value={option.id} key={option.id}>{option.name}</MenuItem>)}
       </TextField>
       <Grid container spacing={2}>
-        <Grid size={{ xs: 8 }}><TextField required fullWidth type="number" label="Price" value={values.price} error={submitted && !(values.price > 0)} helperText={submitted && !(values.price > 0) ? 'Price must be greater than zero.' : undefined} onChange={(e) => setValues({ ...values, price: Number(e.target.value) })} /></Grid>
+        <Grid size={{ xs: 8 }}><TextField required fullWidth type="number" label={`Regular Price (${values.currency || 'QAR'})`} value={values.price} error={submitted && !!discountError(values.price)} helperText={submitted ? discountError(values.price) : undefined} slotProps={{ htmlInput: { min: 0.01, step: '0.01' } }} onChange={(e) => setValues({ ...values, price: Number(e.target.value) })} /></Grid>
         <Grid size={{ xs: 4 }}><TextField required fullWidth label="Currency" value={values.currency} error={submitted && !values.currency.trim()} onChange={(e) => setValues({ ...values, currency: e.target.value.toUpperCase() })} /></Grid>
       </Grid>
+      <TextField fullWidth type="number" label={`Discounted Price (${values.currency || 'QAR'}) — Optional`}
+        value={values.discountedPrice ?? ''} slotProps={{ htmlInput: { min: 0, step: '0.01' } }}
+        error={!!priceError && (submitted || values.discountedPrice != null)}
+        helperText={priceError && (submitted || values.discountedPrice != null) ? priceError : 'Leave blank to remove the promotion.'}
+        onChange={(e) => setValues({ ...values, discountedPrice: e.target.value === '' ? null : Number(e.target.value) })} />
+      {preview && <Alert severity="success">Discount: {preview.percentage.toFixed(2)}% · Customer Saves: {money(preview.savings, /^[A-Za-z]{3}$/.test(values.currency) ? values.currency : 'QAR')}</Alert>}
       <FormControlLabel control={<Switch checked={values.isActive} onChange={(_, checked) => setValues({ ...values, isActive: checked })} />} label="Active" />
       <Alert severity="info">Changing this master price does not alter historical customer order values.</Alert>
     </Stack></DialogContent>

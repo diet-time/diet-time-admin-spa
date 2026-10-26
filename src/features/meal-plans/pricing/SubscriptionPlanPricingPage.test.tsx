@@ -55,10 +55,10 @@ it('saves the selected plan ID, duration code, package ID and explicit price', a
   await user.click(screen.getByRole('option', { name: 'One Week' }));
   await user.click(dialog.getByRole('combobox', { name: /Package Option/ }));
   await user.click(screen.getByRole('option', { name: 'Three meals' }));
-  await user.type(dialog.getByRole('spinbutton', { name: /Price/ }), '715');
+  await user.type(dialog.getByRole('spinbutton', { name: /Regular Price/ }), '715');
   await user.click(dialog.getByRole('button', { name: 'Save Price' }));
   await waitFor(() => expect(subscriptionPricingApi.create).toHaveBeenCalledWith({
-    mealPlanId: 'live-id', durationId: 'WEEK', packageOptionId: 'package-id', price: 715, currency: 'QAR', isActive: true,
+    mealPlanId: 'live-id', durationId: 'WEEK', packageOptionId: 'package-id', price: 715, discountedPrice: null, currency: 'QAR', isActive: true,
   }));
 });
 
@@ -127,4 +127,46 @@ it('summarizes availability once and shows mapping details on demand', async () 
   expect(screen.queryByRole('button', { name: 'Availability details for Inactive package' })).not.toBeInTheDocument();
   await user.hover(screen.getByRole('button', { name: 'Availability details for Missing package mapping' }));
   expect(await screen.findByRole('tooltip')).toHaveTextContent('Choose a package option in Edit Price');
+});
+
+const discountedFixture: MealPlanPrice = {
+  id: 'discount-price', mealPlanId: 'live-id', mealPlanName: 'Complete Balance', durationId: 'WEEK',
+  durationName: 'One Week', packageOptionId: 'package-id', packageOptionName: 'Three meals',
+  price: 999, discountedPrice: 799, effectivePrice: 799, discountAmount: 200, discountPercentage: 20.02,
+  currency: 'QAR', isActive: true, serviceDays: 6, isAvailable: true,
+};
+
+it('shows the effective listing price and saves an updated discount without altering regular price', async () => {
+  vi.mocked(subscriptionPricingApi.list).mockResolvedValue(paged([discountedFixture]));
+  const user = userEvent.setup(); mount();
+  await user.click(await screen.findByRole('button', { name: 'Edit Three meals price' }));
+  const dialog = within(screen.getByRole('dialog'));
+  expect(dialog.getByRole('spinbutton', { name: /Regular Price/ })).toHaveValue(999);
+  const input = dialog.getByRole('spinbutton', { name: /Discounted Price/ });
+  await user.clear(input); await user.type(input, '699');
+  expect(dialog.getByText(/Customer Saves/)).toHaveTextContent('300');
+  await user.click(dialog.getByRole('button', { name: 'Save Price' }));
+  await waitFor(() => expect(subscriptionPricingApi.update).toHaveBeenCalledWith('discount-price', expect.objectContaining({ price: 999, discountedPrice: 699 })));
+});
+
+it('clears an existing discount by explicitly submitting null', async () => {
+  vi.mocked(subscriptionPricingApi.list).mockResolvedValue(paged([discountedFixture]));
+  const user = userEvent.setup(); mount();
+  await user.click(await screen.findByRole('button', { name: 'Edit Three meals price' }));
+  const dialog = within(screen.getByRole('dialog'));
+  await user.clear(dialog.getByRole('spinbutton', { name: /Discounted Price/ }));
+  await user.click(dialog.getByRole('button', { name: 'Save Price' }));
+  await waitFor(() => expect(subscriptionPricingApi.update).toHaveBeenCalledWith('discount-price', expect.objectContaining({ price: 999, discountedPrice: null })));
+});
+
+it('blocks a discount equal to the regular price with a clear error', async () => {
+  vi.mocked(subscriptionPricingApi.list).mockResolvedValue(paged([discountedFixture]));
+  const user = userEvent.setup(); mount();
+  await user.click(await screen.findByRole('button', { name: 'Edit Three meals price' }));
+  const dialog = within(screen.getByRole('dialog'));
+  const input = dialog.getByRole('spinbutton', { name: /Discounted Price/ });
+  await user.clear(input); await user.type(input, '999');
+  await user.click(dialog.getByRole('button', { name: 'Save Price' }));
+  expect(dialog.getByText('Discounted price must be lower than regular price.')).toBeInTheDocument();
+  expect(subscriptionPricingApi.update).not.toHaveBeenCalled();
 });

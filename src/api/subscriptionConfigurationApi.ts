@@ -74,6 +74,12 @@ export interface MealPlanPrice {
   packageOptionId: string;
   packageOptionName: string;
   price: number;
+  discountedPrice?: number | null;
+  regularPrice?: number;
+  effectivePrice?: number;
+  discountAmount?: number;
+  discountPercentage?: number;
+  hasDiscount?: boolean;
   currency: string;
   isActive: boolean;
   mealCount?: number;
@@ -83,6 +89,7 @@ export interface MealPlanPrice {
 }
 
 export interface MealPlanPriceInput {
+  discountedPrice?: number | null;
   mealPlanId: string;
   durationId: string;
   packageOptionId: string;
@@ -111,6 +118,7 @@ const priceRequest = (body: MealPlanPriceInput) => ({
   durationId: body.durationId,
   packageOptionId: body.packageOptionId,
   price: body.price,
+  ...(body.discountedPrice !== undefined ? { discountedPrice: body.discountedPrice } : {}),
   currencyCode: body.currency,
   isActive: body.isActive,
 });

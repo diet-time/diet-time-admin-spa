@@ -23,6 +23,12 @@ export interface PlanPrice {
   snacksPerDay: number;
   currencyCode: string;
   amount: number;
+  discountedPrice?: number | null;
+  regularPrice?: number;
+  effectivePrice?: number;
+  discountAmount?: number;
+  discountPercentage?: number;
+  hasDiscount?: boolean;
   effectiveFrom: string;
   effectiveUntil?: string | null;
   isActive: boolean;
@@ -38,6 +44,12 @@ interface PlanPriceInputBase {
   snacksPerDay: number;
   currencyCode: string;
   amount: number;
+  discountedPrice?: number | null;
+  regularPrice?: number;
+  effectivePrice?: number;
+  discountAmount?: number;
+  discountPercentage?: number;
+  hasDiscount?: boolean;
   effectiveFrom: string;
   effectiveUntil: string | null;
   isActive: boolean;
