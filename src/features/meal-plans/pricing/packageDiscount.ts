@@ -13,5 +13,5 @@ export function discountError(regular: number, discounted?: number | null): stri
 export function discountPreview(regular: number, discounted?: number | null) {
   if (discounted == null || discountError(regular, discounted)) return undefined;
   const savings = cents(regular) - cents(discounted);
-  return { savings: savings / 100, percentage: Math.round(savings / cents(regular) * 10000) / 100 };
+  return { savings: savings / 100, percentage: Math.round(savings / cents(regular) * 100) };
 }

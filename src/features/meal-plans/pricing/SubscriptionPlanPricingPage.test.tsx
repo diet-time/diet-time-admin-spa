@@ -140,6 +140,8 @@ it('shows the effective listing price and saves an updated discount without alte
   vi.mocked(subscriptionPricingApi.list).mockResolvedValue(paged([discountedFixture]));
   const user = userEvent.setup(); mount();
   await user.click(await screen.findByRole('button', { name: 'Edit Three meals price' }));
+  expect(screen.getByText(/^20% OFF/)).toBeInTheDocument();
+  expect(within(screen.getByRole('dialog')).getByText(/^Discount: 20%/)).toBeInTheDocument();
   const dialog = within(screen.getByRole('dialog'));
   expect(dialog.getByRole('spinbutton', { name: /Regular Price/ })).toHaveValue(999);
   const input = dialog.getByRole('spinbutton', { name: /Discounted Price/ });

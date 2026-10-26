@@ -118,7 +118,7 @@ export function SubscriptionPlanPricingPage() {
                   <TableCell>{price.discountedPrice != null ? <Stack spacing={0.25}>
                     <Typography fontWeight={800}>{money(price.effectivePrice ?? price.discountedPrice, price.currency)}</Typography>
                     <Typography variant="body2" sx={{ textDecoration: 'line-through' }}>{money(price.price, price.currency)}</Typography>
-                    <Typography variant="caption">{(price.discountPercentage ?? discountPreview(price.price, price.discountedPrice)?.percentage ?? 0).toFixed(2)}% OFF · Saves {money(price.discountAmount ?? discountPreview(price.price, price.discountedPrice)?.savings ?? 0, price.currency)}</Typography>
+                    <Typography variant="caption">{(price.discountPercentage ?? discountPreview(price.price, price.discountedPrice)?.percentage ?? 0).toFixed(0)}% OFF · Saves {money(price.discountAmount ?? discountPreview(price.price, price.discountedPrice)?.savings ?? 0, price.currency)}</Typography>
                   </Stack> : money(price.price, price.currency)}</TableCell>
                   <TableCell><Stack direction="row" spacing={0.75} alignItems="center"><StatusChip label={price.isActive ? 'Active' : 'Inactive'} />
                     {price.isActive && price.isAvailable === false && <Tooltip title={availabilityHint(price)}><IconButton size="small" aria-label={`Availability details for ${price.packageOptionName}`}><InfoOutlined fontSize="small" /></IconButton></Tooltip>}
@@ -193,7 +193,7 @@ function PriceDialog({ item, plans, durations, packages, existing, pending, erro
         error={!!priceError && (submitted || values.discountedPrice != null)}
         helperText={priceError && (submitted || values.discountedPrice != null) ? priceError : 'Leave blank to remove the promotion.'}
         onChange={(e) => setValues({ ...values, discountedPrice: e.target.value === '' ? null : Number(e.target.value) })} />
-      {preview && <Alert severity="success">Discount: {preview.percentage.toFixed(2)}% · Customer Saves: {money(preview.savings, /^[A-Za-z]{3}$/.test(values.currency) ? values.currency : 'QAR')}</Alert>}
+      {preview && <Alert severity="success">Discount: {preview.percentage.toFixed(0)}% · Customer Saves: {money(preview.savings, /^[A-Za-z]{3}$/.test(values.currency) ? values.currency : 'QAR')}</Alert>}
       <FormControlLabel control={<Switch checked={values.isActive} onChange={(_, checked) => setValues({ ...values, isActive: checked })} />} label="Active" />
       <Alert severity="info">Changing this master price does not alter historical customer order values.</Alert>
     </Stack></DialogContent>
