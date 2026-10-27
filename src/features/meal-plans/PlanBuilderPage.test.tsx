@@ -49,6 +49,14 @@ describe('saved menu slots', () => {
   });
   afterEach(() => { cleanup(); queryClient.clear(); });
 
+  it('shows package capacity warnings for every saved week', async () => {
+    vi.mocked(plansApi.validateMenu).mockResolvedValue({ templateId: 'published', versionGroupId: 'group', versionNumber: 3, isLatest: true, isPublished: true,
+      weeks: [{ weekNumber: 1, isComplete: false, errors: [{ weekNumber: 1, code: 'INSUFFICIENT_PACKAGE_OPTIONS', message: 'Week 1 needs 5 distinct regular dishes and 1 snack.' }] }] });
+    mount();
+    expect(await screen.findByText('Package capacity:')).toBeInTheDocument();
+    expect(screen.getByText(/Week 1 needs 5 distinct regular dishes and 1 snack/)).toBeInTheDocument();
+  });
+
   it('renders persisted Meal 4 in the assigned week even without lookup data or options', async () => {
     mount();
     expect(await screen.findByText('Meal 4')).toBeInTheDocument();

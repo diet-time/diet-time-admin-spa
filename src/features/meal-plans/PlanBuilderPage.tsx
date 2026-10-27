@@ -36,6 +36,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { masterDataApi } from '@/api/masterDataApi';
 import { mealsApi } from '@/api/mealsApi';
+import { isAxiosError } from 'axios';
 import { plansApi } from '@/api/plansApi';
 import type { MealSummary } from '@/api/apiTypes';
 import { queryClient } from '@/app/queryClient';
@@ -181,6 +182,7 @@ export function PlanBuilderPage() {
   const viewOnly = searchParams.get('view') === 'menu' || planQuery.data?.isLatest === false;
   const mealTypes = (mealTypesQuery.data?.items ?? []).filter((mealType) => mealType.isActive);
   const meals = mealsQuery.data?.items ?? [];
+  const capacityWarnings = menuValidationQuery.data?.weeks.flatMap((week) => week.errors.filter((error) => error.code === 'INSUFFICIENT_PACKAGE_OPTIONS')) ?? [];
   const selectedWeekValidation = menuValidationQuery.data?.weeks.find((week) => week.weekNumber === selectedWeek);
   const selectedMealTypeId = slot?.mealTypeId
     ?? mealTypes.find((mealType) => mealType.nameEn === slot?.title)?.id
@@ -511,12 +513,13 @@ export function PlanBuilderPage() {
       {issues.length > 0 && (
         <Alert severity="error"><strong>Publishing checklist:</strong> {issues.join(' ')}</Alert>
       )}
+      {capacityWarnings.length > 0 && <Alert severity="warning"><strong>Package capacity:</strong> {capacityWarnings.map((error) => error.message).join(' ')} Save corrections before publishing. The server checks the complete menu again on publication.</Alert>}
       {saveNotice && <Alert severity="success">{saveNotice}</Alert>}
       {planQuery.data?.isLatest === false && <Alert severity="info">This is a historical published menu. Open the latest version from Plan Templates to make changes.</Alert>}
       {menuValidationQuery.isError && planId && <Alert severity="warning">Saved week status is unavailable. The API will validate all four weeks when you publish.</Alert>}
       {selectedWeekValidation && !selectedWeekValidation.isComplete && selectedWeekValidation.errors.length > 0 && <Alert severity="info">Week {selectedWeek} validation: {selectedWeekValidation.errors.map((error) => error.message).join(' ')}</Alert>}
       {saveMutation.isError && (
-        <Alert severity="error">{saveMutation.variables ? 'The meal plan could not be saved and published. Review the plan and try again.' : 'The draft could not be saved. Review the plan details and try again.'}</Alert>
+        <Alert severity="error">{(isAxiosError<{ message?: string }>(saveMutation.error) && saveMutation.error.response?.data.message) || (saveMutation.variables ? 'The meal plan could not be saved and published. Review the plan and try again.' : 'The draft could not be saved. Review the plan details and try again.')}</Alert>
       )}
       <Card>
         <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
