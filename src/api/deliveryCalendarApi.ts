@@ -13,7 +13,7 @@ import type {
 } from '@/features/delivery-calendar/types';
 
 interface CalendarOrderApi {
-  fulfillmentMethod?: string;
+  fulfillmentMethod?: string; takeawayBranchName?: string; takeawayBranchAddress?: string;
   id: string;
   orderNumber: string;
   customerProfileId: string;
@@ -100,6 +100,8 @@ export const deliveryCalendarApi = {
         mealCount: order.mealCount,
         deliverySlot: order.deliverySlot,
         fulfillmentMethod: order.fulfillmentMethod ?? 'HOME_DELIVERY',
+        takeawayBranchName: order.takeawayBranchName,
+        takeawayBranchAddress: order.takeawayBranchAddress,
         status: order.status,
       })),
       production: source.mealTypeTotals,

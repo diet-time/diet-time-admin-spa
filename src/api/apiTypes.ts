@@ -21,7 +21,7 @@ export interface OperationsTodaySummary { scheduledDeliveries: number; customers
 export interface NextDeliveryDay { date: string; scheduledDeliveries: number; customers: number }
 export interface DeliveryWorkloadDay { date: string; dayName: string; scheduledDeliveries: number; customers: number; meals: number; hasDeliveries: boolean }
 export interface DashboardAttention { missingDeliveryAddresses: number; ordersRequiringReview: number; plansEndingSoon: number; customersWithoutUpcomingDelivery: number; deliveryConflicts: number }
-export interface DashboardDelivery { fulfillmentMethod?: string; orderId: string; orderNumber: string; customerId: string; customerName: string; mealPlanId: string; mealPlanName: string; mealCount: number; deliveryArea: string; deliveryAddress: string; status: string }
+export interface DashboardDelivery { fulfillmentMethod?: string; takeawayBranchName?: string; takeawayBranchAddress?: string; orderId: string; orderNumber: string; customerId: string; customerName: string; mealPlanId: string; mealPlanName: string; mealCount: number; deliveryArea: string; deliveryAddress: string; status: string }
 export interface PlanActivityDay { date: string; customerCount: number }
 export interface UpcomingPlanActivity { starting: PlanActivityDay[]; ending: PlanActivityDay[] }
 export interface OperationsDashboard { date: string; today: OperationsTodaySummary; nextDeliveryDay?: NextDeliveryDay | null; nextSevenDays: DeliveryWorkloadDay[]; needsAttention: DashboardAttention; todayDeliveries: DashboardDelivery[]; upcomingPlanActivity: UpcomingPlanActivity }

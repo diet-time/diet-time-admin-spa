@@ -13,7 +13,7 @@ export interface DeliveryCalendarDay {
 }
 
 export interface CustomerDelivery {
-  fulfillmentMethod?: string;
+  fulfillmentMethod?: string; takeawayBranchName?: string; takeawayBranchAddress?: string;
   id: string;
   orderNumber: string;
   customerName: string;
@@ -32,6 +32,9 @@ export interface DeliveryPreparationMenuItem { menuItemId: string; menuItemName:
 export interface DeliveryPreparationMealType { mealTypeId: string; mealTypeName: string; quantity: number; items: DeliveryPreparationMenuItem[] }
 export interface DeliveryPreparationPlan { mealPlanId: string; mealPlanName: string; orderCount: number }
 export interface KitchenSelection {
+  fulfillmentMethod?: string;
+  takeawayBranchName?: string;
+  takeawayBranchAddress?: string;
   serviceDayId: string;
   orderReference: string;
   customerReference: string;

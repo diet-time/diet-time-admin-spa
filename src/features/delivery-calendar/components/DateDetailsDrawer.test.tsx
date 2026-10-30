@@ -37,7 +37,7 @@ describe('PreparationSummary report download', () => {
   it('shows customer and automatic finalization sources with actual dishes and dietary requirements', () => {
     render(<PreparationSummary date="2026-08-16" summary={{ ...summary, status: 'Finalized', selections: [
       { serviceDayId: 'day-1', orderReference: 'ORD-1', customerReference: 'customer-1', finalizationStatus: 'CUSTOMER_CONFIRMED',
-        selectionSources: ['CUSTOMER'], dishes: [{ mealName: 'Grilled salmon', category: 'meal', quantity: 2 }], dietaryRestrictions: ['DAIRY_FREE'] },
+        fulfillmentMethod: 'TAKEAWAY', takeawayBranchName: 'Diet Time – Izghawa Branch', takeawayBranchAddress: 'Configured branch address', selectionSources: ['CUSTOMER'], dishes: [{ mealName: 'Grilled salmon', category: 'meal', quantity: 2 }], dietaryRestrictions: ['DAIRY_FREE'] },
       { serviceDayId: 'day-2', orderReference: 'ORD-2', customerReference: 'customer-2', finalizationStatus: 'AUTO_FINALIZED',
         selectionSources: ['DEFAULT'], dishes: [{ mealName: 'Berry yogurt', category: 'snack', quantity: 1 }], dietaryRestrictions: [] },
     ] }} />);
@@ -45,6 +45,8 @@ describe('PreparationSummary report download', () => {
     expect(screen.getByText(/ORD-2 · AUTO FINALIZED/)).toBeInTheDocument();
     expect(screen.getByText('2 × Grilled salmon (meal)')).toBeInTheDocument();
     expect(screen.getByText('1 × Berry yogurt (snack)')).toBeInTheDocument();
+    expect(screen.getByText('Takeaway · Diet Time – Izghawa Branch · Configured branch address')).toBeInTheDocument();
+    expect(screen.getByText('Home Delivery')).toBeInTheDocument();
     expect(screen.getByText('Dietary requirements: DAIRY_FREE')).toBeInTheDocument();
   });
 
