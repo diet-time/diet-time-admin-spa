@@ -19,6 +19,7 @@ interface NavItem {
 }
 
 const items: NavItem[] = [
+  { key: 'Orders', path: '/orders', icon: <RestaurantMenuOutlined /> },
   { key: 'dashboard', path: '/', icon: <DashboardOutlined /> },
   { key: 'meals', path: '/meals', icon: <DinnerDiningOutlined /> },
   { key: 'mealPlans', path: '/meal-plans', icon: <MenuBookOutlined />, children: [
