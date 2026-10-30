@@ -77,6 +77,7 @@ export interface PlanPriceFilters {
 }
 
 export interface MealPlanPricePackage {
+  isDeliveryEnabled?: boolean;
   id: string;
   code: string;
   nameEn: string;
@@ -91,6 +92,7 @@ export interface MealPlanPricePackage {
 }
 
 export interface MealPlanPricePackageRequest {
+  isDeliveryEnabled?: boolean;
   code: string;
   nameEn: string;
   nameAr: string;
@@ -100,6 +102,7 @@ export interface MealPlanPricePackageRequest {
 }
 
 export interface MealPlanPricePackageLookup {
+  isDeliveryEnabled?: boolean;
   id: string;
   code: string;
   nameEn: string;

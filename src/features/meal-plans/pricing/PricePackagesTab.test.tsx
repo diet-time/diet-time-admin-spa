@@ -8,7 +8,7 @@ import { PricePackagesTab } from './PricePackagesTab';
 
 const packages: MealPlanPricePackage[] = [
   { id: 'day', code: 'DAY', nameEn: '1 Day', nameAr: 'يوم واحد', durationDays: 1, displayOrder: 1, isActive: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-07-01T00:00:00Z' },
-  { id: 'week', code: 'WEEK', nameEn: '1 Week', nameAr: 'أسبوع واحد', durationDays: 6, displayOrder: 2, isActive: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-07-02T00:00:00Z', usageCount: 1 },
+  { isDeliveryEnabled: false, id: 'week', code: 'WEEK', nameEn: '1 Week', nameAr: 'أسبوع واحد', durationDays: 6, displayOrder: 2, isActive: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-07-02T00:00:00Z', usageCount: 1 },
 ];
 
 const renderTab = () => render(<QueryClientProvider client={queryClient}><PricePackagesTab /></QueryClientProvider>);
@@ -46,6 +46,7 @@ describe('PricePackagesTab', () => {
     renderTab();
     await screen.findByText('WEEK');
     await user.click(screen.getByRole('button', { name: 'Add Duration' }));
+    expect(screen.getByRole('switch', { name: 'Enable Delivery' })).toBeChecked();
     await user.click(screen.getByRole('button', { name: 'Save Duration' }));
     expect(screen.getByText('Duration code is required.')).toBeInTheDocument();
 
@@ -57,7 +58,7 @@ describe('PricePackagesTab', () => {
     await user.type(screen.getByLabelText(/Display Order/), '4');
     await user.click(screen.getByRole('button', { name: 'Save Duration' }));
 
-    await waitFor(() => expect(mealPlanPricePackagesApi.create).toHaveBeenCalledWith({ code: 'MONTH', nameEn: '1 Month', nameAr: 'شهر واحد', durationDays: 24, displayOrder: 4, isActive: true }));
+    await waitFor(() => expect(mealPlanPricePackagesApi.create).toHaveBeenCalledWith({ code: 'MONTH', nameEn: '1 Month', nameAr: 'شهر واحد', durationDays: 24, displayOrder: 4, isActive: true, isDeliveryEnabled: true }));
   });
 
   it('disables service days when an existing package is referenced', async () => {
@@ -67,6 +68,18 @@ describe('PricePackagesTab', () => {
     await user.click(screen.getByRole('button', { name: 'Edit 1 Week' }));
     expect(screen.getByLabelText(/Service Days/)).toBeDisabled();
     expect(screen.getByText(/cannot be changed because this duration is already used/)).toBeInTheDocument();
+  });
+
+  it('loads and saves delivery eligibility independently of duration', async () => {
+    const user = userEvent.setup();
+    renderTab();
+    await screen.findByText('WEEK');
+    expect(screen.getByText('Takeaway only')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Edit 1 Week' }));
+    expect(screen.getByRole('switch', { name: 'Enable Delivery' })).not.toBeChecked();
+    await user.click(screen.getByRole('switch', { name: 'Enable Delivery' }));
+    await user.click(screen.getByRole('button', { name: 'Save Duration' }));
+    await waitFor(() => expect(mealPlanPricePackagesApi.update).toHaveBeenCalledWith('week', expect.objectContaining({ isDeliveryEnabled: true, durationDays: 6 })));
   });
 
   it('activates or deactivates packages after confirmation', async () => {

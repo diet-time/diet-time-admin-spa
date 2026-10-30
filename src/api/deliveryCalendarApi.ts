@@ -13,6 +13,7 @@ import type {
 } from '@/features/delivery-calendar/types';
 
 interface CalendarOrderApi {
+  fulfillmentMethod?: string;
   id: string;
   orderNumber: string;
   customerProfileId: string;
@@ -98,6 +99,7 @@ export const deliveryCalendarApi = {
         planName: order.planName,
         mealCount: order.mealCount,
         deliverySlot: order.deliverySlot,
+        fulfillmentMethod: order.fulfillmentMethod ?? 'HOME_DELIVERY',
         status: order.status,
       })),
       production: source.mealTypeTotals,

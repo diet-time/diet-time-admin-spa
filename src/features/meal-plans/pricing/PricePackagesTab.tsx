@@ -44,6 +44,7 @@ import { ErrorState, LoadingState } from '@/components/feedback/PageState';
 type PackageStatusFilter = 'all' | 'active' | 'inactive';
 
 interface PackageFormValues {
+  isDeliveryEnabled: boolean;
   code: string;
   nameEn: string;
   nameAr: string;
@@ -61,6 +62,7 @@ const emptyForm = (): PackageFormValues => ({
   durationDays: '',
   displayOrder: '0',
   isActive: true,
+  isDeliveryEnabled: true,
 });
 
 const packageForm = (item: MealPlanPricePackage): PackageFormValues => ({
@@ -70,6 +72,7 @@ const packageForm = (item: MealPlanPricePackage): PackageFormValues => ({
   durationDays: String(item.durationDays),
   displayOrder: String(item.displayOrder),
   isActive: item.isActive,
+  isDeliveryEnabled: item.isDeliveryEnabled ?? true,
 });
 
 const validatePackage = (values: PackageFormValues): PackageFormErrors => {
@@ -213,7 +216,7 @@ export function PricePackagesTab({ createRequest = 0 }: { createRequest?: number
           <TableContainer sx={{ overflowX: 'auto' }}>
             <Table size="small" sx={{ minWidth: 950, '& .MuiTableCell-head': { color: 'text.secondary', fontWeight: 750, bgcolor: '#FBFCFB' }, '& .MuiTableCell-root': { py: 1.75 } }}>
               <TableHead><TableRow>
-                <TableCell>Display Order</TableCell><TableCell>Duration Code</TableCell><TableCell>English Name</TableCell><TableCell>Arabic Name</TableCell><TableCell>Service Days</TableCell><TableCell>Status</TableCell><TableCell>Updated At</TableCell><TableCell align="center">Actions</TableCell>
+                <TableCell>Display Order</TableCell><TableCell>Duration Code</TableCell><TableCell>English Name</TableCell><TableCell>Arabic Name</TableCell><TableCell>Service Days</TableCell><TableCell>Delivery</TableCell><TableCell>Status</TableCell><TableCell>Updated At</TableCell><TableCell align="center">Actions</TableCell>
               </TableRow></TableHead>
               <TableBody>{items.map((item) => (
                 <TableRow key={item.id} hover>
@@ -222,6 +225,7 @@ export function PricePackagesTab({ createRequest = 0 }: { createRequest?: number
                   <TableCell>{item.nameEn}</TableCell>
                   <TableCell dir="rtl" sx={{ textAlign: 'left' }}>{item.nameAr}</TableCell>
                   <TableCell>{item.durationDays}</TableCell>
+                  <TableCell>{item.isDeliveryEnabled === false ? 'Takeaway only' : 'Takeaway / Home Delivery'}</TableCell>
                   <TableCell><StatusChip label={item.isActive ? 'Active' : 'Inactive'} /></TableCell>
                   <TableCell>{item.updatedAt ? format(parseISO(item.updatedAt), 'dd MMM yyyy') : '—'}</TableCell>
                   <TableCell align="center">
@@ -284,6 +288,7 @@ function PackageDialog({ item, pending, apiError, onClose, onSave }: {
       durationDays: Number(values.durationDays),
       displayOrder: Number(values.displayOrder),
       isActive: values.isActive,
+      isDeliveryEnabled: values.isDeliveryEnabled,
     });
   };
 
@@ -300,6 +305,8 @@ function PackageDialog({ item, pending, apiError, onClose, onSave }: {
             <Grid size={{ xs: 12, sm: 6 }}><TextField required fullWidth type="number" label="Service Days" value={values.durationDays} disabled={pending || serviceDaysLocked} error={!!fieldErrors.durationDays} helperText={fieldErrors.durationDays ?? (serviceDaysLocked ? 'Service days cannot be changed because this duration is already used by meal-plan pricing.' : 'Number of meal-service days included in this duration.')} slotProps={{ htmlInput: { min: 1, step: 1 } }} onChange={(event) => setValues({ ...values, durationDays: event.target.value })} /></Grid>
             <Grid size={{ xs: 12, sm: 6 }}><TextField required fullWidth type="number" label="Display Order" value={values.displayOrder} disabled={pending} error={!!fieldErrors.displayOrder} helperText={fieldErrors.displayOrder} slotProps={{ htmlInput: { min: 0, step: 1 } }} onChange={(event) => setValues({ ...values, displayOrder: event.target.value })} /></Grid>
           </Grid>
+          <FormControlLabel disabled={pending} control={<Switch checked={values.isDeliveryEnabled} onChange={(_, checked) => setValues({ ...values, isDeliveryEnabled: checked })} />} label="Enable Delivery" />
+          <Typography variant="body2" color="text.secondary">{values.isDeliveryEnabled ? 'Customers can choose Takeaway or Home Delivery.' : 'Customers can only collect their meals from Diet Time.'}</Typography>
           <FormControlLabel disabled={pending} control={<Switch checked={values.isActive} onChange={(_, checked) => setValues({ ...values, isActive: checked })} />} label="Active" />
         </Stack>
       </DialogContent>

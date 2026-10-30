@@ -13,6 +13,7 @@ export interface DeliveryCalendarDay {
 }
 
 export interface CustomerDelivery {
+  fulfillmentMethod?: string;
   id: string;
   orderNumber: string;
   customerName: string;
