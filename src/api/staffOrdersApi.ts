@@ -4,7 +4,7 @@ export interface StaffOrder { order:{ id:string; orderNumber:string; status:stri
 const unwrap = <T,>(value:T|{data:T}):T => value && typeof value === 'object' && 'data' in value ? value.data : value as T;
 export const orderStatusLabel=(status:string) => ({PENDING_APPROVAL:'Pending Approval',ON_HOLD:'On Hold',CONFIRMED:'Confirmed',REJECTED:'Rejected',CANCELLED:'Cancelled',ACTIVE:'Active',COMPLETED:'Completed',PENDING:'Pending (legacy)',PAUSED:'Paused',PENDING_ACTIVATION:'Awaiting activation'}[status] ?? status.replaceAll('_',' '));
 export const staffOrdersApi={
- list:async(status:string,page:number)=>(unwrap<{items:StaffOrder[];totalCount:number}>((await apiClient.get(adminApiUrl('orders'),{params:{status:status||undefined,pageNumber:page,pageSize:20}})).data)),
+ list:async(status:string,page:number,serviceDate?:string)=>(unwrap<{items:StaffOrder[];totalCount:number}>((await apiClient.get(adminApiUrl('orders'),{params:{status:status||undefined,pageNumber:page,pageSize:20,...(serviceDate?{serviceDate}:{})}})).data)),
  get:async(id:string)=>unwrap<StaffOrder>((await apiClient.get(adminApiUrl('orders/'+id))).data),
  action:async(id:string,action:string,body:object)=>unwrap<StaffOrder>((await apiClient.post(adminApiUrl('orders/'+id+'/'+action),body)).data),
 };

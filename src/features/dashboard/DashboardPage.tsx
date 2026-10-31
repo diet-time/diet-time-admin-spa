@@ -1,3 +1,6 @@
+import { PendingOrdersPanel } from '@/features/orders/PendingOrdersPanel';
+import { accessControlApi } from '@/api/accessControlApi';
+import { canReadPath } from '@/auth/screenPermissionRoutes';
 import { ArrowForward, CalendarMonthOutlined, ErrorOutline, EventBusyOutlined, GroupsOutlined, HomeWorkOutlined, LocalDiningOutlined, LocalShippingOutlined, PendingActionsOutlined, TodayOutlined, WarningAmberOutlined } from '@mui/icons-material';
 import { Alert, Box, Button, Card, CardContent, Chip, Grid, LinearProgress, List, ListItem, ListItemIcon, ListItemText, Paper, Skeleton, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Tooltip, Typography } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
@@ -14,7 +17,9 @@ const todayValue = () => format(new Date(), 'yyyy-MM-dd');
 export function DashboardPage() {
   const [date, setDate] = useState(todayValue);
   const query = useQuery({ queryKey: queryKeys.dashboard(date), queryFn: ({ signal }) => dashboardApi.operations(date, signal) });
+  const permissions = useQuery({ queryKey: ['access-control', 'me', 'screens'], queryFn: accessControlApi.myScreens, staleTime: 60_000 });
   const navigate = useNavigate();
+  const reviewOrders = permissions.data && canReadPath(permissions.data, '/orders') ? () => navigate('/orders') : undefined;
   const openCalendar = () => navigate(`/operations/delivery-calendar?date=${date}`);
 
   return <Stack spacing={3}>
@@ -22,11 +27,12 @@ export function DashboardPage() {
       <Box><Typography variant="h1">Good day</Typography><Typography color="text.secondary">Here's today's delivery operation.</Typography><Typography mt={0.75} fontWeight={750}>{format(parseISO(date), 'EEEE, d MMMM yyyy')}</Typography></Box>
       <Stack direction="row" gap={1}><TextField type="date" value={date} onChange={(event) => event.target.value && setDate(event.target.value)} aria-label="Operational date" slotProps={{ inputLabel: { shrink: true } }} /><Button variant="outlined" startIcon={<TodayOutlined />} onClick={() => setDate(todayValue())}>Today</Button></Stack>
     </Stack>
-    {query.isLoading ? <DashboardSkeleton /> : query.isError || !query.data ? <DashboardError onRetry={() => void query.refetch()} /> : <DashboardContent data={query.data} onOpenCalendar={openCalendar} />}
+    <PendingOrdersPanel serviceDate={date} />
+    {query.isLoading ? <DashboardSkeleton /> : query.isError || !query.data ? <DashboardError onRetry={() => void query.refetch()} /> : <DashboardContent data={query.data} onOpenCalendar={openCalendar} onReviewOrders={reviewOrders} />}
   </Stack>;
 }
 
-function DashboardContent({ data, onOpenCalendar }: { data: OperationsDashboard; onOpenCalendar: () => void }) {
+function DashboardContent({ data, onOpenCalendar, onReviewOrders }: { data: OperationsDashboard; onOpenCalendar: () => void; onReviewOrders?: () => void }) {
   const next = data.nextDeliveryDay;
   const metrics: Array<{ title: string; value: string | number; detail?: string; icon: ReactNode; tone: string; tint: string }> = [
     { title: 'Scheduled deliveries', value: data.today.scheduledDeliveries, detail: data.today.completedDeliveries == null ? undefined : `${data.today.completedDeliveries} completed`, icon: <LocalShippingOutlined />, tone: colors.emerald, tint: '#E8F5F0' },
@@ -38,7 +44,7 @@ function DashboardContent({ data, onOpenCalendar }: { data: OperationsDashboard;
     <Grid container spacing={2}>{metrics.map(metric => <Grid key={metric.title} size={{ xs: 12, sm: 6, xl: 3 }}><MetricCard {...metric} /></Grid>)}</Grid>
     <Grid container spacing={3} alignItems="stretch">
       <Grid size={{ xs: 12, xl: 8 }}><WorkloadCard days={data.nextSevenDays} /></Grid>
-      <Grid size={{ xs: 12, xl: 4 }}><AttentionCard attention={data.needsAttention} /></Grid>
+      <Grid size={{ xs: 12, xl: 4 }}><AttentionCard attention={data.needsAttention} onReviewOrders={onReviewOrders} /></Grid>
     </Grid>
     <DeliveriesCard deliveries={data.todayDeliveries} onOpenCalendar={onOpenCalendar} />
     <PlanActivityCard starting={data.upcomingPlanActivity.starting} ending={data.upcomingPlanActivity.ending} />
@@ -54,7 +60,7 @@ function WorkloadCard({ days }: { days: DeliveryWorkloadDay[] }) {
   return <Card sx={{ height: '100%' }}><CardContent sx={{ p: { xs: 2, md: 3 } }}><Typography variant="h3">Delivery workload</Typography><Typography variant="body2" color="text.secondary" mt={0.5} mb={2.5}>Scheduled workload for the next 7 days</Typography><Stack spacing={1.35}>{days.map(day => <Tooltip key={day.date} placement="top" arrow title={<Box><strong>{format(parseISO(day.date), 'EEEE, d MMMM')}</strong><br />{day.scheduledDeliveries} deliveries<br />{day.customers} customers<br />{day.meals} meals</Box>}><Stack direction="row" alignItems="center" gap={1.5} sx={{ py: 0.35 }}><Typography sx={{ width: 62, flexShrink: 0, fontWeight: 750, color: day.hasDeliveries ? 'text.primary' : 'text.secondary' }}>{format(parseISO(day.date), 'EEE d')}</Typography><Box flex={1}><LinearProgress variant="determinate" value={(day.scheduledDeliveries / max) * 100} sx={{ height: 15, borderRadius: 2, bgcolor: '#EEF1EF', '& .MuiLinearProgress-bar': { borderRadius: 2, bgcolor: day.hasDeliveries ? 'primary.main' : 'transparent' } }} /></Box><Typography variant="body2" sx={{ width: 88, textAlign: 'end', color: day.hasDeliveries ? 'text.primary' : 'text.secondary', fontWeight: day.hasDeliveries ? 750 : 500 }}>{day.hasDeliveries ? `${day.scheduledDeliveries} deliveries` : 'No deliveries'}</Typography></Stack></Tooltip>)}</Stack></CardContent></Card>;
 }
 
-function AttentionCard({ attention }: { attention: DashboardAttention }) {
+function AttentionCard({ attention, onReviewOrders }: { attention: DashboardAttention; onReviewOrders?: () => void }) {
   const rows: Array<{ key: keyof DashboardAttention; label: string; icon: ReactNode; severity: 'warning' | 'error' }> = [
     { key: 'missingDeliveryAddresses', label: 'Missing delivery addresses', icon: <HomeWorkOutlined />, severity: 'error' },
     { key: 'ordersRequiringReview', label: 'Orders requiring review', icon: <PendingActionsOutlined />, severity: 'warning' },
@@ -62,7 +68,7 @@ function AttentionCard({ attention }: { attention: DashboardAttention }) {
     { key: 'customersWithoutUpcomingDelivery', label: 'Customers without upcoming delivery', icon: <GroupsOutlined />, severity: 'error' },
     { key: 'deliveryConflicts', label: 'Delivery conflicts', icon: <ErrorOutline />, severity: 'error' },
   ];
-  return <Card sx={{ height: '100%' }}><CardContent><Stack direction="row" alignItems="center" gap={1}><WarningAmberOutlined color="warning" /><Typography variant="h3">Needs attention</Typography></Stack><List sx={{ mt: 1 }}>{rows.map(row => { const count = attention[row.key]; return <ListItem key={row.key} divider disableGutters><ListItemIcon sx={{ minWidth: 38, color: count ? `${row.severity}.main` : 'text.disabled' }}>{row.icon}</ListItemIcon><ListItemText primary={row.label} primaryTypographyProps={{ variant: 'body2', fontWeight: count ? 700 : 500 }} /><Chip size="small" label={count} color={count ? row.severity : 'success'} /><ArrowForward fontSize="small" sx={{ ms: 1, color: 'text.disabled' }} /></ListItem>; })}</List></CardContent></Card>;
+  return <Card sx={{ height: '100%' }}><CardContent><Stack direction="row" alignItems="center" gap={1}><WarningAmberOutlined color="warning" /><Typography variant="h3">Needs attention</Typography></Stack><List sx={{ mt: 1 }}>{rows.map(row => { const count = attention[row.key]; return <ListItem key={row.key} divider disableGutters><ListItemIcon sx={{ minWidth: 38, color: count ? `${row.severity}.main` : 'text.disabled' }}>{row.icon}</ListItemIcon><ListItemText primary={row.label} primaryTypographyProps={{ variant: 'body2', fontWeight: count ? 700 : 500 }} /><Chip size="small" label={count} color={count ? row.severity : 'success'} /><ArrowForward fontSize="small" sx={{ ms: 1, color: 'text.disabled' }} /></ListItem>; })}</List>{onReviewOrders && <Button variant="outlined" startIcon={<PendingActionsOutlined />} onClick={onReviewOrders}>Review pending orders</Button>}</CardContent></Card>;
 }
 
 function DeliveriesCard({ deliveries, onOpenCalendar }: { deliveries: OperationsDashboard['todayDeliveries']; onOpenCalendar: () => void }) {
