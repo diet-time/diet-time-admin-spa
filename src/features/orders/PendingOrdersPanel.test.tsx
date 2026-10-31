@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -46,28 +46,40 @@ describe('Visible pending confirmation queue', () => {
     expect(staffOrdersApi.list).toHaveBeenCalledWith('', 1, '2026-11-01');
   });
 
-  it('shows actual order details and opens that order for explicit staff confirmation', async () => {
+  it('shows only a count and opens the pending list for approval inside', async () => {
     renderPanel();
+    const count = await screen.findByText('1 awaiting approval');
     const panel = screen.getByRole('region', { name: 'Pending confirmation orders' });
-    expect(await within(panel).findByText('1 awaiting approval')).toBeInTheDocument();
-    expect(within(panel).getByText('ORD-100 · Test customer')).toBeInTheDocument();
-    expect(within(panel).getByText(/Balanced Plan/)).toBeInTheDocument();
-    expect(within(panel).getByText(/Takeaway · Test Branch · Payment: UNPAID/)).toBeInTheDocument();
-    expect(staffOrdersApi.list).toHaveBeenCalledWith('PENDING_APPROVAL', 1);
-    fireEvent.click(within(panel).getByRole('button', { name: 'Review order ORD-100' }));
+    expect(count).toBeInTheDocument();
+    expect(within(panel).queryByText(/ORD-100|Test customer|Balanced Plan|Test Branch|UNPAID/)).not.toBeInTheDocument();
+    expect(within(panel).queryByRole('button', { name: /Review order/ })).not.toBeInTheDocument();
+    fireEvent.click(within(panel).getByRole('button', { name: 'View all pending orders' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Review' }));
     expect(await screen.findByRole('button', { name: 'Approve' })).toBeInTheDocument();
-    expect(staffOrdersApi.get).toHaveBeenCalledWith('pending-1');
     expect(staffOrdersApi.action).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
     expect(screen.getByRole('button', { name: 'Confirm' })).toBeInTheDocument();
     expect(staffOrdersApi.action).not.toHaveBeenCalled();
   });
-  it('keeps the true backlog count while limiting the preview to five orders', async () => {
+  it('shows the total pending count without rendering any order previews', async () => {
     vi.mocked(staffOrdersApi.list).mockResolvedValue({ items: Array.from({length: 10}, (_, i) => ({ ...row, order: { ...row.order, id: `order-${i}`, orderNumber: `ORD-${i}` } })), totalCount: 25 });
     renderPanel();
     expect(await screen.findByText('25 awaiting approval')).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /^Review order ORD-/ })).toHaveLength(5);
-    expect(screen.getByRole('button', { name: 'View all pending orders' })).toBeInTheDocument();
+    expect(screen.queryAllByRole('listitem')).toHaveLength(0);
+    expect(screen.queryByText(/Test customer|Balanced Plan/)).not.toBeInTheDocument();
+  });
+  it('does not display the orange banner when there are no pending orders', async () => {
+    vi.mocked(staffOrdersApi.list).mockResolvedValue({ items: [], totalCount: 0 });
+    const cache = renderPanel();
+    await waitFor(() => expect(cache.getQueryState(['staffOrders', 'PENDING_APPROVAL', 1])?.status).toBe('success'));
+    expect(screen.queryByRole('region', { name: 'Pending confirmation orders' })).not.toBeInTheDocument();
+    expect(screen.queryByText('0 awaiting approval')).not.toBeInTheDocument();
+  });
+  it('does not flash the orange banner while the pending count is loading', async () => {
+    vi.mocked(staffOrdersApi.list).mockReturnValue(new Promise(() => {}));
+    renderPanel();
+    await waitFor(() => expect(staffOrdersApi.list).toHaveBeenCalled());
+    expect(screen.queryByRole('region', { name: 'Pending confirmation orders' })).not.toBeInTheDocument();
   });
   it('refreshes automatically and removes orders that have left the pending queue', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
@@ -75,8 +87,8 @@ describe('Visible pending confirmation queue', () => {
     await screen.findByText('1 awaiting approval');
     vi.mocked(staffOrdersApi.list).mockResolvedValue({ items: [], totalCount: 0 });
     await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
-    expect(await screen.findByText('0 awaiting approval')).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent('No orders are awaiting confirmation.');
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Pending confirmation orders' })).not.toBeInTheDocument());
+    expect(screen.queryByText('No orders are awaiting confirmation.')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Review order ORD-100' })).not.toBeInTheDocument();
   });
   it('uses the existing workflow query invalidation to update the queue immediately', async () => {
@@ -84,7 +96,7 @@ describe('Visible pending confirmation queue', () => {
     await screen.findByText('1 awaiting approval');
     vi.mocked(staffOrdersApi.list).mockResolvedValue({ items: [], totalCount: 0 });
     await act(async () => { await cache.invalidateQueries({ queryKey: ['staffOrders'] }); });
-    expect(await screen.findByText('0 awaiting approval')).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Pending confirmation orders' })).not.toBeInTheDocument());
   });
   it('shows a retryable load error instead of claiming there are no pending orders', async () => {
     vi.mocked(staffOrdersApi.list).mockRejectedValue(new Error('Unavailable'));
@@ -95,12 +107,11 @@ describe('Visible pending confirmation queue', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Retry pending orders' }));
     expect(await screen.findByText('1 awaiting approval')).toBeInTheDocument();
   });
-  it('keeps the section visible and explains missing Orders permission', async () => {
+  it('does not display the banner or fetch orders without Orders permission', async () => {
     vi.mocked(accessControlApi.myScreens).mockResolvedValue([]);
-    renderPanel();
-    expect(await screen.findByText(/Order-review access is not enabled/)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Pending confirmation orders' })).toBeInTheDocument();
+    const cache = renderPanel();
+    await waitFor(() => expect(cache.getQueryState(['access-control', 'me', 'screens'])?.status).toBe('success'));
+    expect(screen.queryByRole('region', { name: 'Pending confirmation orders' })).not.toBeInTheDocument();
     expect(staffOrdersApi.list).not.toHaveBeenCalled();
-    expect(screen.queryByRole('button', { name: 'Review order ORD-100' })).not.toBeInTheDocument();
   });
 });

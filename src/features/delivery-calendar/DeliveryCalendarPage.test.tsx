@@ -22,12 +22,12 @@ beforeEach(() => {
   vi.mocked(accessControlApi.myScreens).mockResolvedValue([permission]);
   vi.mocked(deliveryCalendarApi.month).mockResolvedValue([]);
   vi.mocked(deliveryCalendarApi.plans).mockResolvedValue([]);
-  vi.mocked(staffOrdersApi.list).mockResolvedValue({ items: [], totalCount: 0 });
+  vi.mocked(staffOrdersApi.list).mockResolvedValue({ items: [], totalCount: 1 });
 });
 describe('Pending confirmations above the delivery calendar', () => {
   it('keeps the pending queue independent of the selected calendar month', async () => {
     renderPage();
-    expect(await screen.findByText('0 awaiting approval')).toBeInTheDocument();
+    expect(await screen.findByText('1 awaiting approval')).toBeInTheDocument();
     fireEvent.click(await screen.findByRole('button', { name: 'Next month' }));
     await waitFor(() => expect(deliveryCalendarApi.month).toHaveBeenCalledWith('2030-02', expect.anything(), expect.anything()));
     expect(screen.getByRole('region', { name: 'Pending confirmation orders' })).toBeInTheDocument();
@@ -38,7 +38,7 @@ describe('Pending confirmations above the delivery calendar', () => {
     vi.mocked(deliveryCalendarApi.month).mockRejectedValue(new Error('Unavailable'));
     renderPage();
     expect(await screen.findByText('Unable to load order data for the delivery calendar.')).toBeInTheDocument();
-    expect(await screen.findByText('0 awaiting approval')).toBeInTheDocument();
+    expect(await screen.findByText('1 awaiting approval')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'View all pending orders' })).toBeInTheDocument();
   });
 });

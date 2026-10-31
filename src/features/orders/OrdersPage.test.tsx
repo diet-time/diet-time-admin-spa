@@ -41,6 +41,18 @@ describe('Daily orders by meal service date',()=>{
 });
 
 describe('Staff order review',()=>{
+ it('records received payment with a receipt reference without approving a pending order',async()=>{
+  vi.mocked(staffOrdersApi.action).mockResolvedValue({...row,order:{...row.order,paymentStatus:'PAID',review:{...row.order.review,rowVersion:6}}});
+  renderPage();fireEvent.click(await screen.findByRole('button',{name:'Review'}));
+  fireEvent.click(await screen.findByRole('button',{name:'Record Payment Status'}));
+  expect(screen.getByRole('button',{name:'Confirm'})).toBeDisabled();
+  fireEvent.change(screen.getByLabelText('Reason / payment reference (required)'),{target:{value:'Cash receipt 123'}});
+  fireEvent.click(screen.getByRole('button',{name:'Confirm'}));
+  await waitFor(()=>expect(staffOrdersApi.action).toHaveBeenCalledWith('order-1','payment',{expectedRowVersion:5,reason:'Cash receipt 123',paymentStatus:'PAID'}));
+  expect(await screen.findByText('Pending Approval · Payment: PAID')).toBeInTheDocument();
+  expect(staffOrdersApi.action).toHaveBeenCalledTimes(1);
+ });
+
  it('opens the selected dashboard order directly without approving it',async()=>{
   renderPage('/orders?orderId=order-1');
   expect(await screen.findByRole('button',{name:'Approve'})).toBeInTheDocument();
