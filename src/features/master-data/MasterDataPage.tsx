@@ -1,3 +1,4 @@
+import { isAxiosError } from 'axios';
 import { Add, EditOutlined, Search } from '@mui/icons-material';
 import {
   Alert,
@@ -31,6 +32,22 @@ import type { MasterRecord } from '@/api/apiTypes';
 import { queryClient } from '@/app/queryClient';
 import { WriteGuard } from '@/auth/ScreenAccess';
 import { EmptyState, ErrorState, LoadingState } from '@/components/feedback/PageState';
+
+function saveErrorMessage(error: unknown): string {
+  if (isAxiosError(error) && [400, 409, 422].includes(error.response?.status ?? 0)) {
+    const errors: unknown = error.response?.data?.errors;
+    if (Array.isArray(errors)) {
+      const messages = errors.flatMap((item: unknown) =>
+        item && typeof item === 'object' && 'message' in item && typeof item.message === 'string' ? [item.message] : []);
+      if (messages.length) return messages.slice(0, 3).join(' ');
+    } else if (errors && typeof errors === 'object') {
+      const messages = Object.values(errors).flatMap((value: unknown) =>
+        Array.isArray(value) ? value.filter((message: unknown): message is string => typeof message === 'string') : []);
+      if (messages.length) return messages.slice(0, 3).join(' ');
+    }
+  }
+  return 'The record could not be saved. Please try again.';
+}
 
 const labels: Record<MasterResource, string> = {
   'meal-categories': 'Meal categories',
@@ -132,7 +149,7 @@ export function MasterDataPage({ resource }: { resource: MasterResource }) {
     </TableCell>
   );
 
-  const editRecord = (record: MasterRecord) => setDialog({
+  const editRecord = (record: MasterRecord) => { mutation.reset(); setDialog({
     id: record.id,
     values: {
       code: record.code,
@@ -143,7 +160,7 @@ export function MasterDataPage({ resource }: { resource: MasterResource }) {
       displayOrder: record.displayOrder,
       isActive: record.isActive,
     },
-  });
+  }); };
 
   return (
     <Stack spacing={3}>
@@ -153,7 +170,7 @@ export function MasterDataPage({ resource }: { resource: MasterResource }) {
           <Typography color="text.secondary">Localized reference data used across catalogue and plans.</Typography>
         </Box>
         <WriteGuard>
-          <Button variant="contained" startIcon={<Add />} onClick={() => setDialog({ values: emptyValues(resource) })}>
+          <Button variant="contained" startIcon={<Add />} onClick={() => { mutation.reset(); setDialog({ values: emptyValues(resource) }); }}>
             Add {singularLabels[resource]}
           </Button>
         </WriteGuard>
@@ -248,7 +265,7 @@ export function MasterDataPage({ resource }: { resource: MasterResource }) {
           resource={resource}
           state={dialog}
           pending={mutation.isPending}
-          error={mutation.isError}
+          error={mutation.error}
           onClose={() => setDialog(null)}
           onSave={(body) => mutation.mutate({ id: dialog.id, body })}
         />
@@ -261,7 +278,7 @@ function RecordDialog({ resource, state, pending, error, onClose, onSave }: {
   resource: MasterResource;
   state: DialogState;
   pending: boolean;
-  error: boolean;
+  error: unknown;
   onClose: () => void;
   onSave: (values: MasterInput) => void;
 }) {
@@ -278,7 +295,7 @@ function RecordDialog({ resource, state, pending, error, onClose, onSave }: {
       <DialogTitle>{state.id ? 'Edit' : 'Add'} {singularLabels[resource]}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} mt={1}>
-          {error && <Alert severity="error">The record could not be saved. Check for a duplicate code and review the fields.</Alert>}
+          {!!error && <Alert severity="error">{saveErrorMessage(error)}</Alert>}
           <TextField
             required
             label="Code"
@@ -293,7 +310,7 @@ function RecordDialog({ resource, state, pending, error, onClose, onSave }: {
               fullWidth
               label="English name"
               value={values.nameEn}
-              slotProps={{ htmlInput: { maxLength: isCategory ? 100 : 160 } }}
+              slotProps={{ htmlInput: { maxLength: isCategory || resource === 'meal-types' ? 100 : 160 } }}
               onChange={(event) => setValues({ ...values, nameEn: event.target.value })}
             />
             <TextField
@@ -302,7 +319,7 @@ function RecordDialog({ resource, state, pending, error, onClose, onSave }: {
               label="Arabic name"
               dir="rtl"
               value={values.nameAr ?? ''}
-              slotProps={{ htmlInput: { maxLength: isCategory ? 100 : 160 } }}
+              slotProps={{ htmlInput: { maxLength: isCategory || resource === 'meal-types' ? 100 : 160 } }}
               onChange={(event) => setValues({ ...values, nameAr: event.target.value })}
             />
           </Stack>
