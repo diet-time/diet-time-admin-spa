@@ -48,7 +48,6 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
     await dialog.getByRole('button', { name: /Activity history/ }).click();
     await expect(dialog.getByText('Manual payment verified')).toBeVisible();
     await expect(dialog.getByText('Actor ID: internal-payment-id')).not.toBeVisible();
-    await dialog.getByRole('button', { name: 'Payment management', exact: true }).click();
     await dialog.getByRole('button', { name: 'Record Payment Status', exact: true }).click();
     const payment = page.getByRole('dialog', { name: 'Confirm payment', exact: true });
     await expect(payment).toBeVisible();

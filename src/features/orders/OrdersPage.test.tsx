@@ -56,7 +56,6 @@ describe('Staff order review',()=>{
  it('records received payment with a receipt reference without approving a pending order',async()=>{
   vi.mocked(staffOrdersApi.action).mockResolvedValue({...row,order:{...row.order,paymentStatus:'PAID',review:{...row.order.review,rowVersion:6}}});
   renderPage();fireEvent.click(await screen.findByRole('button',{name:'Review'}));
-  fireEvent.click(await screen.findByRole('button',{name:'Payment management'}));
   fireEvent.click(await screen.findByRole('button',{name:'Record Payment Status'}));
   expect(screen.getByRole('button',{name:'Confirm'})).toBeDisabled();
   fireEvent.change(screen.getByLabelText('Reason / payment reference (required)'),{target:{value:'Cash receipt 123'}});

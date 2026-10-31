@@ -1,11 +1,10 @@
-import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded';
 import CloseRounded from '@mui/icons-material/CloseRounded';
 import { IconButton } from '@mui/material';
 import { OrderReviewDetails } from './OrderReviewDetails';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useMutation,useQuery,useQueryClient } from '@tanstack/react-query';
-import { Accordion,AccordionSummary,AccordionDetails,Alert,Button,Card,CardContent,Chip,Dialog,DialogTitle,DialogContent,DialogActions,Stack,Table,TableBody,TableCell,TableContainer,TableHead,TableRow,TextField,MenuItem,Typography,Pagination } from '@mui/material';
+import { Alert,Button,Card,CardContent,Chip,Dialog,DialogTitle,DialogContent,DialogActions,Stack,Table,TableBody,TableCell,TableContainer,TableHead,TableRow,TextField,MenuItem,Typography,Pagination } from '@mui/material';
 import { staffOrdersApi,orderStatusLabel,type StaffOrder } from '@/api/staffOrdersApi';
 import { canWriteFromPath } from '@/auth/screenPermissionCache';
 const statuses=['PENDING_APPROVAL','PENDING','ON_HOLD','CONFIRMED','ACTIVE','REJECTED','CANCELLED','COMPLETED',''];
@@ -48,14 +47,11 @@ export function OrdersPage({daily=false}:{daily?:boolean}){
   </DialogTitle>
   <DialogContent dividers sx={{p:{xs:2,sm:3},bgcolor:'#fafbf8'}}>{selected&&<Stack spacing={2}>
     <OrderReviewDetails key={selected.order.id} value={selected}/>
-    {canWriteFromPath('/orders')&&<Accordion disableGutters elevation={0} sx={{border:'1px solid',borderColor:'divider',borderRadius:2,'&::before':{display:'none'}}}>
-      <AccordionSummary expandIcon={<ExpandMoreRounded/>}><Typography variant="subtitle2" fontWeight={700}>Payment management</Typography></AccordionSummary>
-      <AccordionDetails><Stack spacing={1}><Typography variant="body2" color="text.secondary">Record verified payments separately from order approval.</Typography><Button variant="outlined" sx={{alignSelf:'flex-start'}} onClick={()=>choose('payment')}>Record Payment Status</Button></Stack></AccordionDetails>
-    </Accordion>}
     {!canWriteFromPath('/orders')&&<Alert severity="info">You have read-only access to Orders. An administrator with Orders write permission must approve or reject this order.</Alert>}
   </Stack>}</DialogContent>
   <DialogActions sx={{px:{xs:2,sm:3},py:2,gap:1,alignItems:'center',justifyContent:'space-between',flexWrap:'wrap'}}>
     {selected&&canWriteFromPath('/orders')&&['PENDING_APPROVAL','PENDING'].includes(selected.order.status)&&<Stack direction="row" gap={1}><Button variant="contained" onClick={()=>choose('approve')}>Approve</Button><Button color="error" variant="outlined" onClick={()=>choose('reject')}>Reject</Button></Stack>}
+    {selected&&canWriteFromPath('/orders')&&<Button variant="outlined" onClick={()=>choose('payment')}>Record Payment Status</Button>}
     <Button onClick={closeReview} sx={{ml:'auto'}}>Close</Button>
   </DialogActions>
  </Dialog>
