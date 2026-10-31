@@ -36,9 +36,9 @@ describe('PreparationSummary report download', () => {
 
   it('shows customer and automatic finalization sources with actual dishes and dietary requirements', () => {
     render(<PreparationSummary date="2026-08-16" summary={{ ...summary, status: 'Finalized', selections: [
-      { serviceDayId: 'day-1', orderReference: 'ORD-1', customerReference: 'customer-1', finalizationStatus: 'CUSTOMER_CONFIRMED',
+      { serviceDayId: 'day-1', orderReference: 'ORD-1', customerReference: 'customer-1', customerName: 'Biju Manayagath', deliveryAddress: 'Must not show a delivery address for takeaway', finalizationStatus: 'CUSTOMER_CONFIRMED',
         fulfillmentMethod: 'TAKEAWAY', takeawayBranchName: 'Diet Time – Izghawa Branch', takeawayBranchAddress: 'Configured branch address', selectionSources: ['CUSTOMER'], dishes: [{ mealName: 'Grilled salmon', category: 'meal', quantity: 2 }], dietaryRestrictions: ['DAIRY_FREE'] },
-      { serviceDayId: 'day-2', orderReference: 'ORD-2', customerReference: 'customer-2', finalizationStatus: 'AUTO_FINALIZED',
+      { serviceDayId: 'day-2', orderReference: 'ORD-2', customerReference: 'customer-2', customerName: 'Sara Ali', deliveryAddress: 'Building 10, Street 20, Zone 30, Doha', finalizationStatus: 'AUTO_FINALIZED',
         selectionSources: ['DEFAULT'], dishes: [{ mealName: 'Berry yogurt', category: 'snack', quantity: 1 }], dietaryRestrictions: [] },
     ] }} />);
     expect(screen.getByText(/ORD-1 · CUSTOMER CONFIRMED/)).toBeInTheDocument();
@@ -46,8 +46,23 @@ describe('PreparationSummary report download', () => {
     expect(screen.getByText('2 × Grilled salmon (meal)')).toBeInTheDocument();
     expect(screen.getByText('1 × Berry yogurt (snack)')).toBeInTheDocument();
     expect(screen.getByText('Takeaway · Diet Time – Izghawa Branch · Configured branch address')).toBeInTheDocument();
-    expect(screen.getByText('Home Delivery')).toBeInTheDocument();
-    expect(screen.getByText('Dietary requirements: DAIRY_FREE')).toBeInTheDocument();
+    expect(screen.getByText('Home Delivery · Building 10, Street 20, Zone 30, Doha')).toBeInTheDocument();
+    expect(screen.getByText('Biju Manayagath · Customer')).toBeInTheDocument();
+    expect(screen.getByText('Sara Ali · Default')).toBeInTheDocument();
+    expect(screen.queryByText(/customer-1|customer-2|Must not show a delivery address/)).not.toBeInTheDocument();
+    expect(screen.getByText('Dietary requirements: Dairy Free')).toBeInTheDocument();
+  });
+
+  it('uses authoritative translated dietary labels and explicit missing-data fallbacks', () => {
+    render(<PreparationSummary date="2026-08-16" summary={{ ...summary, selections: [
+      { serviceDayId: 'day', orderReference: 'ORD-3', customerReference: 'opaque-profile-id', finalizationStatus: 'UNFINALIZED',
+        selectionSources: [], dishes: [], dietaryRestrictions: ['HIGH_PROTEIN', 'ALLERGEN: EGGS'],
+        dietaryRestrictionLabels: ['High Protein', 'Allergen: Hen eggs'] },
+    ] }} />);
+    expect(screen.getByText('Name not recorded')).toBeInTheDocument();
+    expect(screen.getByText('Home Delivery · Address not recorded')).toBeInTheDocument();
+    expect(screen.getByText('Dietary requirements: High Protein, Allergen: Hen eggs')).toBeInTheDocument();
+    expect(screen.queryByText(/opaque-profile-id|HIGH_PROTEIN|ALLERGEN:/)).not.toBeInTheDocument();
   });
 
   beforeEach(() => {

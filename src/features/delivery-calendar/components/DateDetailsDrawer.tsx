@@ -28,7 +28,7 @@ function DrawerContent({ date, detail, tab, onTab, preparation, preparationLoadi
 
 function CustomerDeliveriesTable({ detail }: { detail: DeliveryDateDetail }) {
   if (!detail.deliveries.length) return <Alert severity="info" sx={{ m: 2 }}>No orders are scheduled for this date.</Alert>;
-  return <TableContainer><Table size="small" aria-label="Scheduled orders"><TableHead><TableRow>{['Order', 'Customer', 'Plan', 'Meals', 'Fulfillment', 'Slot', 'Status', ''].map(label => <TableCell key={label}>{label}</TableCell>)}</TableRow></TableHead><TableBody>{detail.deliveries.map(delivery => <TableRow key={delivery.id}><TableCell>{delivery.orderNumber}</TableCell><TableCell>{delivery.customerName}</TableCell><TableCell>{delivery.planName}</TableCell><TableCell>{delivery.mealCount}</TableCell><TableCell>{delivery.fulfillmentMethod === 'TAKEAWAY' ? 'Takeaway' : 'Home Delivery'}</TableCell><TableCell>{delivery.fulfillmentMethod === 'TAKEAWAY' ? [delivery.takeawayBranchName ?? 'Branch not recorded', delivery.takeawayBranchAddress].filter(Boolean).join(' · ') : delivery.deliverySlot}</TableCell><TableCell><Chip size="small" label={delivery.status} color={delivery.status === 'CONFIRMED' ? 'success' : 'default'} /></TableCell><TableCell><IconButton aria-label={`View order ${delivery.orderNumber}`}><VisibilityOutlined /></IconButton></TableCell></TableRow>)}</TableBody></Table></TableContainer>;
+  return <TableContainer><Table size="small" aria-label="Scheduled orders"><TableHead><TableRow>{['Order', 'Customer', 'Plan', 'Meals', 'Fulfillment', 'Slot', 'Status', ''].map(label => <TableCell key={label}>{label}</TableCell>)}</TableRow></TableHead><TableBody>{detail.deliveries.map(delivery => <TableRow key={delivery.id}><TableCell>{delivery.orderNumber}</TableCell><TableCell>{delivery.customerName}</TableCell><TableCell>{delivery.planName}</TableCell><TableCell>{delivery.mealCount}</TableCell><TableCell>{delivery.fulfillmentMethod === 'TAKEAWAY' ? 'Takeaway' : 'Home Delivery'}</TableCell><TableCell>{delivery.fulfillmentMethod === 'TAKEAWAY' ? [delivery.takeawayBranchName ?? 'Branch not recorded', delivery.takeawayBranchAddress].filter(Boolean).join(' · ') : <>{delivery.deliverySlot}<Typography variant="caption" display="block">{delivery.deliveryAddress || 'Address not recorded'}</Typography></>}</TableCell><TableCell><Chip size="small" label={delivery.status} color={delivery.status === 'CONFIRMED' ? 'success' : 'default'} /></TableCell><TableCell><IconButton aria-label={`View order ${delivery.orderNumber}`}><VisibilityOutlined /></IconButton></TableCell></TableRow>)}</TableBody></Table></TableContainer>;
 }
 
 const mealVisual = (name: string): { icon: ReactNode; color: string; tint: string } => {
@@ -39,6 +39,12 @@ const mealVisual = (name: string): { icon: ReactNode; color: string; tint: strin
   if (normalized.includes('snack') || normalized.includes('dessert')) return { icon: <LocalCafeOutlined />, color: '#C94E73', tint: '#FFF0F4' };
   return { icon: <RestaurantMenuOutlined />, color: '#397B69', tint: '#EEF7F4' };
 };
+
+const dietaryLabel = (value: string): string => value.split(':').map(part => {
+  const text = part.trim();
+  if (!text.includes('_') && /[a-z]/.test(text)) return text;
+  return text.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, letter => letter.toUpperCase());
+}).join(': ');
 
 export function PreparationSummary({ date, summary }: { date: string; summary: DeliveryPreparationSummary }) {
   const [downloading, setDownloading] = useState(false);
@@ -73,9 +79,9 @@ export function PreparationSummary({ date, summary }: { date: string; summary: D
     {(summary.operationalExceptions ?? []).map((issue, i) => <Alert severity="error" key={i}>{issue}</Alert>)}
     {(summary.selections ?? []).map(selection => <Card key={selection.serviceDayId} variant="outlined"><CardContent>
       <Typography fontWeight={800}>{selection.orderReference} · {selection.finalizationStatus.replaceAll('_', ' ')}</Typography>
-      <Typography variant="caption">Customer {selection.customerReference} · {selection.selectionSources.join(', ')}</Typography>
-      <Typography variant="body2">{selection.fulfillmentMethod === 'TAKEAWAY' ? ['Takeaway', selection.takeawayBranchName ?? 'Branch not recorded', selection.takeawayBranchAddress].filter(Boolean).join(' · ') : 'Home Delivery'}</Typography>
-      <Typography variant="body2">Dietary requirements: {selection.dietaryRestrictions.join(', ') || 'None recorded'}</Typography>
+      <Typography variant="caption">{selection.customerName?.trim() || 'Name not recorded'}{selection.selectionSources.length ? ` · ${selection.selectionSources.map(dietaryLabel).join(', ')}` : ''}</Typography>
+      <Typography variant="body2">{selection.fulfillmentMethod === 'TAKEAWAY' ? ['Takeaway', selection.takeawayBranchName ?? 'Branch not recorded', selection.takeawayBranchAddress].filter(Boolean).join(' · ') : `Home Delivery · ${selection.deliveryAddress || 'Address not recorded'}`}</Typography>
+      <Typography variant="body2">Dietary requirements: {(selection.dietaryRestrictionLabels?.length ? selection.dietaryRestrictionLabels : selection.dietaryRestrictions.map(dietaryLabel)).join(', ') || 'None recorded'}</Typography>
       {selection.dishes.map((dish, i) => <Typography key={i} variant="body2">{dish.quantity} × {dish.mealName} ({dish.category})</Typography>)}
       {selection.reviewReason && <Alert severity="error">{selection.reviewReason}</Alert>}
     </CardContent></Card>)}

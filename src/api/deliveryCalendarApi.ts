@@ -18,6 +18,7 @@ interface CalendarOrderApi {
   orderNumber: string;
   customerProfileId: string;
   customerName: string;
+  deliveryAddress?: string;
   mealPlanTemplateId: string;
   planName: string;
   mealCount: number;
@@ -96,6 +97,7 @@ export const deliveryCalendarApi = {
         id: order.id,
         orderNumber: order.orderNumber,
         customerName: order.customerName,
+        deliveryAddress: order.deliveryAddress,
         planName: order.planName,
         mealCount: order.mealCount,
         deliverySlot: order.deliverySlot,

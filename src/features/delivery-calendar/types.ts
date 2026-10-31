@@ -17,6 +17,7 @@ export interface CustomerDelivery {
   id: string;
   orderNumber: string;
   customerName: string;
+  deliveryAddress?: string;
   planName: string;
   mealCount: number;
   deliverySlot: string;
@@ -38,6 +39,9 @@ export interface KitchenSelection {
   serviceDayId: string;
   orderReference: string;
   customerReference: string;
+  customerName?: string;
+  deliveryAddress?: string;
+  dietaryRestrictionLabels?: string[];
   finalizationStatus: string;
   selectionSources: string[];
   dishes: { mealName: string; category: string; quantity: number }[];

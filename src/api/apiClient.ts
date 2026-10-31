@@ -28,7 +28,7 @@ export const apiClient = axios.create({
   baseURL,
   timeout: 20_000,
   withCredentials: true,
-  headers: { Accept: 'application/json' },
+  headers: { Accept: 'application/json', 'X-Client-App': 'REACT_ADMIN' },
 });
 
 apiClient.interceptors.request.use((config) => {
@@ -69,7 +69,7 @@ apiClient.interceptors.response.use(
 
 export const refreshAccessToken = async () => {
   refreshPromise ??= axios
-    .post<ApiEnvelope<AuthSessionApi>>(`${baseURL}auth/refresh`, {}, { withCredentials: true, timeout: 20_000 })
+    .post<ApiEnvelope<AuthSessionApi>>(`${baseURL}auth/refresh`, {}, { withCredentials: true, timeout: 20_000, headers: { 'X-Client-App': 'REACT_ADMIN' } })
     .then((response) => {
       setAccessToken(response.data.data.accessToken);
       return response.data.data;
