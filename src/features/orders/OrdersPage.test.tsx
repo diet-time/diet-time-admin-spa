@@ -1,6 +1,6 @@
 import { MemoryRouter } from 'react-router-dom';
 import { canWriteFromPath } from '@/auth/screenPermissionCache';
-import { fireEvent,render,screen,waitFor } from '@testing-library/react';
+import { fireEvent,render,screen,waitFor,within } from '@testing-library/react';
 import { afterEach,beforeEach,describe,expect,it,vi } from 'vitest';
 import { QueryClient,QueryClientProvider } from '@tanstack/react-query';
 import { staffOrdersApi,type StaffOrder } from '@/api/staffOrdersApi';
@@ -41,15 +41,28 @@ describe('Daily orders by meal service date',()=>{
 });
 
 describe('Staff order review',()=>{
+ it.each(['PENDING_APPROVAL','PENDING','CONFIRMED','ACTIVE','ON_HOLD','COMPLETED','CANCELLED','REJECTED'])('offers only pending approval decisions for %s',async(status)=>{
+  const value={...row,order:{...row.order,status}};
+  vi.mocked(staffOrdersApi.list).mockResolvedValue({items:[value],totalCount:1});
+  vi.mocked(staffOrdersApi.get).mockResolvedValue(value);
+  renderPage();fireEvent.click(await screen.findByRole('button',{name:'Review'}));
+  const dialog=await screen.findByRole('dialog',{name:/Order details/});
+  const pending=['PENDING_APPROVAL','PENDING'].includes(status);
+  expect(within(dialog).queryByRole('button',{name:'Approve'})!==null).toBe(pending);
+  expect(within(dialog).queryByRole('button',{name:'Reject'})!==null).toBe(pending);
+  for(const name of ['Mark Completed','Activate','Mark as Active','Put On Hold','Resume Review','Cancel Order','Revise Dates'])expect(within(dialog).queryByRole('button',{name})).not.toBeInTheDocument();
+  expect(staffOrdersApi.action).not.toHaveBeenCalled();
+ });
  it('records received payment with a receipt reference without approving a pending order',async()=>{
   vi.mocked(staffOrdersApi.action).mockResolvedValue({...row,order:{...row.order,paymentStatus:'PAID',review:{...row.order.review,rowVersion:6}}});
   renderPage();fireEvent.click(await screen.findByRole('button',{name:'Review'}));
+  fireEvent.click(await screen.findByRole('button',{name:'Payment management'}));
   fireEvent.click(await screen.findByRole('button',{name:'Record Payment Status'}));
   expect(screen.getByRole('button',{name:'Confirm'})).toBeDisabled();
   fireEvent.change(screen.getByLabelText('Reason / payment reference (required)'),{target:{value:'Cash receipt 123'}});
   fireEvent.click(screen.getByRole('button',{name:'Confirm'}));
   await waitFor(()=>expect(staffOrdersApi.action).toHaveBeenCalledWith('order-1','payment',{expectedRowVersion:5,reason:'Cash receipt 123',paymentStatus:'PAID'}));
-  expect(await screen.findByText('Pending Approval · Payment: PAID')).toBeInTheDocument();
+  expect(await screen.findByText('Payment: Paid')).toBeInTheDocument();expect(within(await screen.findByRole('dialog',{name:/Order details/})).getByText('Pending Approval')).toBeInTheDocument();
   expect(staffOrdersApi.action).toHaveBeenCalledTimes(1);
  });
 
@@ -74,10 +87,10 @@ describe('Staff order review',()=>{
  });
 
  it('requires an explicit approval confirmation and sends the current version',async()=>{
-  renderPage();fireEvent.click(await screen.findByRole('button',{name:'Review'}));fireEvent.click(await screen.findByRole('button',{name:'Approve'}));expect(staffOrdersApi.action).not.toHaveBeenCalled();fireEvent.click(screen.getByRole('button',{name:'Confirm'}));await waitFor(()=>expect(staffOrdersApi.action).toHaveBeenCalledWith('order-1','approve',{expectedRowVersion:5,reason:''}));expect(await screen.findByText('Order updated.')).toBeInTheDocument();expect(screen.getByText('Confirmed · Payment: PENDING')).toBeInTheDocument();
+  renderPage();fireEvent.click(await screen.findByRole('button',{name:'Review'}));fireEvent.click(await screen.findByRole('button',{name:'Approve'}));expect(staffOrdersApi.action).not.toHaveBeenCalled();fireEvent.click(screen.getByRole('button',{name:'Confirm'}));await waitFor(()=>expect(staffOrdersApi.action).toHaveBeenCalledWith('order-1','approve',{expectedRowVersion:5,reason:''}));expect(await screen.findByText('Order updated.')).toBeInTheDocument();expect(screen.getByText('Payment: Pending')).toBeInTheDocument();expect(screen.getByText('Confirmed',{selector:'.MuiChip-label'})).toBeInTheDocument();
  });
  it('requires a rejection reason and shows selected branch details',async()=>{
-  renderPage();fireEvent.click(await screen.findByRole('button',{name:'Review'}));expect(await screen.findByText('Takeaway · Diet Time – Azizia Branch',{selector:'p'})).toBeInTheDocument();fireEvent.click(screen.getByRole('button',{name:'Reject'}));expect(screen.getByRole('button',{name:'Confirm'})).toBeDisabled();fireEvent.change(screen.getByLabelText('Reason / payment reference (required)'),{target:{value:'Cannot supply the requested package'}});fireEvent.click(screen.getByRole('button',{name:'Confirm'}));await waitFor(()=>expect(staffOrdersApi.action).toHaveBeenCalledWith('order-1','reject',{expectedRowVersion:5,reason:'Cannot supply the requested package'}));
+  renderPage();fireEvent.click(await screen.findByRole('button',{name:'Review'}));expect(await screen.findByText('Diet Time – Azizia Branch',{selector:'p'})).toBeInTheDocument();fireEvent.click(screen.getByRole('button',{name:'Reject'}));expect(screen.getByRole('button',{name:'Confirm'})).toBeDisabled();fireEvent.change(screen.getByLabelText('Reason / payment reference (required)'),{target:{value:'Cannot supply the requested package'}});fireEvent.click(screen.getByRole('button',{name:'Confirm'}));await waitFor(()=>expect(staffOrdersApi.action).toHaveBeenCalledWith('order-1','reject',{expectedRowVersion:5,reason:'Cannot supply the requested package'}));
  });
  it('shows a concurrency error without repeating the decision',async()=>{
   vi.mocked(staffOrdersApi.action).mockRejectedValue({response:{data:{detail:'This order changed. Refresh before another action.'}}});renderPage();fireEvent.click(await screen.findByRole('button',{name:'Review'}));fireEvent.click(await screen.findByRole('button',{name:'Approve'}));fireEvent.click(screen.getByRole('button',{name:'Confirm'}));expect(await screen.findByText('This order changed. Refresh before another action.')).toBeInTheDocument();expect(staffOrdersApi.action).toHaveBeenCalledTimes(1);
