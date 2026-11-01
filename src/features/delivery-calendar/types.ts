@@ -1,4 +1,4 @@
-export type OperationalStatus = 'SCHEDULED' | 'OVERRIDE' | 'CLOSED' | 'NO_DELIVERIES' | 'PARTIAL';
+export type OperationalStatus = 'SCHEDULED' | 'OVERDUE' | 'FULFILLED' | 'PARTIALLY_FULFILLED' | 'OVERRIDE' | 'CLOSED' | 'NO_DELIVERIES' | 'PARTIAL';
 export type DeliveryView = 'month' | 'week' | 'list';
 
 export interface DeliveryCalendarDay {
@@ -10,9 +10,23 @@ export interface DeliveryCalendarDay {
   totalCustomers: number;
   totalMealItems: number;
   overrideCount: number;
+  totalServiceDays?: number;
+  pendingCount?: number;
+  overdueCount?: number;
+  deliveredCount?: number;
+  collectedCount?: number;
+  fulfilledCount?: number;
 }
 
 export interface CustomerDelivery {
+  serviceDate?: string;
+  fulfillmentDeadline?: string;
+  isOverdue?: boolean;
+  staffDisplayName?: string;
+  serviceDayId?: string;
+  fulfillmentStatus?: string;
+  fulfilledAt?: string;
+  fulfilledBy?: string;
   fulfillmentMethod?: string; takeawayBranchName?: string; takeawayBranchAddress?: string;
   id: string;
   orderNumber: string;
@@ -33,6 +47,9 @@ export interface DeliveryPreparationMenuItem { menuItemId: string; menuItemName:
 export interface DeliveryPreparationMealType { mealTypeId: string; mealTypeName: string; quantity: number; items: DeliveryPreparationMenuItem[] }
 export interface DeliveryPreparationPlan { mealPlanId: string; mealPlanName: string; orderCount: number }
 export interface KitchenSelection {
+  fulfillmentStatus?: string;
+  fulfilledAt?: string;
+  fulfilledBy?: string;
   fulfillmentMethod?: string;
   takeawayBranchName?: string;
   takeawayBranchAddress?: string;
@@ -49,6 +66,10 @@ export interface KitchenSelection {
   reviewReason?: string;
 }
 export interface DeliveryPreparationSummary {
+  totalScheduledCount?: number;
+  deliveredCount?: number;
+  collectedCount?: number;
+  remainingCount?: number;
   isPreliminary?: boolean;
   operationalExceptions?: string[];
   selections?: KitchenSelection[];

@@ -1,14 +1,15 @@
-import { Language, Logout, Menu, NotificationsNone, Search } from '@mui/icons-material';
-import { AppBar, Avatar, Box, IconButton, InputAdornment, Menu as MuiMenu, MenuItem, TextField, Toolbar, Tooltip, Typography } from '@mui/material';
+import { Logout, Menu, Search } from '@mui/icons-material';
+import { AppBar, Avatar, Box, IconButton, InputAdornment, Menu as MuiMenu, MenuItem, TextField, Toolbar, Typography } from '@mui/material';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/app/store/authStore';
 import { endSession } from '@/auth/session';
 import { Breadcrumbs } from './Breadcrumbs';
+import { NotificationBell } from './NotificationBell';
 
 export function TopBar({ onMenu }: { onMenu: () => void }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
@@ -20,9 +21,6 @@ export function TopBar({ onMenu }: { onMenu: () => void }) {
       : location.pathname.startsWith('/admin/plan-pricing') ? 'Plan Pricing'
         : t(titleKey);
 
-  const toggleLanguage = async () => {
-    await i18n.changeLanguage(i18n.language === 'ar' ? 'en' : 'ar');
-  };
   const logout = async () => {
     await endSession();
     navigate('/login');
@@ -43,10 +41,7 @@ export function TopBar({ onMenu }: { onMenu: () => void }) {
           sx={{ width: { sm: 220, lg: 320 }, display: { xs: 'none', sm: 'block' } }}
           slotProps={{ input: { startAdornment: <InputAdornment position="start"><Search /></InputAdornment> } }}
         />
-        <Tooltip title={i18n.language === 'ar' ? 'English' : 'Arabic'}>
-          <IconButton onClick={toggleLanguage} aria-label="Switch language"><Language /></IconButton>
-        </Tooltip>
-        <Tooltip title="Notifications"><IconButton aria-label="Notifications"><NotificationsNone /></IconButton></Tooltip>
+        <NotificationBell />
         <IconButton onClick={(event) => setAnchor(event.currentTarget)} aria-label="User menu">
           <Avatar sx={{ width: 36, height: 36, bgcolor: 'primary.main', fontSize: 14 }}>
             {user?.name.split(' ').map((value) => value[0]).slice(0, 2).join('')}

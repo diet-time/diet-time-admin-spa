@@ -28,9 +28,9 @@ describe('PreparationSummary report download', () => {
     render(<PreparationSummary date="2026-08-16" summary={{ ...summary, isPreliminary: true,
       status: 'NeedsReview', mealTypes: [], mealItemCount: 0,
       operationalExceptions: ['Order ORD-1: not enough eligible snacks.'] }} />);
-    expect(screen.getByText(/Preliminary — only finalized dishes/)).toBeInTheDocument();
+    expect(screen.getByText(/Preliminary — quantities include confirmed or automatically assigned, locked meal selections only/)).toBeInTheDocument();
     expect(screen.getByText('Order ORD-1: not enough eligible snacks.')).toBeInTheDocument();
-    expect(screen.getByText('No finalized dishes yet')).toBeInTheDocument();
+    expect(screen.getByText('No locked meal selections yet')).toBeInTheDocument();
     expect(screen.queryByText('No preparation required')).not.toBeInTheDocument();
   });
 
@@ -41,8 +41,8 @@ describe('PreparationSummary report download', () => {
       { serviceDayId: 'day-2', orderReference: 'ORD-2', customerReference: 'customer-2', customerName: 'Sara Ali', deliveryAddress: 'Building 10, Street 20, Zone 30, Doha', finalizationStatus: 'AUTO_FINALIZED',
         selectionSources: ['DEFAULT'], dishes: [{ mealName: 'Berry yogurt', category: 'snack', quantity: 1 }], dietaryRestrictions: [] },
     ] }} />);
-    expect(screen.getByText(/ORD-1 · CUSTOMER CONFIRMED/)).toBeInTheDocument();
-    expect(screen.getByText(/ORD-2 · AUTO FINALIZED/)).toBeInTheDocument();
+    expect(screen.getByText(/ORD-1 · Customer confirmed/)).toBeInTheDocument();
+    expect(screen.getByText(/ORD-2 · Automatically assigned/)).toBeInTheDocument();
     expect(screen.getByText('2 × Grilled salmon (meal)')).toBeInTheDocument();
     expect(screen.getByText('1 × Berry yogurt (snack)')).toBeInTheDocument();
     expect(screen.getByText('Takeaway · Diet Time – Izghawa Branch · Configured branch address')).toBeInTheDocument();

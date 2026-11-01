@@ -3,6 +3,7 @@ import type { ApiEnvelope, ApiErrorBody, AuthSessionApi } from './apiTypes';
 import { useApiActivityStore } from '@/app/store/apiActivityStore';
 import { useAuthStore } from '@/app/store/authStore';
 import { canWriteFromPath, clearCachedScreenPermissions } from '@/auth/screenPermissionCache';
+import { isNotificationReadRequest } from './notificationReadRequest';
 
 const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:5004/' : undefined);
 if (!configuredBaseUrl) throw new Error('VITE_API_BASE_URL is required');
@@ -35,7 +36,7 @@ apiClient.interceptors.request.use((config) => {
   const method = config.method?.toUpperCase() ?? 'GET';
   const isMutation = !['GET', 'HEAD', 'OPTIONS'].includes(method);
   const isAuthRequest = config.url?.includes('/auth/') || config.url?.startsWith('auth/');
-  if (isMutation && !isAuthRequest && !canWriteFromPath(window.location.pathname))
+  if (isMutation && !isAuthRequest && !isNotificationReadRequest(method, config.url ?? '') && !canWriteFromPath(window.location.pathname))
     return Promise.reject(new Error('You do not have write permission for this screen.'));
   useApiActivityStore.getState().requestStarted();
   if (accessToken) config.headers.Authorization = `Bearer ${accessToken}`;

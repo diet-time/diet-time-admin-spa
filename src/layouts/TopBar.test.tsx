@@ -1,0 +1,20 @@
+import { render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
+import { expect, it, vi } from 'vitest';
+import { useAuthStore } from '@/app/store/authStore';
+import { TopBar } from './TopBar';
+vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+vi.mock('@/auth/session', () => ({ endSession: vi.fn() }));
+vi.mock('@/api/notificationsApi', () => ({ notificationsApi: { unreadCount: vi.fn(async () => 0) } }));
+it('removes the globe and keeps search, bell and avatar in header order', () => {
+  useAuthStore.getState().setSession({ id: 'staff', name: 'Admin User', email: 'admin@test', roles: ['Admin'] });
+  render(<QueryClientProvider client={new QueryClient()}><MemoryRouter><TopBar onMenu={vi.fn()} /></MemoryRouter></QueryClientProvider>);
+  expect(screen.queryByRole('button', { name: 'Switch language' })).not.toBeInTheDocument();
+  expect(screen.queryByTestId('LanguageIcon')).not.toBeInTheDocument();
+  expect(screen.getByPlaceholderText('search...')).toBeInTheDocument();
+  const bell = screen.getByRole('button', { name: 'Notifications' });
+  const avatar = screen.getByRole('button', { name: 'User menu' });
+  expect(bell.compareDocumentPosition(avatar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(avatar).toHaveTextContent('AU');
+});

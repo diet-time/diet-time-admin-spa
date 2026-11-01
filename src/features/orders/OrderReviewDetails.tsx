@@ -9,7 +9,7 @@ import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined';
 import CalendarMonthOutlined from '@mui/icons-material/CalendarMonthOutlined';
 import HistoryRounded from '@mui/icons-material/HistoryRounded';
 import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded';
-import { orderStatusLabel, type StaffOrder } from '@/api/staffOrdersApi';
+import { orderStatusLabel, approvalStatusLabel, approvalFilterStatus, type StaffOrder } from '@/api/staffOrdersApi';
 
 const paymentLabel = (value: string) => value.toLowerCase().replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase());
 const statusColor = (value: string): ChipProps['color'] => {
@@ -59,7 +59,7 @@ export function OrderReviewDetails({ value }: { value: StaffOrder }) {
           <Typography component="h3" variant="h6" fontWeight={750} sx={{ overflowWrap: 'anywhere' }}>{order.plan.name}</Typography>
           <Typography variant="body2" color="text.secondary" mt={0.5}>{order.mealCount} {order.mealCount === 1 ? 'Meal' : 'Meals'} + {order.snackCount} {order.snackCount === 1 ? 'Snack' : 'Snacks'} · {order.plan.durationName}</Typography>
           <Stack direction="row" useFlexGap flexWrap="wrap" gap={1} mt={1.5}>
-            <Chip size="small" color={statusColor(order.status)} label={orderStatusLabel(order.status)} />
+            <Chip size="small" color={statusColor(approvalFilterStatus(order.status) || order.status)} label={approvalStatusLabel(order.status)} />
             <Chip size="small" variant="outlined" color={statusColor(order.paymentStatus)} label={`Payment: ${paymentLabel(order.paymentStatus)}`} />
           </Stack>
         </Box>

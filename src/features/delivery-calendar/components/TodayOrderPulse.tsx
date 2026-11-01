@@ -16,8 +16,8 @@ export function TodayOrderPulse({ day, onSelect }: { day?: DeliveryCalendarDay; 
     <Box
       sx={{
         px: { xs: 2, md: 2.5 }, py: 1.75, border: '1px solid', borderColor: 'rgba(0,103,78,.18)',
-        borderRadius: 2, bgcolor: '#F0F8F4', position: 'relative', overflow: 'hidden',
-        '&::before': { content: '""', position: 'absolute', insetInlineStart: 0, top: 0, bottom: 0, width: 5, bgcolor: 'primary.main' },
+        borderRadius: 2, bgcolor: day.operationalStatus === 'OVERDUE' ? '#FFF3F3' : '#F0F8F4', position: 'relative', overflow: 'hidden',
+        '&::before': { content: '""', position: 'absolute', insetInlineStart: 0, top: 0, bottom: 0, width: 5, bgcolor: day.operationalStatus === 'OVERDUE' ? 'error.main' : 'primary.main' },
       }}
     >
       <Stack direction={{ xs: 'column', md: 'row' }} alignItems={{ md: 'center' }} gap={{ xs: 1.5, md: 3 }}>
@@ -43,7 +43,7 @@ export function TodayOrderPulse({ day, onSelect }: { day?: DeliveryCalendarDay; 
           </Stack>
         </Stack>
         <Stack direction="row" alignItems="center" gap={1}>
-          <Chip label={statusLabel} size="small" color={day.operationalStatus === 'CLOSED' ? 'error' : day.operationalStatus === 'PARTIAL' ? 'info' : 'success'} sx={{ textTransform: 'capitalize', fontWeight: 750 }} />
+          <Chip label={statusLabel} size="small" color={day.operationalStatus === 'CLOSED' || day.operationalStatus === 'OVERDUE' ? 'error' : day.operationalStatus === 'PARTIAL' ? 'info' : day.operationalStatus === 'PARTIALLY_FULFILLED' ? 'warning' : day.operationalStatus === 'FULFILLED' ? 'success' : 'default'} sx={{ textTransform: 'capitalize', fontWeight: 750 }} />
           <Button endIcon={<ArrowForward />} onClick={() => onSelect(day.date)}>View orders</Button>
         </Stack>
       </Stack>

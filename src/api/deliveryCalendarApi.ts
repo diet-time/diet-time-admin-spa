@@ -13,6 +13,14 @@ import type {
 } from '@/features/delivery-calendar/types';
 
 interface CalendarOrderApi {
+  serviceDate?: string;
+  fulfillmentDeadline?: string;
+  isOverdue?: boolean;
+  staffDisplayName?: string;
+  serviceDayId?: string;
+  fulfillmentStatus?: string;
+  fulfilledAt?: string;
+  fulfilledBy?: string;
   fulfillmentMethod?: string; takeawayBranchName?: string; takeawayBranchAddress?: string;
   id: string;
   orderNumber: string;
@@ -27,6 +35,13 @@ interface CalendarOrderApi {
 }
 
 interface CalendarDayApi {
+  totalServiceDays?: number;
+  pendingCount?: number;
+  overdueCount?: number;
+  deliveredCount?: number;
+  collectedCount?: number;
+  fulfilledCount?: number;
+  fulfillmentProgress?: DeliveryCalendarDay['operationalStatus'];
   date: string;
   totalOrders: number;
   totalCustomers: number;
@@ -58,7 +73,13 @@ const preparationReportFilename = (contentDisposition: string | undefined, date:
 
 const toCalendarDay = (day: CalendarDayApi): DeliveryCalendarDay => ({
   date: day.date,
-  operationalStatus: day.totalOrders > 0 ? 'SCHEDULED' : 'NO_DELIVERIES',
+  operationalStatus: day.fulfillmentProgress ?? (day.totalOrders > 0 ? 'SCHEDULED' : 'NO_DELIVERIES'),
+  totalServiceDays: day.totalServiceDays,
+  pendingCount: day.pendingCount,
+  overdueCount: day.overdueCount,
+  deliveredCount: day.deliveredCount,
+  collectedCount: day.collectedCount,
+  fulfilledCount: day.fulfilledCount,
   totalDeliveries: day.totalOrders,
   totalCustomers: day.totalCustomers,
   totalMealItems: day.totalMealItems,
@@ -94,6 +115,14 @@ export const deliveryCalendarApi = {
       day: toCalendarDay(source),
       totalMealItems: source.totalMealItems,
       deliveries: source.orders.map((order) => ({
+        serviceDate: order.serviceDate ?? date,
+        fulfillmentDeadline: order.fulfillmentDeadline,
+        isOverdue: order.isOverdue,
+        staffDisplayName: order.staffDisplayName,
+        serviceDayId: order.serviceDayId,
+        fulfillmentStatus: order.fulfillmentStatus,
+        fulfilledAt: order.fulfilledAt,
+        fulfilledBy: order.fulfilledBy,
         id: order.id,
         orderNumber: order.orderNumber,
         customerName: order.customerName,
@@ -112,6 +141,8 @@ export const deliveryCalendarApi = {
   },
   preparationSummary: async (date: string, signal?: AbortSignal) =>
     (await apiClient.get<ApiEnvelope<DeliveryPreparationSummary>>(`/admin/delivery-calendar/${date}/preparation-summary`, { signal })).data.data,
+  fulfill: async (serviceDayId: string, status: 'DELIVERED' | 'COLLECTED') =>
+    (await apiClient.patch<ApiEnvelope<{ serviceDayId: string; status: string; fulfilledAt?: string; fulfilledBy?: string; staffDisplayName?: string }>>(`/admin/subscription-service-days/${serviceDayId}/fulfillment`, { status })).data.data,
   preparationReport: async (date: string) => {
     const response = await apiClient.get<Blob>(`/admin/delivery-calendar/${date}/preparation-report`, { responseType: 'blob' });
     return {

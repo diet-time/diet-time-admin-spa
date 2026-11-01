@@ -2,7 +2,12 @@ import { apiClient, adminApiUrl } from './apiClient';
 export interface Review { rowVersion:number; approvedBy?:string; approvedAt?:string; rejectedBy?:string; rejectedAt?:string; rejectionReason?:string; holdReason?:string; requiresPrepayment:boolean; awaitingPayment:boolean; canFulfill:boolean; fulfillmentBlockedReason?:string }
 export interface StaffOrder { order:{ id:string; orderNumber:string; status:string; paymentStatus:string; placedAt:string; plan:{name:string;durationName:string}; mealCount:number; snackCount:number; fulfillmentMethod:string; takeawayBranch?:{name:string;address?:string}; delivery:{startDate:string;endDate:string;days:number[];serviceDates:string[];address?:{addressName?:string;area:string;formattedAddress?:string;buildingNo?:string;streetNo?:string;zoneNo?:string};timeSlot?:{name:string}}; pricing:{totalAmount:number;currencyCode:string};review:Review }; customerName:string;customerPhone?:string;history:{id:string;previousStatus?:string;status:string;changedBy?:string;changedAt:string;reason?:string;previousPaymentStatus?:string;paymentStatus?:string}[] }
 const unwrap = <T,>(value:T|{data:T}):T => value && typeof value === 'object' && 'data' in value ? value.data : value as T;
-export const orderStatusLabel=(status:string) => ({PENDING_APPROVAL:'Pending Approval',ON_HOLD:'On Hold',CONFIRMED:'Confirmed',REJECTED:'Rejected',CANCELLED:'Cancelled',ACTIVE:'Active',COMPLETED:'Completed',PENDING:'Pending (legacy)',PAUSED:'Paused',PENDING_ACTIVATION:'Awaiting activation'}[status] ?? status.replaceAll('_',' '));
+export const orderStatusLabel=(status:string) => ({PENDING_APPROVAL:'Pending Confirmation',ON_HOLD:'On Hold',CONFIRMED:'Confirmed',REJECTED:'Rejected',CANCELLED:'Cancelled',ACTIVE:'Active',COMPLETED:'Completed',PENDING:'Pending Confirmation',PAUSED:'Paused',PENDING_ACTIVATION:'Awaiting activation'}[status] ?? status.replaceAll('_',' '));
+export const approvalStatuses = ['PENDING_APPROVAL', 'CONFIRMED', 'ON_HOLD', 'REJECTED', 'CANCELLED', ''] as const;
+export const approvalFilterStatus = (status: string) => status === 'PENDING' ? 'PENDING_APPROVAL'
+  : status === 'ACTIVE' || status === 'COMPLETED' ? 'CONFIRMED'
+  : approvalStatuses.some(value => value === status) ? status : '';
+export const approvalStatusLabel = (status: string) => orderStatusLabel(approvalFilterStatus(status) || status);
 export const staffOrdersApi={
  list:async(status:string,page:number,serviceDate?:string)=>(unwrap<{items:StaffOrder[];totalCount:number}>((await apiClient.get(adminApiUrl('orders'),{params:{status:status||undefined,pageNumber:page,pageSize:20,...(serviceDate?{serviceDate}:{})}})).data)),
  get:async(id:string)=>unwrap<StaffOrder>((await apiClient.get(adminApiUrl('orders/'+id))).data),

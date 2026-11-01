@@ -3,7 +3,7 @@ import { apiClient } from './apiClient';
 import { deliveryCalendarApi } from './deliveryCalendarApi';
 
 vi.mock('./apiClient', () => ({
-  apiClient: { get: vi.fn(), post: vi.fn(), delete: vi.fn() },
+  apiClient: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
 }));
 
 vi.mock('./plansApi', () => ({
@@ -31,6 +31,19 @@ const monthResponse = {
 };
 
 describe('deliveryCalendarApi', () => {
+  it('uses server service-day counts, overdue flags and calendar progress without counting approval as fulfillment', async () => {
+    const day = monthResponse.data.data.days[0]!;
+    vi.mocked(apiClient.get).mockResolvedValue({ data: { data: { ...monthResponse.data.data, days: [{ ...day, totalServiceDays: 1, pendingCount: 0, overdueCount: 1, deliveredCount: 0, collectedCount: 0, fulfilledCount: 0, fulfillmentProgress: 'OVERDUE', orders: [{ ...day.orders[0], serviceDayId: 'service-day', fulfillmentStatus: 'SCHEDULED', fulfillmentDeadline: '2026-08-11T08:00:00Z', isOverdue: true }] }] } } });
+    const month = await deliveryCalendarApi.month('2026-08', { planId: '', status: '', hasOverride: '', closure: '' });
+    expect(month[0]).toMatchObject({ operationalStatus: 'OVERDUE', totalServiceDays: 1, overdueCount: 1, fulfilledCount: 0 });
+    const detail = await deliveryCalendarApi.detail('2026-08-11');
+    expect(detail.deliveries[0]).toMatchObject({ serviceDayId: 'service-day', fulfillmentStatus: 'SCHEDULED', isOverdue: true, status: 'CONFIRMED' });
+  });
+  it('patches only the selected service day', async () => {
+    vi.mocked(apiClient.patch).mockResolvedValue({ data: { data: { serviceDayId: 'day-1', status: 'COLLECTED' } } });
+    expect(await deliveryCalendarApi.fulfill('day-1', 'COLLECTED')).toMatchObject({ serviceDayId: 'day-1', status: 'COLLECTED' });
+    expect(apiClient.patch).toHaveBeenCalledWith('/admin/subscription-service-days/day-1/fulfillment', { status: 'COLLECTED' });
+  });
   beforeEach(() => vi.clearAllMocks());
 
   it('loads month totals from the admin order calendar endpoint', async () => {

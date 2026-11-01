@@ -12,6 +12,19 @@ const renderPage=(initialEntry='/orders',daily=false)=>render(<QueryClientProvid
 beforeEach(()=>{vi.clearAllMocks();vi.mocked(canWriteFromPath).mockReturnValue(true);vi.mocked(staffOrdersApi.list).mockResolvedValue({items:[row],totalCount:1});vi.mocked(staffOrdersApi.get).mockResolvedValue(row);vi.mocked(staffOrdersApi.action).mockResolvedValue({...row,order:{...row.order,status:'CONFIRMED',review:{...row.order.review,rowVersion:6,canFulfill:true}}});});
 afterEach(()=>vi.useRealTimers());
 describe('Daily orders by meal service date',()=>{
+ it('limits the approval dropdown to approval states',async()=>{
+  renderPage('/orders/daily',true);
+  fireEvent.mouseDown(screen.getByRole('combobox',{name:'Approval status'}));
+  expect(screen.getAllByRole('option').map(option=>option.textContent)).toEqual(['Pending Confirmation','Confirmed','On Hold','Rejected','Cancelled','All approval statuses']);
+  expect(screen.queryByRole('option',{name:'Active'})).not.toBeInTheDocument();
+  expect(screen.queryByRole('option',{name:'Completed'})).not.toBeInTheDocument();
+  expect(screen.queryByRole('option',{name:'Delivered'})).not.toBeInTheDocument();
+ });
+ it.each([['PENDING','PENDING_APPROVAL','Pending Confirmation'],['ACTIVE','CONFIRMED','Confirmed'],['COMPLETED','CONFIRMED','Confirmed']])('maps a legacy %s filter into its approval group',async(legacy,status,label)=>{
+  renderPage(`/orders/daily?serviceDate=2026-11-01&status=${legacy}`,true);
+  await waitFor(()=>expect(staffOrdersApi.list).toHaveBeenCalledWith(status,1,'2026-11-01'));
+  expect(screen.getByRole('combobox',{name:'Approval status'})).toHaveTextContent(label);
+ });
  it('includes all statuses for the selected service day and allows explicit approval',async()=>{
   renderPage('/orders/daily?serviceDate=2026-11-01',true);
   expect(await screen.findByRole('button',{name:'Review / Approve'})).toBeInTheDocument();
@@ -61,7 +74,7 @@ describe('Staff order review',()=>{
   fireEvent.change(screen.getByLabelText('Reason / payment reference (required)'),{target:{value:'Cash receipt 123'}});
   fireEvent.click(screen.getByRole('button',{name:'Confirm'}));
   await waitFor(()=>expect(staffOrdersApi.action).toHaveBeenCalledWith('order-1','payment',{expectedRowVersion:5,reason:'Cash receipt 123',paymentStatus:'PAID'}));
-  expect(await screen.findByText('Payment: Paid')).toBeInTheDocument();expect(within(await screen.findByRole('dialog',{name:/Order details/})).getByText('Pending Approval')).toBeInTheDocument();
+  expect(await screen.findByText('Payment: Paid')).toBeInTheDocument();expect(within(await screen.findByRole('dialog',{name:/Order details/})).getByText('Pending Confirmation')).toBeInTheDocument();
   expect(staffOrdersApi.action).toHaveBeenCalledTimes(1);
  });
 
