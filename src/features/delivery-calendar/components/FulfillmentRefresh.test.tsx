@@ -41,12 +41,12 @@ it('refreshes the scheduled list and preparation counts after fulfillment, keepi
   fireEvent.click(screen.getByRole('button', { name: 'Mark as Delivered' }));
   fireEvent.click(screen.getByRole('button', { name: 'Confirm Delivery' }));
   await waitFor(() => expect(deliveryCalendarApi.detail).toHaveBeenCalledTimes(2));
-  expect(within(screen.getByRole('table', { name: 'Scheduled orders' })).getByText('Delivered')).toBeInTheDocument();
+  expect(within(screen.getByRole('region', { name: 'Scheduled orders' })).getByText('Delivered')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Mark as Collected' })).toBeInTheDocument();
   expect(await screen.findByText('Partially Fulfilled')).toBeInTheDocument();
   expect(screen.getByText('ORD-1 marked as delivered.')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Delivered' }));
-  expect(within(screen.getByRole('table', { name: 'Scheduled orders' })).queryByText('ORD-2')).not.toBeInTheDocument();
+  expect(within(screen.getByRole('region', { name: 'Scheduled orders' })).queryByRole('article', { name: 'ORD-2' })).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('tab', { name: 'Preparation Summary' }));
   expect(within(screen.getByRole('region', { name: 'Pending count' })).getByText('1')).toBeInTheDocument();
   expect(within(screen.getByRole('region', { name: 'Fulfilled count' })).getByText('1')).toBeInTheDocument();
@@ -54,7 +54,7 @@ it('refreshes the scheduled list and preparation counts after fulfillment, keepi
   expect(screen.getByRole('button', { name: 'Download PDF' })).toBeInTheDocument();
   fireEvent.click(screen.getByRole('tab', { name: 'Scheduled orders' }));
   expect(screen.getByRole('button', { name: 'Delivered' })).toHaveAttribute('aria-pressed', 'true');
-  expect(within(screen.getByRole('table', { name: 'Scheduled orders' })).queryByText('ORD-2')).not.toBeInTheDocument();
+  expect(within(screen.getByRole('region', { name: 'Scheduled orders' })).queryByRole('article', { name: 'ORD-2' })).not.toBeInTheDocument();
 });
 
 it('refreshes expired deadlines while open, preserves the filter and stops polling on unmount', async () => {
@@ -67,7 +67,7 @@ it('refreshes expired deadlines while open, preserves the filter and stops polli
   }));
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const view = render(<QueryClientProvider client={client}><DateDetailsDrawer date={date} onClose={vi.fn()} /></QueryClientProvider>);
-  await screen.findByRole('table', { name: 'Scheduled orders' });
+  await screen.findByRole('region', { name: 'Scheduled orders' });
   fireEvent.click(screen.getByRole('button', { name: 'Pending' }));
   expect(within(screen.getByRole('region', { name: 'Pending count' })).getByText('1')).toBeInTheDocument();
   vi.useFakeTimers();
@@ -80,9 +80,9 @@ it('refreshes expired deadlines while open, preserves the filter and stops polli
     expect(screen.getByRole('button', { name: 'Pending' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByText('No service days match this filter.')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Overdue' }));
-    const table = screen.getByRole('table', { name: 'Scheduled orders' });
+    const table = screen.getByRole('region', { name: 'Scheduled orders' });
     expect(within(table).getByText('Overdue').parentElement).toHaveClass('MuiChip-colorError');
-    expect(within(table).getByText('Sara').closest('tr')).toHaveStyle({ backgroundColor: '#FFF3F3' });
+    expect(within(table).getByText('Sara').closest('article')).toHaveStyle({ backgroundColor: '#FFF3F3' });
     view.unmount();
     const count = vi.mocked(deliveryCalendarApi.detail).mock.calls.length;
     await act(async () => { await vi.advanceTimersByTimeAsync(120_000); });

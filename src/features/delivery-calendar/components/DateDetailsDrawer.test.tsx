@@ -43,14 +43,21 @@ describe('PreparationSummary report download', () => {
     ] }} />);
     expect(screen.getByText(/ORD-1 · Customer confirmed/)).toBeInTheDocument();
     expect(screen.getByText(/ORD-2 · Automatically assigned/)).toBeInTheDocument();
-    expect(screen.getByText('2 × Grilled salmon (meal)')).toBeInTheDocument();
-    expect(screen.getByText('1 × Berry yogurt (snack)')).toBeInTheDocument();
+    const customer = screen.getByRole('button', { name: /Biju Manayagath/ });
+    expect(customer).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(customer);
+    expect(customer).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('2 × Grilled salmon')).toBeVisible();
+    expect(screen.getByText('Uncategorized Meal')).toBeInTheDocument();
+    expect(screen.getByText('1 × Berry yogurt')).toBeInTheDocument();
     expect(screen.getByText('Takeaway · Diet Time – Izghawa Branch · Configured branch address')).toBeInTheDocument();
     expect(screen.getByText('Home Delivery · Building 10, Street 20, Zone 30, Doha')).toBeInTheDocument();
-    expect(screen.getByText('Biju Manayagath · Customer')).toBeInTheDocument();
-    expect(screen.getByText('Sara Ali · Default')).toBeInTheDocument();
+    expect(screen.getByText('Biju Manayagath')).toBeInTheDocument();
+    expect(screen.getByText('Customer Selected')).toBeInTheDocument();
+    expect(screen.getByText('Sara Ali')).toBeInTheDocument();
+    expect(screen.getByText('Automatically Assigned')).toBeInTheDocument();
     expect(screen.queryByText(/customer-1|customer-2|Must not show a delivery address/)).not.toBeInTheDocument();
-    expect(screen.getByText('Dietary requirements: Dairy Free')).toBeInTheDocument();
+    expect(screen.getByText('Food Preferences: Dairy Free')).toBeInTheDocument();
   });
 
   it('uses authoritative translated dietary labels and explicit missing-data fallbacks', () => {
@@ -61,8 +68,33 @@ describe('PreparationSummary report download', () => {
     ] }} />);
     expect(screen.getByText('Name not recorded')).toBeInTheDocument();
     expect(screen.getByText('Home Delivery · Address not recorded')).toBeInTheDocument();
-    expect(screen.getByText('Dietary requirements: High Protein, Allergen: Hen eggs')).toBeInTheDocument();
+    expect(screen.getByText('Food Preferences: High Protein')).toBeInTheDocument();
+    expect(screen.getByText('Allergens: Hen eggs')).toBeInTheDocument();
     expect(screen.queryByText(/opaque-profile-id|HIGH_PROTEIN|ALLERGEN:/)).not.toBeInTheDocument();
+  });
+
+  it('sorts configured categories, reconciles portions, and keeps critical allergens visible when collapsed', () => {
+    render(<PreparationSummary date="2026-08-16" summary={{ ...summary, mealItemCount: 4,
+      mealTypes: [
+        { mealTypeId: 'lunch', mealTypeName: 'Late Lunch', mealCategoryDisplayOrder: 20, mealClassification: 'meal', quantity: 2, items: [{ menuItemId: 'shared', menuItemName: 'Shared dish', quantity: 2 }] },
+        { mealTypeId: 'breakfast', mealTypeName: 'Early Breakfast', mealCategoryDisplayOrder: 10, mealClassification: 'meal', quantity: 1, items: [{ menuItemId: 'shared', menuItemName: 'Shared dish', quantity: 1 }] },
+        { mealTypeId: 'snack', mealTypeName: 'PM Snack', mealCategoryDisplayOrder: 30, mealClassification: 'snack', quantity: 1, items: [{ menuItemId: 'snack', menuItemName: 'Yogurt', quantity: 1 }] },
+      ], selections: [{ serviceDayId: 'day', orderReference: 'ORD-SHARED', customerReference: 'customer', customerName: 'Sara', mealPlanName: 'Balanced', finalizationStatus: 'AUTO_FINALIZED', selectionSources: ['DEFAULT'],
+        foodPreferences: ['Seafood', 'seafood'], allergens: ['Celery', 'celery', 'Eggs (including traces)'], dietaryRestrictions: ['ALLERGEN: obsolete'],
+        dishes: [{ mealName: 'Shared dish', category: 'meal', quantity: 1, mealCategoryId: 'breakfast', mealCategoryName: 'Early Breakfast', mealCategoryDisplayOrder: 10 }, { mealName: 'Shared dish', category: 'meal', quantity: 2, mealCategoryId: 'lunch', mealCategoryName: 'Late Lunch', mealCategoryDisplayOrder: 20 }, { mealName: 'Yogurt', category: 'snack', quantity: 1, mealCategoryName: 'PM Snack', mealCategoryDisplayOrder: 30 }] }],
+    }} />);
+    expect(screen.getByText('Allergens: Celery, Eggs (including traces)')).toBeVisible();
+    expect(screen.queryByText(/obsolete/)).not.toBeInTheDocument();
+    const customer = screen.getByRole('button', { name: /Sara/ });
+    expect(customer).toHaveAttribute('aria-expanded', 'false');
+    const menuTables = screen.getAllByRole('table');
+    expect(menuTables.map(table => table.getAttribute('aria-label'))).toEqual(['Early Breakfast menu items', 'Late Lunch menu items', 'PM Snack menu items']);
+    expect(screen.getByLabelText('Preparation overview')).toHaveTextContent('Meal portions3Snack portions1Total portions4');
+    fireEvent.click(customer);
+    expect(screen.getByText('Food Preferences: Seafood')).toBeVisible();
+    expect(screen.getByText('1 × Shared dish')).toBeVisible();
+    expect(screen.getByText('2 × Shared dish')).toBeVisible();
+    expect(screen.getAllByText(/^Allergens:/)).toHaveLength(1);
   });
 
   beforeEach(() => {

@@ -27,7 +27,9 @@ it('caps the red badge at 99+ and loads the compact inbox on demand', async () =
   expect(await screen.findByText('99+')).toHaveClass('MuiBadge-colorError');
   fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
   expect(await screen.findByRole('article')).toHaveTextContent('ORD-1');
-  expect(screen.getByText(/Qatar/)).toHaveTextContent('12:00:00');
+  expect(screen.getByTitle(/Qatar/)).toHaveAttribute('title', expect.stringContaining('12:00:00'));
+  expect(screen.getByLabelText('Notification list')).toHaveStyle({ overflowY: 'auto' });
+  expect(screen.getByRole('dialog')).toHaveStyle({ width: '400px' });
   expect(screen.getByLabelText('Unread')).toBeInTheDocument();
 });
 it('shows the ordering customer with a clear event status, rather than the signed-in profile', async () => {

@@ -44,7 +44,7 @@ export interface ProductionGroup {
 }
 
 export interface DeliveryPreparationMenuItem { menuItemId: string; menuItemName: string; quantity: number }
-export interface DeliveryPreparationMealType { mealTypeId: string; mealTypeName: string; quantity: number; items: DeliveryPreparationMenuItem[] }
+export interface DeliveryPreparationMealType { mealTypeId: string; mealTypeName: string; mealClassification?: string; mealCategoryDisplayOrder?: number; quantity: number; items: DeliveryPreparationMenuItem[] }
 export interface DeliveryPreparationPlan { mealPlanId: string; mealPlanName: string; orderCount: number }
 export interface KitchenSelection {
   fulfillmentStatus?: string;
@@ -59,9 +59,12 @@ export interface KitchenSelection {
   customerName?: string;
   deliveryAddress?: string;
   dietaryRestrictionLabels?: string[];
+  foodPreferences?: string[];
+  allergens?: string[];
+  mealPlanName?: string;
   finalizationStatus: string;
   selectionSources: string[];
-  dishes: { mealName: string; category: string; quantity: number }[];
+  dishes: { mealName: string; category: string; quantity: number; mealCategoryId?: string; mealCategoryName?: string; mealCategoryDisplayOrder?: number; mealClassification?: string }[];
   dietaryRestrictions: string[];
   reviewReason?: string;
 }
