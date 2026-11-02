@@ -12,7 +12,7 @@ Production-oriented React administration portal for Diet Time. It uses the Diet 
 
 ## Business dashboard
 
-The dashboard uses operational insights in place of revenue: scheduled service-day orders, active subscriptions, package meal demand and fulfillment rate. An area chart shows the next seven days of meal-item demand; a donut separates Delivered, Collected, Pending and Overdue. Additional cards show daily order volume, popular meal/snack packages, pending approvals, overdue deliveries and subscriptions approaching their last service date. Scheduled orders open the existing order details; schedule links open the existing Delivery Calendar for the selected date.
+The dashboard uses operational insights in place of revenue: scheduled service-day orders, active subscriptions, package meal demand and fulfillment rate. A combined seven-day chart shows meal-item demand as a green area using the left scale and daily orders as blue bars using the right scale, with a shared date axis, legend and tooltip. A donut separates Delivered, Collected, Pending and Overdue. Additional cards show popular meal/snack packages, pending approvals, overdue deliveries and subscriptions approaching their last service date. Scheduled orders open the existing order details; schedule links open the existing Delivery Calendar for the selected date.
 
 Select a service date or use Today (Asia/Qatar). Data refreshes every 60 seconds and on manual refresh without the full-page loading overlay. A failed background refresh preserves the last loaded overview. The existing search, bell and avatar remain unchanged.
 

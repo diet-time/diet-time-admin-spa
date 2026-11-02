@@ -56,9 +56,12 @@ describe('Business dashboard insights', () => {
     const rate = await screen.findByRole('region', { name: 'Fulfillment rate' });
     expect(within(rate).getByText('50%')).toBeInTheDocument();
     expect(within(screen.getByRole('region', { name: 'Active subscriptions' })).getByText('4')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Meal demand outlook' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Meal demand & orders' })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /Meal items and service-day orders/ })).toBeInTheDocument();
+    expect(screen.getByText('Meal items (left scale)')).toBeInTheDocument();
+    expect(screen.getByText('Orders (right scale)')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Fulfillment status' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Orders by day' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Orders by day' })).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Popular packages' })).toBeInTheDocument();
     expect(screen.getByText('2 plans ending in the next 7 days')).toBeInTheDocument();
     expect(screen.queryByText(/revenue|QAR|last week/i)).not.toBeInTheDocument();

@@ -10,7 +10,7 @@ import { queryKeys } from '@/api/queryKeys';
 import type { DashboardServiceOrder, OperationsDashboard } from '@/api/apiTypes';
 import { canReadPath } from '@/auth/screenPermissionRoutes';
 import { dashboardToday } from './dashboardDates';
-import { BusinessFollowUps, DashboardMetric, DeliverySlotsCard, FulfillmentDonut, MealDemandChart, OrdersByDayChart, PopularPackagesCard, ScheduledOrdersCard } from './DashboardWidgets';
+import { BusinessFollowUps, DashboardMetric, DemandOutlookChart, DeliverySlotsCard, FulfillmentDonut, PopularPackagesCard, ScheduledOrdersCard } from './DashboardWidgets';
 
 export function DashboardPage() {
   const [date, setDate] = useState(dashboardToday);
@@ -45,10 +45,9 @@ function DashboardContent({ data, onCalendar, onReview, onOrder }: { data: Opera
       <Grid size={{ xs: 12, sm: 6, lg: 3 }}><DashboardMetric title="Fulfillment rate" value={fulfillment?.fulfillmentRate == null ? '—' : `${fulfillment.fulfillmentRate}%`} detail={fulfillment ? fulfillment.total ? `${fulfillment.delivered} delivered · ${fulfillment.collected} collected` : 'No scheduled service days' : 'Fulfillment data not available'} icon={<CheckCircleOutline />} tone="#2C8650" tint="#E3F4E6" /></Grid>
     </Grid>
     <Grid container spacing={1.5} alignItems="stretch">
-      <Grid size={{ xs: 12, md: 7 }}><MealDemandChart days={workload} /></Grid>
-      <Grid size={{ xs: 12, md: 5 }}><FulfillmentDonut data={fulfillment} /></Grid>
-      <Grid size={{ xs: 12, md: 7 }}><OrdersByDayChart days={workload} /></Grid>
-      <Grid size={{ xs: 12, md: 5 }}><PopularPackagesCard packages={insights?.popularPackages ?? []} total={insights?.activeSubscriptions} /></Grid>
+      <Grid size={12}><DemandOutlookChart days={workload} /></Grid>
+      <Grid size={{ xs: 12, md: 6 }}><FulfillmentDonut data={fulfillment} /></Grid>
+      <Grid size={{ xs: 12, md: 6 }}><PopularPackagesCard packages={insights?.popularPackages ?? []} total={insights?.activeSubscriptions} /></Grid>
     </Grid>
     <BusinessFollowUps pending={insights?.pendingConfirmations ?? data.needsAttention.ordersRequiringReview} overdue={fulfillment?.overdue} expiring={insights?.expiringSubscriptions} onReview={onReview} onCalendar={onCalendar} />
     <Grid container spacing={1.5} alignItems="stretch">
@@ -60,5 +59,5 @@ function DashboardContent({ data, onCalendar, onReview, onOrder }: { data: Opera
 }
 
 function DashboardSkeleton() {
-  return <Stack spacing={2} aria-label="Loading operations dashboard"><Grid container spacing={1.5}>{[0, 1, 2, 3].map(index => <Grid key={index} size={{ xs: 12, sm: 6, lg: 3 }}><Skeleton variant="rounded" height={112} /></Grid>)}</Grid><Grid container spacing={1.5}>{[0, 1, 2, 3].map(index => <Grid key={index} size={{ xs: 12, md: index % 2 === 0 ? 7 : 5 }}><Skeleton variant="rounded" height={250} /></Grid>)}</Grid></Stack>;
+  return <Stack spacing={2} aria-label="Loading operations dashboard"><Grid container spacing={1.5}>{[0, 1, 2, 3].map(index => <Grid key={index} size={{ xs: 12, sm: 6, lg: 3 }}><Skeleton variant="rounded" height={112} /></Grid>)}</Grid><Grid container spacing={1.5}>{[0, 1, 2].map(index => <Grid key={index} size={{ xs: 12, md: index === 0 ? 12 : 6 }}><Skeleton variant="rounded" height={index === 0 ? 340 : 250} /></Grid>)}</Grid></Stack>;
 }
