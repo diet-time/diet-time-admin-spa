@@ -42,7 +42,7 @@ describe('deliveryCalendarApi', () => {
   it('patches only the selected service day', async () => {
     vi.mocked(apiClient.patch).mockResolvedValue({ data: { data: { serviceDayId: 'day-1', status: 'COLLECTED' } } });
     expect(await deliveryCalendarApi.fulfill('day-1', 'COLLECTED')).toMatchObject({ serviceDayId: 'day-1', status: 'COLLECTED' });
-    expect(apiClient.patch).toHaveBeenCalledWith('/admin/subscription-service-days/day-1/fulfillment', { status: 'COLLECTED' });
+    expect(apiClient.patch).toHaveBeenCalledWith('/admin/subscription-service-days/day-1/fulfillment', { status: 'COLLECTED' }, { skipGlobalLoading: true });
   });
   beforeEach(() => vi.clearAllMocks());
 
@@ -52,6 +52,7 @@ describe('deliveryCalendarApi', () => {
     const result = await deliveryCalendarApi.month('2026-08', { planId: 'plan-1', status: 'CONFIRMED', hasOverride: '', closure: '' });
 
     expect(apiClient.get).toHaveBeenCalledWith('/admin/orders/delivery-calendar', expect.objectContaining({
+      skipGlobalLoading: true,
       params: { month: '2026-08', planId: 'plan-1', orderStatus: 'CONFIRMED' },
     }));
     expect(result).toEqual([expect.objectContaining({

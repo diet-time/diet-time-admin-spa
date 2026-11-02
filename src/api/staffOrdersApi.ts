@@ -9,7 +9,7 @@ export const approvalFilterStatus = (status: string) => status === 'PENDING' ? '
   : approvalStatuses.some(value => value === status) ? status : '';
 export const approvalStatusLabel = (status: string) => orderStatusLabel(approvalFilterStatus(status) || status);
 export const staffOrdersApi={
- list:async(status:string,page:number,serviceDate?:string)=>(unwrap<{items:StaffOrder[];totalCount:number}>((await apiClient.get(adminApiUrl('orders'),{params:{status:status||undefined,pageNumber:page,pageSize:20,...(serviceDate?{serviceDate}:{})}})).data)),
- get:async(id:string)=>unwrap<StaffOrder>((await apiClient.get(adminApiUrl('orders/'+id))).data),
- action:async(id:string,action:string,body:object)=>unwrap<StaffOrder>((await apiClient.post(adminApiUrl('orders/'+id+'/'+action),body)).data),
+ list:async(status:string,page:number,serviceDate?:string)=>(unwrap<{items:StaffOrder[];totalCount:number}>((await apiClient.get(adminApiUrl('orders'),{skipGlobalLoading:true,params:{status:status||undefined,pageNumber:page,pageSize:20,...(serviceDate?{serviceDate}:{})}})).data)),
+ get:async(id:string)=>unwrap<StaffOrder>((await apiClient.get(adminApiUrl('orders/'+id),{skipGlobalLoading:true})).data),
+ action:async(id:string,action:string,body:object)=>unwrap<StaffOrder>((await apiClient.post(adminApiUrl('orders/'+id+'/'+action),body,{skipGlobalLoading:true})).data),
 };

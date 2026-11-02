@@ -88,6 +88,7 @@ const toCalendarDay = (day: CalendarDayApi): DeliveryCalendarDay => ({
 
 const getMonth = async (month: string, filters: CalendarFilters, signal?: AbortSignal) => {
   const response = await apiClient.get<ApiEnvelope<CalendarMonthApi>>('/admin/orders/delivery-calendar', {
+    skipGlobalLoading: true,
     params: {
       month,
       planId: filters.planId || undefined,
@@ -140,9 +141,9 @@ export const deliveryCalendarApi = {
     };
   },
   preparationSummary: async (date: string, signal?: AbortSignal) =>
-    (await apiClient.get<ApiEnvelope<DeliveryPreparationSummary>>(`/admin/delivery-calendar/${date}/preparation-summary`, { signal })).data.data,
+    (await apiClient.get<ApiEnvelope<DeliveryPreparationSummary>>(`/admin/delivery-calendar/${date}/preparation-summary`, { signal, skipGlobalLoading: true })).data.data,
   fulfill: async (serviceDayId: string, status: 'DELIVERED' | 'COLLECTED') =>
-    (await apiClient.patch<ApiEnvelope<{ serviceDayId: string; status: string; fulfilledAt?: string; fulfilledBy?: string; staffDisplayName?: string }>>(`/admin/subscription-service-days/${serviceDayId}/fulfillment`, { status })).data.data,
+    (await apiClient.patch<ApiEnvelope<{ serviceDayId: string; status: string; fulfilledAt?: string; fulfilledBy?: string; staffDisplayName?: string }>>(`/admin/subscription-service-days/${serviceDayId}/fulfillment`, { status }, { skipGlobalLoading: true })).data.data,
   preparationReport: async (date: string) => {
     const response = await apiClient.get<Blob>(`/admin/delivery-calendar/${date}/preparation-report`, { responseType: 'blob' });
     return {

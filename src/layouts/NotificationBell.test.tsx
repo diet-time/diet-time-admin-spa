@@ -30,6 +30,23 @@ it('caps the red badge at 99+ and loads the compact inbox on demand', async () =
   expect(screen.getByText(/Qatar/)).toHaveTextContent('12:00:00');
   expect(screen.getByLabelText('Unread')).toBeInTheDocument();
 });
+it('shows the ordering customer with a clear event status, rather than the signed-in profile', async () => {
+  vi.mocked(notificationsApi.list).mockResolvedValue({ items: [{ ...item, eventType: 'ORDER_APPROVED', title: 'Order confirmed', customerName: 'Sara Ali', message: 'Order ORD-1 for Sara Ali has been confirmed.' }], page: 1, pageSize: 20, totalCount: 1 });
+  show(); fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
+  const row = await screen.findByRole('article', { name: 'Order confirmed' });
+  expect(within(row).getByText('Sara Ali')).toBeInTheDocument();
+  expect(within(row).getByText('Confirmed')).toBeInTheDocument();
+  expect(row).not.toHaveTextContent('Admin');
+});
+it('refreshes only notification queries from the panel refresh button', async () => {
+  const view = show(); const invalidate = vi.spyOn(view.client, 'invalidateQueries');
+  fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
+  await screen.findByRole('article');
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Refresh notifications' })).toBeEnabled());
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh notifications' }));
+  expect(invalidate).toHaveBeenCalledExactlyOnceWith({ queryKey: ['admin-notifications', 'staff', 'admin'] });
+  view.client.clear();
+});
 it('marks a single item read and refreshes its badge and highlight', async () => {
   let read = false;
   vi.mocked(notificationsApi.read).mockImplementation(async () => { read = true; });

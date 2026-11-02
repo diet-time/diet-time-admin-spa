@@ -1,9 +1,22 @@
-import axios, { type AxiosError } from 'axios';
+import axios, { type AxiosError, type AxiosRequestConfig } from 'axios';
 import type { ApiEnvelope, ApiErrorBody, AuthSessionApi } from './apiTypes';
 import { useApiActivityStore } from '@/app/store/apiActivityStore';
 import { useAuthStore } from '@/app/store/authStore';
 import { canWriteFromPath, clearCachedScreenPermissions } from '@/auth/screenPermissionCache';
 import { isNotificationReadRequest } from './notificationReadRequest';
+
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    skipGlobalLoading?: boolean;
+    _globalActivityTracked?: boolean;
+  }
+}
+
+const finishGlobalActivity = (config?: AxiosRequestConfig) => {
+  if (!config?._globalActivityTracked) return;
+  config._globalActivityTracked = false;
+  useApiActivityStore.getState().requestFinished();
+};
 
 const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:5004/' : undefined);
 if (!configuredBaseUrl) throw new Error('VITE_API_BASE_URL is required');
@@ -33,23 +46,27 @@ export const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
+  config._globalActivityTracked = false;
   const method = config.method?.toUpperCase() ?? 'GET';
   const isMutation = !['GET', 'HEAD', 'OPTIONS'].includes(method);
   const isAuthRequest = config.url?.includes('/auth/') || config.url?.startsWith('auth/');
   if (isMutation && !isAuthRequest && !isNotificationReadRequest(method, config.url ?? '') && !canWriteFromPath(window.location.pathname))
     return Promise.reject(new Error('You do not have write permission for this screen.'));
-  useApiActivityStore.getState().requestStarted();
+  if (!config.skipGlobalLoading) {
+    useApiActivityStore.getState().requestStarted();
+    config._globalActivityTracked = true;
+  }
   if (accessToken) config.headers.Authorization = `Bearer ${accessToken}`;
   return config;
 });
 
 apiClient.interceptors.response.use(
   (response) => {
-    useApiActivityStore.getState().requestFinished();
+    finishGlobalActivity(response.config);
     return response;
   },
   async (error: AxiosError<ApiErrorBody>) => {
-    useApiActivityStore.getState().requestFinished();
+    finishGlobalActivity(error.config);
     const request = error.config;
     const isAuthEndpoint = request?.url?.includes('/auth/');
     const retryableRequest = request as (typeof request & { _authRetry?: boolean }) | undefined;

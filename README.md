@@ -69,6 +69,12 @@ The header globe/language button is removed. Search, breadcrumbs, navigation, th
 
 The bell displays a red unread count, hides zero counts, caps at 99+, and opens a compact paged inbox. Notifications include an event icon, title, message, order number, Qatar timestamp and unread highlight. Individual and bulk read actions persist on the server. The badge polls every 45 seconds; the inbox polls while open. Query observers stop polling on unmount. Cache keys include both user ID and authorization scope, so privileged cached inboxes are not reused after a role change.
 
+The panel uses an emerald header, compact event badges, tinted event icons and separate notification cards. When available, each card shows the ordering customer's name with text such as “Sara Ali placed order …” or “Order … for Sara Ali has been confirmed.” This name comes from the order's customer profile, not the signed-in Admin. Existing inbox rows receive the richer display text from the API without a database rewrite. A refresh control updates only the notification queries.
+
+Notification requests, calendar data refreshes, and Orders/Daily Orders requests update their own React Query data without activating the page-wide API loading backdrop. Initial loading, saving and refresh feedback stays inside the relevant panel or screen. Other API operations retain their existing loading behavior. Quiet requests, including failures, cannot decrement a separate request's loading counter. No full-page reload is used; selected dates, filters and active tabs remain in place.
+
+Validation for this presentation/refresh update: 50 targeted React tests and 14 backend notification-text tests passed. React and API builds, TypeScript and targeted ESLint checks passed. No SQL files, migrations or live database changes were added for this update.
+
 **Events and recipients**
 
 | Event | Admin | Existing navigation |
