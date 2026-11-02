@@ -5,10 +5,12 @@ RUN npm ci
 COPY . .
 ARG VITE_API_BASE_URL
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
-RUN npm run build
+ENV VITE_API_SAME_ORIGIN=true
+RUN npm run build && node scripts/render-nginx-config.mjs
 
 FROM nginx:1.27-alpine
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+RUN apk add --no-cache ca-certificates
+COPY --from=build /app/nginx.generated.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 RUN printf 'ok\n' > /usr/share/nginx/html/health
 EXPOSE 80

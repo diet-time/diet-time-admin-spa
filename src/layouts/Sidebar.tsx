@@ -1,4 +1,4 @@
-import { AdminPanelSettingsOutlined, CalendarMonthOutlined, CategoryOutlined, ChevronLeft, ChevronRight, DashboardOutlined, DinnerDiningOutlined, ExpandLess, ExpandMore, HistoryOutlined, ImageOutlined, MenuBookOutlined, PaymentsOutlined, RestaurantMenuOutlined, SpaOutlined, WarningAmberOutlined } from '@mui/icons-material';
+import { AdminPanelSettingsOutlined, CalendarMonthOutlined, CategoryOutlined, ChevronLeft, ChevronRight, DashboardOutlined, DinnerDiningOutlined, ExpandLess, ExpandMore, HistoryOutlined, ImageOutlined, MenuBookOutlined, PaymentsOutlined, PeopleOutlineRounded, RestaurantMenuOutlined, SpaOutlined, WarningAmberOutlined } from '@mui/icons-material';
 import { Box, Collapse, Drawer, IconButton, List, ListItemButton, ListItemIcon, ListItemText, Toolbar, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,6 +20,7 @@ interface NavItem {
 
 const items: NavItem[] = [
   { key: 'Daily Orders', path: '/orders/daily', icon: <RestaurantMenuOutlined /> },
+  { key: 'customers', path: '/customers', icon: <PeopleOutlineRounded /> },
   { key: 'dashboard', path: '/', icon: <DashboardOutlined /> },
   { key: 'meals', path: '/meals', icon: <DinnerDiningOutlined /> },
   { key: 'mealPlans', path: '/meal-plans', icon: <MenuBookOutlined />, children: [

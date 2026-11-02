@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
@@ -11,6 +11,12 @@ vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => k
 const orderPermission: ScreenPermission = { screenId: 'orders', groupCode: 'OPERATIONS', groupName: 'Operations', screenCode: 'ORDERS', screenName: 'Orders', routeUrl: '/orders', displayOrder: 45, isActive: true, canRead: true, canWrite: true };
 
 describe('Orders approval menu permissions', () => {
+  it.each([true, false])('respects the customer directory read permission (%s)', async canRead => {
+    vi.mocked(accessControlApi.myScreens).mockResolvedValue([orderPermission, { ...orderPermission, screenId: 'customers', screenCode: 'CUSTOMERS', routeUrl: '/customers', canRead }]);
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter><Sidebar open collapsed={false} onClose={() => {}} onToggle={() => {}} /></MemoryRouter></QueryClientProvider>);
+    await waitFor(() => expect(screen.queryByRole('link', { name: 'meals' })).not.toBeInTheDocument());
+    expect(screen.queryByRole('link', { name: 'customers' }) !== null).toBe(canRead);
+  });
   it('shows the existing Orders route after the permission catalogue is restored', async () => {
     vi.mocked(accessControlApi.myScreens).mockResolvedValue([orderPermission]);
     render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>

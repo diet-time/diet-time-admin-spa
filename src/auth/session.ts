@@ -2,6 +2,7 @@ import { useAuthStore } from '@/app/store/authStore';
 import type { Role } from '@/app/store/authStore';
 import { apiClient, refreshAccessToken, setAccessToken } from '@/api/apiClient';
 import type { ApiEnvelope, AuthSessionApi, AuthUserApi } from '@/api/apiTypes';
+import { isSessionRejected } from './sessionFailure';
 
 const supportedRoles = new Set<Role>(['Admin', 'Dietitian', 'ContentManager', 'Finance', 'Operations', 'Viewer']);
 
@@ -23,11 +24,16 @@ export const login = async (email: string, password: string) => {
 };
 
 export const restoreSession = async () => {
+  useAuthStore.getState().beginSessionCheck();
   try {
     applySession(await refreshAccessToken());
-  } catch {
-    setAccessToken(null);
-    useAuthStore.getState().clear();
+  } catch (error) {
+    if (isSessionRejected(error)) {
+      setAccessToken(null);
+      useAuthStore.getState().clear();
+    } else {
+      useAuthStore.getState().sessionUnavailable();
+    }
   }
 };
 

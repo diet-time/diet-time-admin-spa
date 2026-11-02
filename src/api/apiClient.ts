@@ -4,6 +4,7 @@ import { useApiActivityStore } from '@/app/store/apiActivityStore';
 import { useAuthStore } from '@/app/store/authStore';
 import { canWriteFromPath, clearCachedScreenPermissions } from '@/auth/screenPermissionCache';
 import { isNotificationReadRequest } from './notificationReadRequest';
+import { isSessionRejected } from '@/auth/sessionFailure';
 
 declare module 'axios' {
   interface AxiosRequestConfig {
@@ -22,9 +23,14 @@ const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL || (import.meta.env.
 if (!configuredBaseUrl) throw new Error('VITE_API_BASE_URL is required');
 
 const normalizedConfiguredBaseUrl = configuredBaseUrl.endsWith('/') ? configuredBaseUrl : `${configuredBaseUrl}/`;
-const baseURL = /\/api\/v\d+\/$/i.test(normalizedConfiguredBaseUrl)
+const directBaseURL = /\/api\/v\d+\/$/i.test(normalizedConfiguredBaseUrl)
   ? normalizedConfiguredBaseUrl
   : new URL('api/v1/', normalizedConfiguredBaseUrl).toString();
+// Vite and the Docker/Nginx deployment proxy /api on the Admin origin so
+// HttpOnly SameSite=Strict session cookies also survive cross-site deployments.
+const baseURL = import.meta.env.DEV || import.meta.env.VITE_API_SAME_ORIGIN === 'true'
+  ? new URL(new URL(directBaseURL).pathname, window.location.origin).toString()
+  : directBaseURL;
 
 /** Unversioned admin endpoints used by newer meal-configuration controllers. */
 export const adminApiUrl = (path: string) =>
@@ -75,9 +81,11 @@ apiClient.interceptors.response.use(
       try {
         await refreshAccessToken();
         return apiClient.request(request);
-      } catch {
-        setAccessToken(null);
-        useAuthStore.getState().clear();
+      } catch (refreshError) {
+        if (isSessionRejected(refreshError)) {
+          setAccessToken(null);
+          useAuthStore.getState().clear();
+        }
       }
     }
     if (error.response?.status === 403) window.dispatchEvent(new CustomEvent('api:forbidden'));

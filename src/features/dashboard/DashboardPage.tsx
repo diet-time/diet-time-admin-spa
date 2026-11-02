@@ -10,7 +10,7 @@ import { queryKeys } from '@/api/queryKeys';
 import type { DashboardServiceOrder, OperationsDashboard } from '@/api/apiTypes';
 import { canReadPath } from '@/auth/screenPermissionRoutes';
 import { dashboardToday } from './dashboardDates';
-import { BusinessFollowUps, DashboardMetric, DemandOutlookChart, DeliverySlotsCard, FulfillmentDonut, PopularPackagesCard, ScheduledOrdersCard } from './DashboardWidgets';
+import { BusinessFollowUps, DashboardMetric, OrdersOutlookChart, DeliverySlotsCard, FulfillmentDonut, PopularPackagesCard, ScheduledOrdersCard } from './DashboardWidgets';
 
 export function DashboardPage() {
   const [date, setDate] = useState(dashboardToday);
@@ -45,7 +45,7 @@ function DashboardContent({ data, onCalendar, onReview, onOrder }: { data: Opera
       <Grid size={{ xs: 12, sm: 6, lg: 3 }}><DashboardMetric title="Fulfillment rate" value={fulfillment?.fulfillmentRate == null ? '—' : `${fulfillment.fulfillmentRate}%`} detail={fulfillment ? fulfillment.total ? `${fulfillment.delivered} delivered · ${fulfillment.collected} collected` : 'No scheduled service days' : 'Fulfillment data not available'} icon={<CheckCircleOutline />} tone="#2C8650" tint="#E3F4E6" /></Grid>
     </Grid>
     <Grid container spacing={1.5} alignItems="stretch">
-      <Grid size={12}><DemandOutlookChart days={workload} /></Grid>
+      <Grid size={12}><OrdersOutlookChart days={workload} /></Grid>
       <Grid size={{ xs: 12, md: 6 }}><FulfillmentDonut data={fulfillment} /></Grid>
       <Grid size={{ xs: 12, md: 6 }}><PopularPackagesCard packages={insights?.popularPackages ?? []} total={insights?.activeSubscriptions} /></Grid>
     </Grid>

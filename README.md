@@ -1,5 +1,19 @@
 # Diet Time Admin
 
+Preparation Summary review warnings and their PDF export identify orders by their order number (for example, `ORD-20261102-000085`), rather than internal database IDs. This covers meal-assignment warnings, legacy-lock warnings and uninitialized service days. Missing order numbers display “Order number not recorded.” The change is supplied by the API; preparation quantities and stored review reasons remain unchanged.
+
+## Customer directory
+
+The separate Customers sidebar screen (`/customers`) lists saved customer profiles with name, phone/email, booked plans, active and paused plans, pending orders and latest order date. Search by name, phone or email; results are paginated on the server. Refresh and minute polling update the list without reloading the page. Search, page and the selected customer are kept in the URL.
+
+View a customer to open a responsive, read-only details drawer with contact information, profile creation date, preferred language, booking/status counts and independently paginated order history. View order opens the existing order-details screen when Orders read access is available. Customers with no orders are included. No health/questionnaire information or editing controls are added.
+
+Plans booked counts one order per confirmed, active or completed purchase, regardless of its meal items or number of service days. Pending/legacy-pending, cancelled and rejected orders have separate counts and are excluded from booked plans. Active now counts fulfillment-eligible Confirmed/Active orders spanning today's Qatar date; current pauses are counted separately. Latest order includes all submission statuses. These totals use all customer orders, not just the visible history page.
+
+The matching API exposes Admin-only customer list, details and scoped order-history reads. Existing Admins receive a virtual read-only Customers menu if no dedicated menu exists; explicit menu configuration is preserved. No role definition, menu database insert, migration or SQL script is included. Deploy the API and Admin SPA together. Flutter, order placement, approval, fulfillment and payment behavior are unchanged by this feature.
+
+Validation: 12 targeted React tests, 3 API/PostgreSQL integration tests and 2 Chromium desktop/mobile tests passed. Tests cover search and pagination, complete booking counts, paused/active separation, zero-booking profiles, scoped history, Admin authorization, menu visibility, drawer navigation and reuse of existing order details. Browser previews use fixture data; backend aggregation and HTTP reads were exercised against a disposable PostgreSQL 18 database. TypeScript, targeted ESLint and the production SPA/API builds passed with existing compiler/Vite advisories. No application database was modified.
+
 Daily Orders uses a grouped filter card and a clearer order table with readable Qatar dates, delivery/takeaway icons, payment and approval badges, and horizontally scrollable columns on narrow screens. Cancelled orders do not offer Record Payment Status; the API also rejects that action with 409 (`cancelled_order_payment_locked`). Activity history retains business events, payment changes, notes and timestamps while omitting the internal actor/history ID disclosure. Stored audit history remains intact. No schema changes or migrations are included.
 
 Notification dropdowns show the 50 newest updates only, without older-page navigation. The badge still counts all unread notifications and Mark All as Read applies to the recipient's full inbox. History remains stored. Refreshes remain limited to notification queries.
@@ -12,7 +26,7 @@ Production-oriented React administration portal for Diet Time. It uses the Diet 
 
 ## Business dashboard
 
-The dashboard uses operational insights in place of revenue: scheduled service-day orders, active subscriptions, package meal demand and fulfillment rate. A combined seven-day chart shows meal-item demand as a green area using the left scale and daily orders as blue bars using the right scale, with a shared date axis, legend and tooltip. A donut separates Delivered, Collected, Pending and Overdue. Additional cards show popular meal/snack packages, pending approvals, overdue deliveries and subscriptions approaching their last service date. Scheduled orders open the existing order details; schedule links open the existing Delivery Calendar for the selected date.
+The dashboard uses operational insights in place of revenue: scheduled service-day orders, active subscriptions, package meal demand and fulfillment rate. A simple seven-day green bar chart shows daily order counts with one scale, value labels and a date tooltip. The fulfillment donut keeps Delivered, Collected, Pending and Overdue counts and percentages together in a compact legend. Additional cards show popular meal/snack packages, pending approvals, overdue deliveries and subscriptions approaching their last service date. Scheduled orders open the existing order details; schedule links open the existing Delivery Calendar for the selected date.
 
 Select a service date or use Today (Asia/Qatar). Data refreshes every 60 seconds and on manual refresh without the full-page loading overlay. A failed background refresh preserves the last loaded overview. The existing search, bell and avatar remain unchanged.
 
@@ -32,11 +46,12 @@ npm install
 npm run dev
 ```
 
-Set `VITE_API_BASE_URL` to the ASP.NET API root, such as `https://api.diettime.com/api/v1`. Browser-exposed Vite variables must never contain database credentials, signing keys, storage secrets, or payment secrets.
+Set `VITE_API_BASE_URL` to the ASP.NET API root, such as `https://api.diettime.com/api/v1`. Vite development and the Docker image use this as the upstream for a same-origin `/api/` proxy. Browser-exposed Vite variables must never contain database credentials, signing keys, storage secrets, or payment secrets.
 
 Environment variables:
 
-- `VITE_API_BASE_URL` — required API root
+- `VITE_API_BASE_URL` — required API root / proxy upstream
+- `VITE_API_SAME_ORIGIN` — automatically `true` in the Docker build; set to `true` for other production builds only when the host also proxies `/api/` to the API
 - `VITE_APP_NAME` — defaults to Diet Time Admin
 - `VITE_DEFAULT_LANGUAGE` — `en` or `ar`
 - `VITE_ENABLE_ARABIC` — enables Arabic UI
@@ -46,6 +61,12 @@ Environment variables:
 ## API and authentication
 
 All data flows through the Diet Time API; the browser never connects to PostgreSQL. Axios sends credentials for an HttpOnly refresh cookie, keeps short-lived access tokens in memory, restores the session through `/auth/refresh`, retries once after a 401, and handles 403 globally. Authentication uses `/auth/login`, `/auth/refresh`, `/auth/logout`, and `/auth/me`. No authentication token or session flag is stored in `localStorage`.
+
+**Browser refresh persistence:** Vite and the Docker/Nginx image send API requests through the Admin origin. This allows the existing HttpOnly, Secure (production), SameSite=Strict refresh cookie to survive page reloads even when the upstream API is hosted on a different site. The Docker build renders its Nginx upstream from `VITE_API_BASE_URL`, retaining both `/api/v1/` and `/api/admin/` routes, TLS server-name indication, cookies and API-controlled upload limits. API cookie policy, authentication endpoints and database schema are unchanged. Temporary network errors and server failures during restoration show Retry connection on the current route; only a rejected session (401/403) redirects to login. Existing authenticated API requests also retain their session on temporary refresh failures.
+
+Rebuild/redeploy the Admin Docker image with the current API URL build argument for this proxy fix to take effect. Sign in once after deployment so the refresh cookie is issued on the Admin origin; subsequent reloads restore the session and preserve the selected route/query. For static hosting outside this Docker image, configure an equivalent same-origin `/api/` reverse proxy and build with `VITE_API_SAME_ORIGIN=true`; setting that flag without a proxy will not work. The deployed site's behavior must be checked after rollout.
+
+Validation for refresh persistence: 15 targeted React/API-client tests, 3 proxy/configuration checks and 3 Chromium browser tests passed. Browser tests use fixture API responses and a real HttpOnly SameSite=Strict cookie to verify sign-in, rotation on a full reload, selected-page preservation, retry after a 503 and rejection of an expired session. A local upstream server verifies real Vite proxy forwarding and cookies for versioned/unversioned API paths. TypeScript, targeted ESLint and the production build in same-origin mode passed. Docker container startup was not tested because the local Docker daemon is unavailable; the generated Nginx configuration is covered by renderer tests. No API, Flutter, database or cookie-policy changes are included.
 
 The backend must allow the exact admin origin (`https://admin.diettime.com`), credentials, required methods/headers, and expose correlation headers. Do not combine wildcard origins with credentials. Backend authorization and validation remain authoritative.
 
@@ -73,7 +94,7 @@ The unit suite covers meal/nutrition/availability rules and role guards. Playwri
 
 ## Railway deployment
 
-Create a Railway service from this repository using the Dockerfile. Set build argument `VITE_API_BASE_URL` to the production API root and expose port 80. Add `admin.diettime.com` as the custom domain and configure its DNS using Railway’s target. Verify `/health`, then add the final origin to ASP.NET CORS and refresh-cookie settings. Vite variables are compiled at build time, so rebuild after changing them.
+Create a Railway service from this repository using the Dockerfile. Set build argument `VITE_API_BASE_URL` to the production API root and expose port 80. The image builds the SPA in same-origin mode and generates Nginx's API proxy configuration from that upstream URL. Add `admin.diettime.com` as the custom domain and configure its DNS using Railway’s target. Verify `/health` and `/api/v1/auth/refresh` (401 is expected before signing in), then verify sign-in and browser refresh over HTTPS. Preserve the existing API cookie security and exact-origin CORS settings. Vite variables are compiled at build time, so rebuild after changing them.
 
 ## Adding master data
 
