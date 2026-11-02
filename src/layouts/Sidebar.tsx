@@ -1,6 +1,6 @@
-import { AdminPanelSettingsOutlined, CalendarMonthOutlined, CategoryOutlined, ChevronLeft, ChevronRight, DashboardOutlined, DinnerDiningOutlined, ExpandLess, ExpandMore, HistoryOutlined, ImageOutlined, MenuBookOutlined, PaymentsOutlined, PeopleOutlineRounded, RestaurantMenuOutlined, SpaOutlined, WarningAmberOutlined } from '@mui/icons-material';
+import { AdminPanelSettingsOutlined, CalendarMonthOutlined, CategoryOutlined, ChevronLeft, ChevronRight, DashboardOutlined, DinnerDiningOutlined, ExpandLess, ExpandMore, HistoryOutlined, ImageOutlined, MenuBookOutlined, PaymentsOutlined, ReceiptLongOutlined, RestaurantMenuOutlined, SpaOutlined, WarningAmberOutlined } from '@mui/icons-material';
 import { Box, Collapse, Drawer, IconButton, List, ListItemButton, ListItemIcon, ListItemText, Toolbar, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink, useLocation } from 'react-router-dom';
 import { colors } from '@/theme/theme';
@@ -19,8 +19,10 @@ interface NavItem {
 }
 
 const items: NavItem[] = [
-  { key: 'Daily Orders', path: '/orders/daily', icon: <RestaurantMenuOutlined /> },
-  { key: 'customers', path: '/customers', icon: <PeopleOutlineRounded /> },
+  { key: 'orders', path: '/orders', icon: <ReceiptLongOutlined />, children: [
+    { label: 'dailyOrders', path: '/orders/daily' },
+    { label: 'customers', path: '/customers' },
+  ] },
   { key: 'dashboard', path: '/', icon: <DashboardOutlined /> },
   { key: 'meals', path: '/meals', icon: <DinnerDiningOutlined /> },
   { key: 'mealPlans', path: '/meal-plans', icon: <MenuBookOutlined />, children: [
@@ -58,7 +60,12 @@ export function Sidebar({ open, collapsed, onClose, onToggle }: {
   const desktop = useMediaQuery(theme.breakpoints.up('md'));
   const location = useLocation();
   const permissions = useQuery({ queryKey: ['access-control', 'me', 'screens'], queryFn: accessControlApi.myScreens, staleTime: 60_000 });
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ mealPlans: location.pathname.startsWith('/meal-plans') || ['/admin/package-options', '/admin/durations', '/admin/plan-pricing'].some(path => location.pathname.startsWith(path)), operations: location.pathname.startsWith('/operations'), administration: ['/settings', '/users', '/roles'].some(path => location.pathname.startsWith(path)) });
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ orders: location.pathname.startsWith('/orders') || location.pathname.startsWith('/customers'), mealPlans: location.pathname.startsWith('/meal-plans') || ['/admin/package-options', '/admin/durations', '/admin/plan-pricing'].some(path => location.pathname.startsWith(path)), operations: location.pathname.startsWith('/operations'), administration: ['/settings', '/users', '/roles'].some(path => location.pathname.startsWith(path)) });
+  useEffect(() => {
+    if (location.pathname.startsWith('/orders') || location.pathname.startsWith('/customers')) {
+      setOpenGroups(value => value.orders ? value : { ...value, orders: true });
+    }
+  }, [location.pathname]);
   const width = collapsed ? collapsedWidth : expandedWidth;
   const visibleItems = items.map(item => item.children && permissions.data
     ? { ...item, children: item.children.filter(child => canReadPath(permissions.data, child.path)) }
@@ -79,7 +86,9 @@ export function Sidebar({ open, collapsed, onClose, onToggle }: {
         {visibleItems.map((item) => {
           const active = item.path === '/'
             ? location.pathname === '/'
-            : item.children?.some(child => location.pathname.startsWith(child.path)) ?? location.pathname.startsWith(item.path);
+            : item.children
+              ? location.pathname === item.path || item.children.some(child => location.pathname.startsWith(child.path))
+              : location.pathname.startsWith(item.path);
           return (
             <Box key={item.path}>
               <ListItemButton
@@ -87,6 +96,7 @@ export function Sidebar({ open, collapsed, onClose, onToggle }: {
                 to={item.children ? undefined : item.path}
                 onClick={() => item.children ? setOpenGroups((value) => ({ ...value, [item.key]: !value[item.key] })) : onClose()}
                 selected={active}
+                aria-expanded={item.children ? !!openGroups[item.key] && !collapsed : undefined}
                 title={collapsed ? t(item.key) : undefined}
                 sx={{
                   borderRadius: 2,
@@ -112,7 +122,7 @@ export function Sidebar({ open, collapsed, onClose, onToggle }: {
                         onClick={onClose}
                         sx={{ pl: 7, borderRadius: 2, minHeight: 42, '&.active': { color: colors.lime, fontWeight: 700 } }}
                       >
-                        {child.label}
+                        {t(child.label)}
                       </ListItemButton>
                     ))}
                   </List>

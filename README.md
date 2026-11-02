@@ -4,6 +4,8 @@ Preparation Summary review warnings and their PDF export identify orders by thei
 
 ## Customer directory
 
+The sidebar groups Daily Orders and Customers under Orders. The group opens automatically on either screen and on linked order details; each child retains its own read permission, and the group is hidden when neither child is accessible. Group and child labels support English and Arabic.
+
 The separate Customers sidebar screen (`/customers`) lists saved customer profiles with name, phone/email, booked plans, active and paused plans, pending orders and latest order date. Search by name, phone or email; results are paginated on the server. Refresh and minute polling update the list without reloading the page. Search, page and the selected customer are kept in the URL.
 
 View a customer to open a responsive, read-only details drawer with contact information, profile creation date, preferred language, booking/status counts and independently paginated order history. View order opens the existing order-details screen when Orders read access is available. Customers with no orders are included. No health/questionnaire information or editing controls are added.
