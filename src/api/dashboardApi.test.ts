@@ -10,7 +10,7 @@ describe('dashboardApi', () => {
   it('loads the operations dashboard for the selected date', async () => {
     vi.mocked(apiClient.get).mockResolvedValue({ data: { date: '2026-08-13' } });
     await dashboardApi.operations('2026-08-13');
-    expect(apiClient.get).toHaveBeenCalledWith('/admin/dashboard/operations', expect.objectContaining({ params: { date: '2026-08-13' } }));
+    expect(apiClient.get).toHaveBeenCalledWith('/admin/dashboard/operations', expect.objectContaining({ params: { date: '2026-08-13' }, skipGlobalLoading: true }));
   });
 
   it('loads paged dashboard deliveries from the dedicated endpoint', async () => {

@@ -2,6 +2,18 @@
 
 Production-oriented React administration portal for Diet Time. It uses the Diet Time emerald/lime/marshmallow palette, Material UI, strict TypeScript, React Router, TanStack Query, React Hook Form/Zod, and bilingual English/Arabic rendering.
 
+## Business dashboard
+
+The dashboard uses operational insights in place of revenue: scheduled service-day orders, active subscriptions, package meal demand and fulfillment rate. An area chart shows the next seven days of meal-item demand; a donut separates Delivered, Collected, Pending and Overdue. Additional cards show daily order volume, popular meal/snack packages, pending approvals, overdue deliveries and subscriptions approaching their last service date. Scheduled orders open the existing order details; schedule links open the existing Delivery Calendar for the selected date.
+
+Select a service date or use Today (Asia/Qatar). Data refreshes every 60 seconds and on manual refresh without the full-page loading overlay. A failed background refresh preserves the last loaded overview. The existing search, bell and avatar remain unchanged.
+
+The existing `GET /api/v1/admin/dashboard/operations?date=YYYY-MM-DD` response adds `insights`; deploy the API and Admin SPA together. Fulfillment and seven-day workload reuse the Delivery Calendar's eligible service days and Qatar deadlines. Meal demand is scheduled package quantity, including snacks, and does not replace the Preparation Summary's meal-selection quantities. Fulfillment rate is `(Delivered + Collected) / scheduled service days`; it is unavailable when no service days exist. Slot bars show actual fulfilled versus scheduled orders, with no assumed slot capacity. Active subscriptions are eligible order plans spanning the selected date; renewal opportunities use their last scheduled date within the inclusive seven-day window. Popular packages count those active subscriptions, grouped by daily meal and snack quantity.
+
+No revenue, artificial comparisons, additional roles, SQL scripts or database migrations are included. Older API responses show unavailable fulfillment/package insights rather than inferred completion values. PostgreSQL setup remains as documented for the existing fulfillment feature.
+
+Validation: 10 targeted frontend tests and 9 dashboard backend unit tests passed. TypeScript, targeted ESLint, and the production SPA build passed. The existing Vite chunk-size advisory remains. Desktop and mobile dashboard previews were checked with fixture data; the mobile page had no horizontal overflow. Live PostgreSQL aggregation was not tested in this environment.
+
 ## Local development
 
 Requires Node.js 22+ and npm 10+.

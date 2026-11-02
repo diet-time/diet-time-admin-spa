@@ -24,7 +24,12 @@ export interface DashboardAttention { missingDeliveryAddresses: number; ordersRe
 export interface DashboardDelivery { fulfillmentMethod?: string; takeawayBranchName?: string; takeawayBranchAddress?: string; orderId: string; orderNumber: string; customerId: string; customerName: string; mealPlanId: string; mealPlanName: string; mealCount: number; deliveryArea: string; deliveryAddress: string; status: string }
 export interface PlanActivityDay { date: string; customerCount: number }
 export interface UpcomingPlanActivity { starting: PlanActivityDay[]; ending: PlanActivityDay[] }
-export interface OperationsDashboard { date: string; today: OperationsTodaySummary; nextDeliveryDay?: NextDeliveryDay | null; nextSevenDays: DeliveryWorkloadDay[]; needsAttention: DashboardAttention; todayDeliveries: DashboardDelivery[]; upcomingPlanActivity: UpcomingPlanActivity }
+export interface DashboardFulfillment { total: number; pending: number; overdue: number; delivered: number; collected: number; fulfilled: number; fulfillmentRate: number | null; homeDelivery: number; takeaway: number; mealItems: number }
+export interface DashboardPackage { name: string; subscriptions: number }
+export interface DashboardSlot { name: string; startTime?: string | null; endTime?: string | null; scheduled: number; fulfilled: number; overdue: number }
+export interface DashboardServiceOrder { id: string; serviceDayId?: string; orderNumber: string; customerName: string; planName: string; mealCount: number; fulfillmentMethod: string; fulfillmentStatus?: string; isOverdue: boolean; status: string; deliverySlot: string; takeawayBranchName?: string; fulfilledAt?: string }
+export interface DashboardInsights { activeSubscriptions: number; pendingConfirmations: number; expiringSubscriptions: number; fulfillment: DashboardFulfillment; workload: DeliveryWorkloadDay[]; popularPackages: DashboardPackage[]; deliverySlots: DashboardSlot[]; scheduledOrders: DashboardServiceOrder[] }
+export interface OperationsDashboard { date: string; today: OperationsTodaySummary; nextDeliveryDay?: NextDeliveryDay | null; nextSevenDays: DeliveryWorkloadDay[]; needsAttention: DashboardAttention; todayDeliveries: DashboardDelivery[]; upcomingPlanActivity: UpcomingPlanActivity; insights?: DashboardInsights | null }
 export interface DashboardDeliveriesPage { items: DashboardDelivery[]; meta: { page: number; pageSize: number; totalCount: number; totalPages: number } }
 export interface ScreenPermission {
   screenId: string; groupCode: string; groupName: string; screenCode: string; screenName: string;
