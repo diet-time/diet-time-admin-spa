@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
+import { formatOrderDate, orderStatusColor } from './orderPresentation';
 import {
   Accordion, AccordionDetails, AccordionSummary, Alert, Box, Chip, Divider,
-  Paper, Stack, Typography, type ChipProps,
+  Paper, Stack, Typography,
 } from '@mui/material';
 import PersonOutlineRounded from '@mui/icons-material/PersonOutlineRounded';
 import LocalShippingOutlined from '@mui/icons-material/LocalShippingOutlined';
@@ -12,23 +13,6 @@ import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded';
 import { orderStatusLabel, approvalStatusLabel, approvalFilterStatus, type StaffOrder } from '@/api/staffOrdersApi';
 
 const paymentLabel = (value: string) => value.toLowerCase().replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase());
-const statusColor = (value: string): ChipProps['color'] => {
-  if (['CONFIRMED', 'ACTIVE', 'PAID'].includes(value)) return 'success';
-  if (['PENDING_APPROVAL', 'PENDING', 'ON_HOLD', 'UNPAID', 'REFUND_PENDING', 'PAUSED'].includes(value)) return 'warning';
-  if (['REJECTED', 'FAILED'].includes(value)) return 'error';
-  if (['COMPLETED', 'REFUNDED'].includes(value)) return 'info';
-  return 'default';
-};
-export function formatOrderDate(value?: string, includeTime = false): string {
-  if (!value) return 'Not recorded';
-  // Date-only values have no browser timezone; keep them on the stored day.
-  const date = new Date(value.length === 10 ? `${value}T12:00:00Z` : value);
-  if (Number.isNaN(date.getTime())) return 'Not recorded';
-  return new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Asia/Qatar', day: 'numeric', month: 'short', year: 'numeric',
-    ...(includeTime ? { hour: '2-digit', minute: '2-digit', hour12: false } : {}),
-  }).format(date);
-}
 function Section({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {
   return <Paper component="section" variant="outlined" sx={{ p: 2, borderRadius: 2, minWidth: 0, height: '100%', boxShadow: 'none' }}>
     <Stack direction="row" alignItems="center" spacing={1} mb={1.5} color="primary.main">
@@ -59,8 +43,8 @@ export function OrderReviewDetails({ value }: { value: StaffOrder }) {
           <Typography component="h3" variant="h6" fontWeight={750} sx={{ overflowWrap: 'anywhere' }}>{order.plan.name}</Typography>
           <Typography variant="body2" color="text.secondary" mt={0.5}>{order.mealCount} {order.mealCount === 1 ? 'Meal' : 'Meals'} + {order.snackCount} {order.snackCount === 1 ? 'Snack' : 'Snacks'} · {order.plan.durationName}</Typography>
           <Stack direction="row" useFlexGap flexWrap="wrap" gap={1} mt={1.5}>
-            <Chip size="small" color={statusColor(approvalFilterStatus(order.status) || order.status)} label={approvalStatusLabel(order.status)} />
-            <Chip size="small" variant="outlined" color={statusColor(order.paymentStatus)} label={`Payment: ${paymentLabel(order.paymentStatus)}`} />
+            <Chip size="small" color={orderStatusColor(approvalFilterStatus(order.status) || order.status)} label={approvalStatusLabel(order.status)} />
+            <Chip size="small" variant="outlined" color={orderStatusColor(order.paymentStatus)} label={`Payment: ${paymentLabel(order.paymentStatus)}`} />
           </Stack>
         </Box>
         <Box sx={{ textAlign: { xs: 'start', sm: 'end' }, flexShrink: 0 }}>
@@ -119,11 +103,6 @@ export function OrderReviewDetails({ value }: { value: StaffOrder }) {
               </Stack>
               {entry.paymentStatus && <Typography variant="body2" color="text.secondary" mt={0.5}>Payment: {paymentChanged && entry.previousPaymentStatus ? `${paymentLabel(entry.previousPaymentStatus)} → ` : ''}{paymentLabel(entry.paymentStatus)}</Typography>}
               {entry.reason && <Typography variant="body2" mt={0.5} sx={{ overflowWrap: 'anywhere' }}>{entry.reason}</Typography>}
-              <Box component="details" sx={{ mt: 1, color: 'text.secondary', fontSize: 12 }}>
-                <Box component="summary" sx={{ cursor: 'pointer', width: 'fit-content' }}>Internal audit details</Box>
-                <Typography variant="caption" display="block" sx={{ overflowWrap: 'anywhere' }}>Actor ID: {entry.changedBy || 'Legacy record'}</Typography>
-                <Typography variant="caption" display="block" sx={{ overflowWrap: 'anywhere' }}>History ID: {entry.id}</Typography>
-              </Box>
             </Box>;
           })}
         </Stack>

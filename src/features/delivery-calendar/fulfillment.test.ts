@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { dailyCounts, visibleDeliveries, type FulfillmentFilter } from './fulfillment';
+import { dailyCounts, isFutureServiceDate, visibleDeliveries, type FulfillmentFilter } from './fulfillment';
 import type { CustomerDelivery } from './types';
 
 const row = (id: string, status: string, overdue = false): CustomerDelivery => ({ id, serviceDayId: id, orderNumber: id, customerName: id, planName: 'Plan', mealCount: 1, deliverySlot: 'Morning', status: 'CONFIRMED', fulfillmentStatus: status, isOverdue: overdue });
 const rows = [row('done', 'DELIVERED'), row('pending-1', 'SCHEDULED'), row('overdue-1', 'SCHEDULED', true), row('collected', 'COLLECTED'), row('overdue-2', 'SCHEDULED', true), row('pending-2', 'SCHEDULED')];
 describe('daily fulfillment filters and counts', () => {
+  it('blocks tomorrow until Qatar midnight, irrespective of the browser timezone', () => {
+    expect(isFutureServiceDate('2026-11-03', new Date('2026-11-02T20:59:59Z'))).toBe(true);
+    expect(isFutureServiceDate('2026-11-03', new Date('2026-11-02T21:00:00Z'))).toBe(false);
+    expect(isFutureServiceDate('2026-11-02', new Date('2026-11-02T21:00:00Z'))).toBe(false);
+  });
   it.each<[FulfillmentFilter, string[]]>([
     ['All', ['overdue-1', 'overdue-2', 'pending-1', 'pending-2', 'done', 'collected']],
     ['Pending', ['pending-1', 'pending-2']], ['Overdue', ['overdue-1', 'overdue-2']], ['Delivered', ['done']], ['Collected', ['collected']],

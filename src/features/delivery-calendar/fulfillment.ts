@@ -1,6 +1,11 @@
 import type { CustomerDelivery, DeliveryDateDetail } from './types';
 
 export type FulfillmentFilter = 'All' | 'Pending' | 'Overdue' | 'Delivered' | 'Collected';
+export function isFutureServiceDate(date: string, now = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Qatar', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now);
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find(p => p.type === type)!.value;
+  return date > `${part('year')}-${part('month')}-${part('day')}`;
+}
 export const isFulfilled = (row: CustomerDelivery) => row.fulfillmentStatus === 'DELIVERED' || row.fulfillmentStatus === 'COLLECTED';
 export const fulfillmentPriority = (row: CustomerDelivery) => isFulfilled(row) ? 2 : row.isOverdue ? 0 : 1;
 export const visibleDeliveries = (rows: CustomerDelivery[], filter: FulfillmentFilter) => rows.filter(row => {

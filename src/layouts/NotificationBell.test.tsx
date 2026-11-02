@@ -6,7 +6,7 @@ import { useAuthStore } from '@/app/store/authStore';
 import { notificationsApi, type StaffNotification } from '@/api/notificationsApi';
 import { NotificationBell } from './NotificationBell';
 
-vi.mock('@/api/notificationsApi', () => ({ notificationsApi: { list: vi.fn(), unreadCount: vi.fn(), read: vi.fn(), readAll: vi.fn() } }));
+vi.mock('@/api/notificationsApi', () => ({ recentNotificationLimit: 50, notificationsApi: { list: vi.fn(), unreadCount: vi.fn(), read: vi.fn(), readAll: vi.fn() } }));
 const item: StaffNotification = { id: 'notification', eventType: 'ORDER_RECEIVED', title: 'New order — Pending Confirmation', message: 'An order awaits confirmation.', orderId: 'order', orderNumber: 'ORD-1', createdAt: '2026-11-01T09:00:00Z', targetUrl: '/orders?orderId=order' };
 function Location() { const location = useLocation(); return <div data-testid="location">{location.pathname + location.search}</div>; }
 function show() {
@@ -20,6 +20,16 @@ beforeEach(() => {
   vi.mocked(notificationsApi.list).mockResolvedValue({ items: [item], page: 1, pageSize: 20, totalCount: 1 });
   vi.mocked(notificationsApi.read).mockResolvedValue(undefined);
   vi.mocked(notificationsApi.readAll).mockResolvedValue(undefined);
+});
+it('shows only the latest 50 notifications without older-page navigation', async () => {
+  vi.mocked(notificationsApi.list).mockResolvedValue({ items: Array.from({ length: 60 }, (_, i) => ({ ...item, id: `n-${i}`, title: `Update ${i}` })), page: 1, pageSize: 50, totalCount: 100 });
+  show(); fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
+  await screen.findByRole('article', { name: 'Update 0' });
+  expect(screen.getAllByRole('article')).toHaveLength(50);
+  expect(screen.getByRole('article', { name: 'Update 49' })).toBeInTheDocument();
+  expect(screen.queryByRole('article', { name: 'Update 50' })).not.toBeInTheDocument();
+  expect(screen.getByText('Latest 50 notifications')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Older' })).not.toBeInTheDocument();
 });
 it('caps the red badge at 99+ and loads the compact inbox on demand', async () => {
   vi.mocked(notificationsApi.unreadCount).mockResolvedValue(120);

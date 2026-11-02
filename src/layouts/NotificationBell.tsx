@@ -4,7 +4,7 @@ import { AccessTimeRounded, AssignmentOutlined, CheckCircleOutline, CloseRounded
 import { Alert, Badge, Box, Button, ButtonBase, Chip, CircularProgress, IconButton, Popover, Skeleton, Stack, Tooltip, Typography } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { notificationsApi, type StaffNotification } from '@/api/notificationsApi';
+import { notificationsApi, recentNotificationLimit, type StaffNotification } from '@/api/notificationsApi';
 import { useAuthStore } from '@/app/store/authStore';
 
 const notificationVisual = (type: string) => {
@@ -22,14 +22,13 @@ export function NotificationBell() {
   const audience = user?.roles.includes('Admin') ? 'admin' : 'restricted';
   const permitted = !!user?.roles.includes('Admin');
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
-  const [page, setPage] = useState(1);
   const [error, setError] = useState<string>();
   const client = useQueryClient();
   const navigate = useNavigate();
   const key = ['admin-notifications', user?.id, audience];
   const count = useQuery({ queryKey: [...key, 'count'], queryFn: ({ signal }) => notificationsApi.unreadCount(signal), enabled: permitted, refetchInterval: 45_000 });
-  const list = useQuery({ queryKey: [...key, 'list', page], queryFn: ({ signal }) => notificationsApi.list(page, signal), enabled: permitted && !!anchor, refetchInterval: 45_000 });
-  useEffect(() => { setAnchor(null); setPage(1); setError(undefined); }, [user?.id, audience]);
+  const list = useQuery({ queryKey: [...key, 'list', recentNotificationLimit], queryFn: ({ signal }) => notificationsApi.list(1, signal), enabled: permitted && !!anchor, refetchInterval: 45_000 });
+  useEffect(() => { setAnchor(null); setError(undefined); }, [user?.id, audience]);
   const mutation = useMutation({
     mutationFn: (id?: string) => id ? notificationsApi.read(id) : notificationsApi.readAll(),
     onSuccess: async () => { setError(undefined); await client.invalidateQueries({ queryKey: key }); },
@@ -44,7 +43,7 @@ export function NotificationBell() {
   };
 
   return <>
-    <Tooltip title={count.isError ? 'Notifications unavailable' : 'Notifications'}><IconButton aria-label="Notifications" aria-haspopup="dialog" aria-expanded={!!anchor} onClick={event => { setPage(1); setAnchor(event.currentTarget); }}>
+    <Tooltip title={count.isError ? 'Notifications unavailable' : 'Notifications'}><IconButton aria-label="Notifications" aria-haspopup="dialog" aria-expanded={!!anchor} onClick={event => setAnchor(event.currentTarget)}>
       <Badge color="error" badgeContent={count.data ?? 0} max={99} invisible={!permitted || !count.data}><NotificationsNone /></Badge>
     </IconButton></Tooltip>
     <Popover open={!!anchor} anchorEl={anchor} onClose={() => setAnchor(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} transformOrigin={{ vertical: 'top', horizontal: 'right' }} slotProps={{ paper: { role: 'dialog', 'aria-label': 'Notifications', sx: { display: 'flex', flexDirection: 'column', maxHeight: 'calc(100dvh - 80px)', '& > *': { flexShrink: 0 }, width: 400, maxWidth: 'calc(100vw - 24px)', mt: 1.25, borderRadius: 3, overflow: 'hidden', border: '1px solid #E1EAE5', boxShadow: '0 18px 60px rgba(18,52,40,.18)' } } }}>
@@ -63,7 +62,7 @@ export function NotificationBell() {
       {!permitted ? <Typography p={2} color="text.secondary">Order notifications are available to Admin staff.</Typography>
         : list.isPending ? <Stack spacing={1.25} p={2} aria-label="Loading notifications">{[0, 1, 2].map(index => <Skeleton key={index} variant="rounded" height={96} />)}</Stack>
           : list.data && !list.data.items.length ? <Stack alignItems="center" spacing={1} py={5} px={3}><Box sx={{ width: 64, height: 64, borderRadius: '50%', bgcolor: '#EDF7F1', display: 'grid', placeItems: 'center' }}><TaskAltOutlined sx={{ color: '#19815E', fontSize: 32 }} /></Box><Typography fontWeight={750}>You're all caught up</Typography><Typography variant="body2" color="text.secondary">No notifications yet.</Typography></Stack>
-            : list.data ? <Stack aria-label="Notification list" sx={{ minHeight: 0, flex: '1 1 auto', overflowY: 'auto' }}>{list.data.items.map(notification => {
+            : list.data ? <Stack aria-label="Notification list" sx={{ minHeight: 0, flex: '1 1 auto', maxHeight: 480, overflowY: 'auto' }}>{list.data.items.slice(0, recentNotificationLimit).map(notification => {
               const visual = notificationVisual(notification.eventType);
               return <Box key={notification.id} component="article" aria-label={notification.title} sx={{ bgcolor: notification.readAt ? 'background.paper' : '#F0F8F4', borderBottom: '1px solid', borderColor: 'divider', overflowWrap: 'anywhere' }}>
                 <ButtonBase disabled={mutation.isPending} onClick={() => void openNotification(notification)} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, width: '100%', px: 1.5, py: 1, pb: notification.readAt ? 1 : 0.25, textAlign: 'start' }}>
@@ -78,11 +77,7 @@ export function NotificationBell() {
                 {!notification.readAt && <Box textAlign="right" px={1.5} pb={0.25}><Button size="small" sx={{ fontSize: 11, minHeight: 24 }} disabled={mutation.isPending} onClick={() => mutation.mutate(notification.id)}>Mark as Read</Button></Box>}
               </Box>;
             })}</Stack> : null}
-      {permitted && list.data && list.data.totalCount > 20 && <Stack direction="row" justifyContent="space-between" p={1}>
-        <Button size="small" disabled={page === 1 || list.isFetching} onClick={() => setPage(value => value - 1)}>Newer</Button>
-        <Typography variant="caption" alignSelf="center">Page {page}</Typography>
-        <Button size="small" disabled={page * 20 >= list.data.totalCount || list.isFetching} onClick={() => setPage(value => value + 1)}>Older</Button>
-      </Stack>}
+      {permitted && !!list.data?.items.length && <Typography variant="caption" color="text.secondary" textAlign="center" p={1}>Latest {recentNotificationLimit} notifications</Typography>}
     </Popover>
   </>;
 }

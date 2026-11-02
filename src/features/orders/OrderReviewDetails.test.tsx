@@ -1,7 +1,8 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { StaffOrder } from '@/api/staffOrdersApi';
-import { formatOrderDate, OrderReviewDetails } from './OrderReviewDetails';
+import { OrderReviewDetails } from './OrderReviewDetails';
+import { formatOrderDate } from './orderPresentation';
 
 const value: StaffOrder = {
   customerName: 'Test Customer', customerPhone: '+97455555555', history: [
@@ -42,7 +43,7 @@ describe('Staff order detail presentation', () => {
     expect(within(dates).getAllByRole('listitem')).toHaveLength(3);
     expect(within(dates).getByText('1 Nov 2026')).toBeInTheDocument();
   });
-  it('shows readable Qatar history with payment changes and keeps raw audit IDs collapsed', async () => {
+  it('shows readable Qatar history with payment changes without internal audit IDs', async () => {
     const original = value.history.map(entry => entry.id);
     render(<OrderReviewDetails value={value} />);
     fireEvent.click(screen.getByRole('button', { name: /Activity history/ }));
@@ -50,10 +51,8 @@ describe('Staff order detail presentation', () => {
     expect(screen.getByText('Payment: Pending → Paid')).toBeVisible();
     expect(screen.getByText('Payment verified')).toBeVisible();
     expect(screen.getByText('31 Oct 2026, 08:55')).toBeVisible();
-    expect(screen.getByText('Actor ID: internal-payment-guid')).not.toBeVisible();
-    expect(screen.getByText('History ID: history-paid')).not.toBeVisible();
-    fireEvent.click(screen.getAllByText('Internal audit details')[0]!);
-    await waitFor(() => expect(screen.getByText('Actor ID: internal-payment-guid')).toBeVisible());
+    expect(screen.queryByText(/Actor ID:|History ID:|Internal audit details/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/internal-payment-guid|internal-staff-guid|history-paid|history-old/)).not.toBeInTheDocument();
     expect(value.history.map(entry => entry.id)).toEqual(original);
   });
   it('shows only branch collection information for takeaway even if a legacy address remains', () => {

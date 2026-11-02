@@ -1,5 +1,13 @@
 # Diet Time Admin
 
+Daily Orders uses a grouped filter card and a clearer order table with readable Qatar dates, delivery/takeaway icons, payment and approval badges, and horizontally scrollable columns on narrow screens. Cancelled orders do not offer Record Payment Status; the API also rejects that action with 409 (`cancelled_order_payment_locked`). Activity history retains business events, payment changes, notes and timestamps while omitting the internal actor/history ID disclosure. Stored audit history remains intact. No schema changes or migrations are included.
+
+Notification dropdowns show the 50 newest updates only, without older-page navigation. The badge still counts all unread notifications and Mark All as Read applies to the recipient's full inbox. History remains stored. Refreshes remain limited to notification queries.
+
+Delivered/Collected actions are unavailable for future service dates. Both the UI and API use the Qatar date; direct API requests for future service days return 409 (`service_day_in_future`). Existing badges, confirmation dialogs and historical completion remain available. No migrations or SQL scripts are added.
+
+Validation for this update: 34 Admin frontend tests, 44 Flutter tests, 62 backend unit tests and 20 API integration tests passed. Integration tests used a disposable local PostgreSQL 18 instance, with no skips. TypeScript, targeted ESLint, Flutter analysis and the SPA production build passed. Existing compiler and Vite chunk-size advisories remain.
+
 Production-oriented React administration portal for Diet Time. It uses the Diet Time emerald/lime/marshmallow palette, Material UI, strict TypeScript, React Router, TanStack Query, React Hook Form/Zod, and bilingual English/Arabic rendering.
 
 ## Business dashboard

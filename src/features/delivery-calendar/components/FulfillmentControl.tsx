@@ -5,6 +5,7 @@ import { isAxiosError } from 'axios';
 import { deliveryCalendarApi } from '@/api/deliveryCalendarApi';
 import { useAuthStore } from '@/app/store/authStore';
 import { canWriteFromPath } from '@/auth/screenPermissionCache';
+import { isFutureServiceDate } from '../fulfillment';
 
 export function FulfillmentControl({ serviceDayId, fulfillmentMethod, fulfillmentStatus, fulfilledAt, date, customerName, orderNumber, isOverdue, staffDisplayName, onSuccess }: {
   serviceDayId?: string; fulfillmentMethod?: string; fulfillmentStatus: string; fulfilledAt?: string; date: string;
@@ -13,6 +14,7 @@ export function FulfillmentControl({ serviceDayId, fulfillmentMethod, fulfillmen
   const client = useQueryClient();
   const roles = useAuthStore(state => state.user?.roles);
   const canConfirm = !!roles?.includes('Admin') && canWriteFromPath(window.location.pathname);
+  const future = isFutureServiceDate(date);
   const [confirming, setConfirming] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
@@ -25,7 +27,7 @@ export function FulfillmentControl({ serviceDayId, fulfillmentMethod, fulfillmen
   const confirmation = target === 'COLLECTED' ? 'Confirm Collection' : 'Confirm Delivery';
 
   const complete = async () => {
-    if (submitting.current || !serviceDayId || !canConfirm) return;
+    if (submitting.current || !serviceDayId || !canConfirm || isFutureServiceDate(date)) return;
     submitting.current = true;
     setPending(true);
     setError(undefined);
@@ -55,7 +57,8 @@ export function FulfillmentControl({ serviceDayId, fulfillmentMethod, fulfillmen
   if (status !== 'SCHEDULED') return <Chip size="small" label={status.replaceAll('_', ' ')} />;
   return <>
     <Stack spacing={0.5} alignItems="flex-start"><Chip size="small" label={isOverdue ? 'Overdue' : 'Scheduled'} color={isOverdue ? 'error' : 'default'} />
-      {canConfirm && <Button size="small" disabled={pending} onClick={() => { setError(undefined); setConfirming(true); }}>Mark as {label}</Button>}
+      {canConfirm && !future && <Button size="small" disabled={pending} onClick={() => { setError(undefined); setConfirming(true); }}>Mark as {label}</Button>}
+      {canConfirm && future && <Typography variant="caption" color="text.secondary">Available on the service date</Typography>}
     </Stack>
     <Dialog open={confirming} onClose={() => { if (!pending) setConfirming(false); }} aria-labelledby={`fulfillment-${serviceDayId}`}>
       <DialogTitle id={`fulfillment-${serviceDayId}`}>Mark as {label}?</DialogTitle>

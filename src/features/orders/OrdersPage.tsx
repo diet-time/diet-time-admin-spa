@@ -1,15 +1,16 @@
 import CloseRounded from '@mui/icons-material/CloseRounded';
+import RefreshRounded from '@mui/icons-material/RefreshRounded';
+import { OrdersTable } from './OrdersTable';
 import { IconButton } from '@mui/material';
 import { OrderReviewDetails } from './OrderReviewDetails';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useMutation,useQuery,useQueryClient } from '@tanstack/react-query';
-import { Alert,Button,Card,CardContent,Chip,Dialog,DialogTitle,DialogContent,DialogActions,Stack,Table,TableBody,TableCell,TableContainer,TableHead,TableRow,TextField,MenuItem,Typography,Pagination } from '@mui/material';
-import { staffOrdersApi,orderStatusLabel,approvalStatuses,approvalFilterStatus,approvalStatusLabel,type StaffOrder } from '@/api/staffOrdersApi';
+import { Alert,Button,Card,CardContent,Dialog,DialogTitle,DialogContent,DialogActions,Stack,TextField,MenuItem,Typography,Pagination } from '@mui/material';
+import { staffOrdersApi,orderStatusLabel,approvalStatuses,approvalFilterStatus,type StaffOrder } from '@/api/staffOrdersApi';
 import { canWriteFromPath } from '@/auth/screenPermissionCache';
 const statuses=approvalStatuses;
 const errorText=(e:unknown)=>{const value=e as {response?:{data?:{detail?:string}};message?:string};return value.response?.data?.detail??value.message??'Unable to update the order.';};
-const fulfillment=(s:StaffOrder)=>s.order.fulfillmentMethod==='TAKEAWAY' ? ['Takeaway',s.order.takeawayBranch?.name??'Branch not recorded',s.order.takeawayBranch?.address].filter(Boolean).join(' · ') : ['Home Delivery',s.order.delivery.address?.formattedAddress??[s.order.delivery.address?.addressName,s.order.delivery.address?.buildingNo,s.order.delivery.address?.streetNo,s.order.delivery.address?.zoneNo,s.order.delivery.address?.area].filter(Boolean).join(', '),s.order.delivery.timeSlot?.name].filter(Boolean).join(' · ');
 const qatarToday=()=>{
  const parts=new Intl.DateTimeFormat('en',{timeZone:'Asia/Qatar',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
  const part=(type:string)=>parts.find(p=>p.type===type)!.value;
@@ -27,16 +28,16 @@ export function OrdersPage({daily=false}:{daily?:boolean}){
   return()=>{current=false;};
  },[reviewOrderId]);
  const closeReview=()=>{setSelected(null);setSearchParams(previous=>{const next=new URLSearchParams(previous);next.delete('orderId');return next;},{replace:true});};
- const choose=(name:string)=>{mutation.reset();setAction(name);setReason('');};
+ const choose=(name:string)=>{if(name==='payment'&&selected?.order.status==='CANCELLED')return;mutation.reset();setAction(name);setReason('');};
  const needsReason=['reject','payment'].includes(action);
  const open=async(row:StaffOrder)=>{setSelected(row);setNotice('');try{setSelected(await staffOrdersApi.get(row.order.id));}catch(e){setNotice(errorText(e));}};
  return <Stack spacing={2}><Typography variant="h2">{daily?'Daily Orders':'Orders'}</Typography><Typography color="text.secondary">{daily?'Orders for the selected meal service date, including pending approval. Payment status is recorded separately.':'Review customer submissions before confirming fulfillment. Payment status is recorded separately.'}</Typography>{notice&&<Alert severity="info">{notice}</Alert>}
- <Stack direction={{xs:'column',sm:'row'}} useFlexGap flexWrap="wrap" gap={2}>
+ <Card sx={{borderRadius:'12px',boxShadow:'none'}}><CardContent sx={{p:'20px !important'}}><Stack direction={{xs:'column',sm:'row'}} useFlexGap flexWrap="wrap" alignItems={{sm:'center'}} gap={1.5}>
  {daily&&<><TextField type="date" label="Meal service date" value={serviceDate} onChange={e=>{setServiceDate(e.target.value);setPage(1);}} slotProps={{inputLabel:{shrink:true}}}/><Button onClick={()=>{setServiceDate(qatarToday());setPage(1);}}>Today in Qatar</Button><Button onClick={()=>{setServiceDate('');setPage(1);}}>All dates</Button><Button variant="outlined" onClick={()=>{setServiceDate('');setStatus('PENDING_APPROVAL');setPage(1);}}>All pending approvals</Button></>}
- <TextField select label="Approval status" value={status} onChange={e=>{setStatus(e.target.value);setPage(1);}} sx={{minWidth:220}}>{statuses.map(s=><MenuItem key={s} value={s}>{s?orderStatusLabel(s):'All approval statuses'}</MenuItem>)}</TextField><Button onClick={()=>query.refetch()}>Refresh</Button></Stack>
+ <TextField select label="Approval status" value={status} onChange={e=>{setStatus(e.target.value);setPage(1);}} sx={{minWidth:220}}>{statuses.map(s=><MenuItem key={s} value={s}>{s?orderStatusLabel(s):'All approval statuses'}</MenuItem>)}</TextField><Button startIcon={<RefreshRounded/>} disabled={query.isFetching} onClick={()=>query.refetch()} sx={{ml:{sm:'auto'}}}>Refresh</Button></Stack></CardContent></Card>
  {query.isError&&<Alert severity="error">{errorText(query.error)}</Alert>}{query.isLoading&&<Typography>Loading orders…</Typography>}
  {daily&&<Alert severity="info">{serviceDate?`Meal service date: ${serviceDate}. Pending orders are listed before service days are activated.`:'Showing orders across all meal service dates.'}</Alert>}
- <Card><TableContainer><Table size="small" aria-label="Orders awaiting staff review"><TableHead><TableRow>{['Order','Customer','Plan / package','Service dates','Fulfillment','Total','Payment','Created (Qatar)','Approval',''].map(h=><TableCell key={h}>{h}</TableCell>)}</TableRow></TableHead><TableBody>{query.data?.items.map(s=><TableRow key={s.order.id}><TableCell>{s.order.orderNumber}</TableCell><TableCell>{s.customerName}<Typography variant="caption" display="block">{s.customerPhone??'Phone unavailable'}</Typography></TableCell><TableCell>{s.order.plan.name}<Typography variant="caption" display="block">{s.order.mealCount} Meals + {s.order.snackCount} Snacks · {s.order.plan.durationName}</Typography></TableCell><TableCell>{s.order.delivery.startDate} – {s.order.delivery.endDate}</TableCell><TableCell sx={{maxWidth:250}}>{fulfillment(s)}</TableCell><TableCell>{s.order.pricing.currencyCode} {s.order.pricing.totalAmount.toFixed(2)}</TableCell><TableCell>{s.order.paymentStatus.replaceAll('_',' ')}</TableCell><TableCell>{new Date(s.order.placedAt).toLocaleString('en-QA',{timeZone:'Asia/Qatar'})}</TableCell><TableCell><Chip size="small" label={approvalStatusLabel(s.order.status)} /></TableCell><TableCell><Button onClick={()=>open(s)}>{daily&&['PENDING_APPROVAL','PENDING'].includes(s.order.status)?'Review / Approve':'Review'}</Button></TableCell></TableRow>)}</TableBody></Table></TableContainer>{query.data?.items.length===0&&<CardContent>No orders match this filter.</CardContent>}</Card>
+ <OrdersTable rows={query.data?.items ?? []} total={query.data?.totalCount ?? 0} loading={query.isPending} daily={daily} onReview={row=>void open(row)}/>
  <Pagination count={Math.max(1,Math.ceil((query.data?.totalCount??0)/20))} page={page} onChange={(_,v)=>setPage(v)}/>
  <Dialog open={!!selected&&!action} onClose={closeReview} maxWidth="md" fullWidth scroll="paper" aria-labelledby="order-review-title" slotProps={{paper:{sx:{borderRadius:3,m:{xs:1,sm:3},width:{xs:'calc(100% - 16px)',sm:'100%'},maxHeight:'calc(100% - 32px)'}}}}>
   <DialogTitle id="order-review-title" sx={{px:{xs:2,sm:3},py:2}}>
@@ -51,7 +52,7 @@ export function OrdersPage({daily=false}:{daily?:boolean}){
   </Stack>}</DialogContent>
   <DialogActions sx={{px:{xs:2,sm:3},py:2,gap:1,alignItems:'center',justifyContent:'space-between',flexWrap:'wrap'}}>
     {selected&&canWriteFromPath('/orders')&&['PENDING_APPROVAL','PENDING'].includes(selected.order.status)&&<Stack direction="row" gap={1}><Button variant="contained" onClick={()=>choose('approve')}>Approve</Button><Button color="error" variant="outlined" onClick={()=>choose('reject')}>Reject</Button></Stack>}
-    {selected&&canWriteFromPath('/orders')&&<Button variant="outlined" onClick={()=>choose('payment')}>Record Payment Status</Button>}
+    {selected&&selected.order.status!=='CANCELLED'&&canWriteFromPath('/orders')&&<Button variant="outlined" onClick={()=>choose('payment')}>Record Payment Status</Button>}
     <Button onClick={closeReview} sx={{ml:'auto'}}>Close</Button>
   </DialogActions>
  </Dialog>

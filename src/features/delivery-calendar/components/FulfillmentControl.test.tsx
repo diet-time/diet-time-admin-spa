@@ -14,6 +14,12 @@ function show(method = 'HOME_DELIVERY', status = 'SCHEDULED') {
   return invalidate;
 }
 describe('service-day fulfillment', () => {
+  it.each(['HOME_DELIVERY', 'TAKEAWAY'])('hides future fulfillment for %s', method => {
+    useAuthStore.getState().setSession({ id: 'staff', name: 'Staff', email: 'staff@example.test', roles: ['Admin'] });
+    render(<QueryClientProvider client={new QueryClient()}><FulfillmentControl serviceDayId="future" date="2099-11-15" fulfillmentMethod={method} fulfillmentStatus="SCHEDULED" /></QueryClientProvider>);
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.getByText('Available on the service date')).toBeInTheDocument();
+  });
   beforeEach(() => { vi.clearAllMocks(); useAuthStore.getState().setSession({ id: 'staff', name: 'Staff', email: 'staff@example.test', roles: ['Admin'] }); });
   it.each([['HOME_DELIVERY', 'Delivered', 'DELIVERED'], ['TAKEAWAY', 'Collected', 'COLLECTED']])('confirms %s and prevents duplicate clicks', async (method, label, status) => {
     let finish!: (result: { serviceDayId: string; status: string; fulfilledAt: string }) => void;

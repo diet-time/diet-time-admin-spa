@@ -63,6 +63,7 @@ describe('Staff order review',()=>{
   const pending=['PENDING_APPROVAL','PENDING'].includes(status);
   expect(within(dialog).queryByRole('button',{name:'Approve'})!==null).toBe(pending);
   expect(within(dialog).queryByRole('button',{name:'Reject'})!==null).toBe(pending);
+  expect(within(dialog).queryByRole('button',{name:'Record Payment Status'})!==null).toBe(status!=='CANCELLED');
   for(const name of ['Mark Completed','Activate','Mark as Active','Put On Hold','Resume Review','Cancel Order','Revise Dates'])expect(within(dialog).queryByRole('button',{name})).not.toBeInTheDocument();
   expect(staffOrdersApi.action).not.toHaveBeenCalled();
  });
