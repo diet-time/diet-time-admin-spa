@@ -110,7 +110,7 @@ export function MealsPage() {
             Find meals quickly and review their catalogue readiness at a glance.
           </Typography>
         </Box>
-        <Stack direction="row" gap={1} flexWrap="wrap"><MasterDataExportButton /><WriteGuard>
+        <Stack direction="row" gap={1} flexWrap="wrap"><MasterDataExportButton resource="meals" /><WriteGuard>
           <Button component={Link} to="/meals/new" variant="contained" startIcon={<Add />}>
             Create meal
           </Button>

@@ -10,7 +10,7 @@ for (const width of [1440, 390]) {
       if (path.endsWith('/auth/refresh')) return route.fulfill({ json: { data: { accessToken: 'test-access', accessTokenExpiresAt: '2099-01-01T00:00:00Z', refreshToken: 'test-refresh', refreshTokenExpiresAt: '2099-01-02T00:00:00Z', user: { id: 'admin', name: 'Admin', email: 'admin@example.test', roles: ['Admin'] } } } });
       if (path.endsWith('/access-control/me/screens')) return route.fulfill({ json: { data: ['/', '/meals', '/customers'].map((routeUrl, i) => ({ screenId: `screen-${i}`, groupCode: 'OPERATIONS', groupName: 'Operations', screenCode: `SCREEN_${i}`, screenName: 'Screen', routeUrl, displayOrder: i, isActive: true, canRead: true, canWrite: false })) } });
       if (path.endsWith('/notifications/unread-count')) return route.fulfill({ json: { data: { unreadCount: 0 } } });
-      if (path.endsWith('/master-data/export')) return route.fulfill({ contentType: 'text/csv; charset=utf-8', body: Buffer.from('\uFEFF"English","Arabic"\r\n"Chicken","دجاج"\r\n') });
+      if (path.endsWith('/master-data/export')) { expect(url.searchParams.get('resource')).toBe('meals'); return route.fulfill({ contentType: 'text/csv; charset=utf-8', body: Buffer.from('\uFEFF"English","Arabic"\r\n"Chicken","دجاج"\r\n') }); }
       if (path.endsWith('/admin/meals')) {
         const meals = [{ id: 'meal-1', sku: 'ACTIVE-MEAL', name: 'Active meal', status: 'ACTIVE' }, { id: 'meal-2', sku: 'INACTIVE-MEAL', name: 'Inactive meal', status: 'INACTIVE' }];
         const items = meals.filter(meal => !url.searchParams.get('status') || meal.status === url.searchParams.get('status')?.toUpperCase());
@@ -26,11 +26,11 @@ for (const width of [1440, 390]) {
     await expect(page.getByText('Inactive meal', { exact: true })).toBeVisible();
     await expect(page).toHaveURL(/status=Inactive/);
     const downloadEvent = page.waitForEvent('download');
-    await page.getByRole('button', { name: 'Export all master data' }).click();
+    await page.getByRole('button', { name: 'Export English / Arabic' }).click();
     const download = await downloadEvent;
     await download.saveAs(testInfo.outputPath('translations.csv'));
     const text = await readFile(testInfo.outputPath('translations.csv'), 'utf8');
     expect(text).toContain('دجاج'); expect(text.charCodeAt(0)).toBe(0xFEFF);
-    expect(download.suggestedFilename()).toBe('diet-time-master-data-translations.csv');
+    expect(download.suggestedFilename()).toBe('diet-time-meals-translations.csv');
   });
 }

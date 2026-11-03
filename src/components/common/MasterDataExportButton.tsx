@@ -3,7 +3,9 @@ import { Alert, Button, Snackbar } from '@mui/material';
 import { useRef, useState } from 'react';
 import { apiClient } from '@/api/apiClient';
 
-export function MasterDataExportButton() {
+export type TranslationExportResource = 'meal-categories' | 'ingredients' | 'allergens' | 'meal-types' | 'meals' | 'meal-plans';
+
+export function MasterDataExportButton({ resource, planId }: { resource: TranslationExportResource; planId?: string }) {
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const pending = useRef(false);
@@ -11,11 +13,11 @@ export function MasterDataExportButton() {
     if (pending.current) return;
     pending.current = true; setBusy(true); setFailed(false);
     try {
-      const response = await apiClient.get<Blob>('/admin/master-data/export', { responseType: 'blob', skipGlobalLoading: true });
+      const response = await apiClient.get<Blob>('/admin/master-data/export', { params: { resource, ...(planId ? { planId } : {}) }, responseType: 'blob', skipGlobalLoading: true });
       const url = URL.createObjectURL(response.data);
       const link = document.createElement('a');
       link.href = url;
-      link.download = 'diet-time-master-data-translations.csv';
+      link.download = `diet-time-${resource}-translations.csv`;
       document.body.appendChild(link);
       link.click(); link.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -23,8 +25,8 @@ export function MasterDataExportButton() {
     finally { pending.current = false; setBusy(false); }
   };
   return <>
-    <Button variant="outlined" startIcon={<DownloadOutlined />} disabled={busy} onClick={() => void download()} title="Export all catalogue and master records, including inactive records, with English and Arabic text side by side">
-      {busy ? 'Exporting master data...' : 'Export all master data'}
+    <Button variant="outlined" startIcon={<DownloadOutlined />} disabled={busy} onClick={() => void download()} title="Export English and Arabic text for this screen only">
+      {busy ? 'Exporting...' : 'Export English / Arabic'}
     </Button>
     <Snackbar open={failed} autoHideDuration={6000} onClose={() => setFailed(false)}><Alert severity="error" onClose={() => setFailed(false)}>Unable to export master data. Please try again.</Alert></Snackbar>
   </>;

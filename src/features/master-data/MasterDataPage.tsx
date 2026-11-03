@@ -170,7 +170,7 @@ export function MasterDataPage({ resource }: { resource: MasterResource }) {
           <Typography variant="h1">{labels[resource]}</Typography>
           <Typography color="text.secondary">Localized reference data used across catalogue and plans.</Typography>
         </Box>
-        <Stack direction="row" gap={1} flexWrap="wrap"><MasterDataExportButton /><WriteGuard>
+        <Stack direction="row" gap={1} flexWrap="wrap"><MasterDataExportButton resource={resource} /><WriteGuard>
           <Button variant="contained" startIcon={<Add />} onClick={() => { mutation.reset(); setDialog({ values: emptyValues(resource) }); }}>
             Add {singularLabels[resource]}
           </Button>

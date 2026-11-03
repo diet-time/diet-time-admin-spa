@@ -30,7 +30,7 @@ export function PlanListPage() {
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" gap={2}><Box>
         <Typography variant="h1">Meal plan templates</Typography>
         <Typography color="text.secondary">Manage the current customer meal plan and its rotating menu.</Typography>
-      </Box><MasterDataExportButton /></Stack>
+      </Box><MasterDataExportButton resource="meal-plans" planId={plan?.id} /></Stack>
       {query.isLoading ? <Card><CardContent><Skeleton variant="rounded" height={220} /></CardContent></Card> : null}
       {query.isError ? <ErrorState message="Unable to load the current meal plan." onRetry={() => void query.refetch()} /> : null}
       {!query.isLoading && !query.isError && !plan ? <EmptyState title="No meal plan templates found" /> : null}
