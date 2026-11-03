@@ -1,5 +1,16 @@
 # Diet Time Admin
 
+## Dashboard customer insights
+
+The dashboard replaces Orders by day with a top-five customer booking chart and counters for customers with bookings, repeat customers, new customers and total booked orders. Customer links reuse /customers?customerId={id} and appear only with Customers read permission. Existing operational cards and scheduled orders remain available; minute polling refreshes the new panel with the dashboard.
+
+Each confirmed, active or completed order counts as one booked plan; service days and meals never multiply the count. Pending, rejected and cancelled orders are excluded, independently of payment state. Totals and ranks include purchases placed before the end of the selected Qatar date. Repeat customers have at least two counted bookings; repeat share uses all customers with counted bookings. New customers means first counted booking in the inclusive 30-day period ending on the selected date. Ranks use booked count descending, most recent booking, then customer ID for deterministic ties. These are current approval states filtered by placement date, not reconstructed historical approval states.
+
+The existing GET /api/v1/admin/dashboard/operations response adds customerInsights. Existing Admin/Operations API authorization is preserved. Analytics are aggregated in PostgreSQL; only the five leading customer names are fetched in one batch. No schema, migration, revenue information or customer-app change is required. Deploy API and SPA together; an older API shows an unavailable state instead of invented counts.
+
+Validation: 12 targeted frontend tests, 8 backend dashboard unit tests, 2 real PostgreSQL integration tests and 2 desktop/mobile Chromium tests passed. TypeScript, targeted ESLint and the production SPA build passed. Checks cover purchase counts, excluded statuses, repeat share, first-booking cohorts, Qatar midnight boundaries, empty states, existing dashboard behavior, customer actions and responsive layout. Browser examples use synthetic data; the isolated PostgreSQL cluster uses no application data.
+
+
 ## Kitchen Preparation PDF
 
 The existing Download PDF action produces an A4 landscape report using the Admin palette: dark green (#00684F), mint, white and subtle grey. Every page has the embedded Diet Time logo, report title, service date, Qatar generation timestamp, page number and footer. The overview counts orders, unique customers, meal items, deliveries and takeaways for the selected date.

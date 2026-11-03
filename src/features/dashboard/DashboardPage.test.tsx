@@ -56,8 +56,9 @@ describe('Business dashboard insights', () => {
     const rate = await screen.findByRole('region', { name: 'Fulfillment rate' });
     expect(within(rate).getByText('50%')).toBeInTheDocument();
     expect(within(screen.getByRole('region', { name: 'Active subscriptions' })).getByText('4')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Orders by day' })).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: 'Scheduled orders over the next seven days' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Customer insights' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Orders by day' })).not.toBeInTheDocument();
+    expect(screen.getByText('Customer insights are not available.')).toBeInTheDocument();
     expect(screen.queryByText('Meal items (left scale)')).not.toBeInTheDocument();
     expect(screen.queryByText('Orders (right scale)')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Fulfillment status' })).toBeInTheDocument();

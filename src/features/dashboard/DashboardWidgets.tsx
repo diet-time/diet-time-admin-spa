@@ -1,9 +1,8 @@
 import { ArrowForwardRounded, BedtimeOutlined, ChevronRightRounded, EventAvailableOutlined, LocalShippingOutlined, StorefrontOutlined, WbSunnyOutlined } from '@mui/icons-material';
 import { Box, Button, Card, CardContent, Chip, Grid, IconButton, LinearProgress, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tooltip as MuiTooltip, Typography } from '@mui/material';
-import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { format, parseISO } from 'date-fns';
-import { useId, type ReactNode } from 'react';
-import type { DashboardFulfillment, DashboardPackage, DashboardServiceOrder, DashboardSlot, DeliveryWorkloadDay } from '@/api/apiTypes';
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import { type ReactNode } from 'react';
+import type { DashboardFulfillment, DashboardPackage, DashboardServiceOrder, DashboardSlot } from '@/api/apiTypes';
 
 const cardStyle = { height: '100%', borderRadius: '10px', boxShadow: '0 2px 12px rgba(24,55,44,.035)', borderColor: '#E8EDEA' };
 function ChartCard({ title, subtitle, action, children }: { title: string; subtitle?: string; action?: ReactNode; children: ReactNode }) {
@@ -12,23 +11,6 @@ function ChartCard({ title, subtitle, action, children }: { title: string; subti
 
 export function DashboardMetric({ title, value, detail, icon, tone, tint }: { title: string; value: string | number; detail: string; icon: ReactNode; tone: string; tint: string }) {
   return <Card component="section" aria-label={title} sx={cardStyle}><CardContent sx={{ p: '18px !important' }}><Stack direction="row" gap={1.5} alignItems="flex-start"><Box sx={{ width: 43, height: 43, borderRadius: '50%', bgcolor: tint, color: tone, display: 'grid', placeItems: 'center', flexShrink: 0 }}>{icon}</Box><Box minWidth={0}><Typography variant="body2" fontWeight={600} color="text.secondary">{title}</Typography><Typography sx={{ fontSize: 30, lineHeight: 1.3, fontWeight: 800, letterSpacing: '-.04em', color: '#172C25' }}>{typeof value === 'number' ? value.toLocaleString() : value}</Typography><Typography variant="caption" color="text.secondary">{detail}</Typography></Box></Stack></CardContent></Card>;
-}
-
-export function OrdersOutlookChart({ days }: { days: DeliveryWorkloadDay[] }) {
-  const id = useId().replaceAll(':', '');
-  const rows = days.map(day => ({ ...day, label: format(parseISO(day.date), 'EEE d') }));
-  return <ChartCard title="Orders by day" subtitle="Scheduled orders for the next 7 days">
-    {!rows.length ? <EmptyChart text="No upcoming orders" /> : <Box height={220} role="img" aria-label="Scheduled orders over the next seven days"><ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 900, height: 220 }}>
-      <BarChart data={rows} margin={{ top: 22, right: 12, bottom: 0, left: -10 }}>
-        <defs><linearGradient id={`orders-${id}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#278647" /><stop offset="100%" stopColor="#89BD99" /></linearGradient></defs>
-        <CartesianGrid vertical={false} stroke="#EAEFEC" />
-        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#718078' }} />
-        <YAxis width={42} allowDecimals={false} domain={[0, 'auto']} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#718078' }} />
-        <Tooltip labelFormatter={(_, payload) => payload?.[0]?.payload?.date ? format(parseISO(payload[0].payload.date), 'EEE, d MMM yyyy') : ''} contentStyle={{ borderRadius: 10, borderColor: '#DEE8E2', fontSize: 12 }} />
-        <Bar name="Orders" dataKey="scheduledDeliveries" fill={`url(#orders-${id})`} maxBarSize={44} radius={[5, 5, 0, 0]} label={{ position: 'top', fontSize: 11, fontWeight: 650, fill: '#287849' }} isAnimationActive={false} />
-      </BarChart>
-    </ResponsiveContainer></Box>}
-  </ChartCard>;
 }
 
 export function FulfillmentDonut({ data }: { data?: DashboardFulfillment }) {
