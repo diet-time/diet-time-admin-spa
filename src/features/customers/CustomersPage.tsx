@@ -1,5 +1,5 @@
 import { ArrowForwardRounded, PeopleOutlineRounded, RefreshRounded, SearchRounded } from '@mui/icons-material';
-import { Alert, Avatar, Box, Button, Card, Chip, InputAdornment, Pagination, Skeleton, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material';
+import { Alert, Avatar, Box, Button, Card, Chip, InputAdornment, MenuItem, Pagination, Skeleton, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -19,17 +19,21 @@ function CustomerDirectory() {
   const search = params.get('search') || '';
   const requestedPage = Number(params.get('page') || 1);
   const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+  const sortOptions = { name_asc: 'Name: A to Z', name_desc: 'Name: Z to A', booked_desc: 'Most plans booked', latest_order_desc: 'Latest order', newest_desc: 'Newest customers' };
+  const requestedSort = params.get('sort') || 'name_asc';
+  const sort = Object.hasOwn(sortOptions, requestedSort) ? requestedSort : 'name_asc';
   const selected = params.get('customerId');
   const [draft, setDraft] = useState(search);
   useEffect(() => setDraft(search), [search]);
   const permissions = useQuery({ queryKey: ['access-control', 'me', 'screens'], queryFn: accessControlApi.myScreens, staleTime: 60_000 });
-  const query = useQuery({ queryKey: ['admin-customers', search, page], queryFn: ({ signal }) => customersApi.list(search, page, signal), refetchInterval: 60_000 });
+  const query = useQuery({ queryKey: ['admin-customers', search, page, sort], queryFn: ({ signal }) => customersApi.list(search, page, signal, sort), refetchInterval: 60_000 });
   const update = (values: Record<string, string | undefined>) => setParams(previous => { const next = new URLSearchParams(previous); for (const [key, value] of Object.entries(values)) { if (value) next.set(key, value); else next.delete(key); } return next; });
   return <Stack spacing={2.5}>
     <Stack direction="row" gap={1.5} alignItems="center"><Box sx={{ bgcolor: '#E5F2E8', color: 'primary.main', p: 1.25, borderRadius: '12px', display: 'flex' }}><PeopleOutlineRounded /></Box><Box><Typography variant="h2">Customers</Typography><Typography variant="body2" color="text.secondary">Customer profiles, booked plans and purchase history</Typography></Box></Stack>
     <Card component="form" onSubmit={event => { event.preventDefault(); update({ search: draft.trim(), page: undefined }); }} sx={{ borderRadius: '12px', p: 2 }}><Stack direction={{ xs: 'column', sm: 'row' }} gap={1.25} alignItems={{ sm: 'center' }}>
       <TextField label="Search customers" placeholder="Name, phone or email" value={draft} onChange={event => setDraft(event.target.value)} slotProps={{ htmlInput: { maxLength: 200 }, input: { startAdornment: <InputAdornment position="start"><SearchRounded /></InputAdornment> } }} sx={{ flex: 1, maxWidth: { sm: 480 } }} />
       <Button type="submit" variant="contained">Search</Button>{search && <Button onClick={() => { setDraft(''); update({ search: undefined, page: undefined }); }}>Clear</Button>}
+      <TextField select label="Sort customers" value={sort} onChange={event => update({ sort: event.target.value, page: undefined })} sx={{ minWidth: 190 }}>{Object.entries(sortOptions).map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}</TextField>
       <Button startIcon={<RefreshRounded />} disabled={query.isFetching} onClick={() => void query.refetch()} sx={{ ml: { sm: 'auto' } }}>Refresh customers</Button>
     </Stack></Card>
     {query.isError && <Alert severity="error" action={<Button onClick={() => void query.refetch()}>Retry</Button>}>Unable to refresh customers.{query.data ? ' Showing the last loaded list.' : ''}</Alert>}

@@ -1,3 +1,4 @@
+import { MasterDataExportButton } from '@/components/common/MasterDataExportButton';
 import { Add, ArchiveOutlined, CalendarMonthOutlined, CancelOutlined, CheckCircleOutline, Close, EditNoteOutlined, InfoOutlined, MoreHoriz, PauseCircleOutline, PaymentsOutlined, PlayCircleOutline, PublicOutlined, Search } from '@mui/icons-material';
 import {
   Box,
@@ -109,11 +110,11 @@ export function MealsPage() {
             Find meals quickly and review their catalogue readiness at a glance.
           </Typography>
         </Box>
-        <WriteGuard>
+        <Stack direction="row" gap={1} flexWrap="wrap"><MasterDataExportButton /><WriteGuard>
           <Button component={Link} to="/meals/new" variant="contained" startIcon={<Add />}>
             Create meal
           </Button>
-        </WriteGuard>
+        </WriteGuard></Stack>
       </Stack>
 
       <Card sx={{ overflow: 'hidden' }}>
@@ -135,8 +136,8 @@ export function MealsPage() {
             slotProps={{ input: { startAdornment: <InputAdornment position="start"><Search /></InputAdornment> } }}
           />
           <FormControl size="small" sx={{ minWidth: 180, bgcolor: 'background.paper' }}>
-            <InputLabel>Status</InputLabel>
-            <Select value={status} label="Status" onChange={(event) => update('status', event.target.value)}>
+            <InputLabel id="meal-status-label">Status</InputLabel>
+            <Select id="meal-status" labelId="meal-status-label" value={status} label="Status" onChange={(event) => update('status', event.target.value)}>
               <MenuItem value="">All statuses</MenuItem>
               {statuses.map((value) => <MenuItem key={value} value={value}>{value}</MenuItem>)}
             </Select>

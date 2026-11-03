@@ -10,7 +10,7 @@ export interface CustomerPage { items: AdminCustomer[]; totalCount: number; page
 export interface CustomerOrdersPage { items: StaffOrder[]; totalCount: number; pageNumber: number; pageSize: number }
 
 export const customersApi = {
-  list: async (search: string, page: number, signal?: AbortSignal) => (await apiClient.get<CustomerPage>(adminApiUrl('customers'), { params: { search: search || undefined, pageNumber: page, pageSize: 20 }, signal, skipGlobalLoading: true })).data,
+  list: async (search: string, page: number, signal?: AbortSignal, sort?: string) => (await apiClient.get<CustomerPage>(adminApiUrl('customers'), { params: { search: search || undefined, pageNumber: page, pageSize: 20, ...(sort ? { sort } : {}) }, signal, skipGlobalLoading: true })).data,
   get: async (id: string, signal?: AbortSignal) => (await apiClient.get<AdminCustomer>(adminApiUrl(`customers/${id}`), { signal, skipGlobalLoading: true })).data,
   orders: async (id: string, page: number, signal?: AbortSignal) => (await apiClient.get<CustomerOrdersPage>(adminApiUrl(`customers/${id}/orders`), { params: { pageNumber: page, pageSize: 20 }, signal, skipGlobalLoading: true })).data,
 };

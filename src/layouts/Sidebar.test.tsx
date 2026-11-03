@@ -44,3 +44,11 @@ describe('Orders approval menu permissions', () => {
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Orders' })).not.toBeInTheDocument());
   });
 });
+
+it('places Dashboard before the Orders group', async () => {
+  vi.mocked(accessControlApi.myScreens).mockResolvedValue([orderPermission, { ...orderPermission, screenId: 'home', routeUrl: '/' }]);
+  render(<QueryClientProvider client={new QueryClient()}><MemoryRouter><Sidebar open collapsed={false} onClose={() => {}} onToggle={() => {}} /></MemoryRouter></QueryClientProvider>);
+  const home = await screen.findByRole('link', { name: 'dashboard' });
+  const orders = await screen.findByRole('button', { name: 'Orders' });
+  expect(home.compareDocumentPosition(orders) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});

@@ -1,3 +1,4 @@
+import { MasterDataExportButton } from '@/components/common/MasterDataExportButton';
 import { isAxiosError } from 'axios';
 import { Add, EditOutlined, Search } from '@mui/icons-material';
 import {
@@ -169,11 +170,11 @@ export function MasterDataPage({ resource }: { resource: MasterResource }) {
           <Typography variant="h1">{labels[resource]}</Typography>
           <Typography color="text.secondary">Localized reference data used across catalogue and plans.</Typography>
         </Box>
-        <WriteGuard>
+        <Stack direction="row" gap={1} flexWrap="wrap"><MasterDataExportButton /><WriteGuard>
           <Button variant="contained" startIcon={<Add />} onClick={() => { mutation.reset(); setDialog({ values: emptyValues(resource) }); }}>
             Add {singularLabels[resource]}
           </Button>
-        </WriteGuard>
+        </WriteGuard></Stack>
       </Stack>
 
       <Card>

@@ -19,11 +19,12 @@ interface NavItem {
 }
 
 const items: NavItem[] = [
+  { key: 'dashboard', path: '/', icon: <DashboardOutlined /> },
   { key: 'orders', path: '/orders', icon: <ReceiptLongOutlined />, children: [
     { label: 'dailyOrders', path: '/orders/daily' },
     { label: 'customers', path: '/customers' },
   ] },
-  { key: 'dashboard', path: '/', icon: <DashboardOutlined /> },
+
   { key: 'meals', path: '/meals', icon: <DinnerDiningOutlined /> },
   { key: 'mealPlans', path: '/meal-plans', icon: <MenuBookOutlined />, children: [
     { label: 'Plan Templates', path: '/meal-plans' },

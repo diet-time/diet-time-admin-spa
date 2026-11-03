@@ -41,11 +41,11 @@ it('sends name/contact search and page selection to the server', async () => {
   show(); await screen.findByText('Sara Ali');
   fireEvent.change(screen.getByLabelText('Search customers'), { target: { value: 'Sara' } });
   fireEvent.click(screen.getByRole('button', { name: 'Search' }));
-  await waitFor(() => expect(customersApi.list).toHaveBeenCalledWith('Sara', 1, expect.anything()));
+  await waitFor(() => expect(customersApi.list).toHaveBeenCalledWith('Sara', 1, expect.anything(), 'name_asc'));
   fireEvent.click(await screen.findByRole('button', { name: 'Go to page 2' }));
-  await waitFor(() => expect(customersApi.list).toHaveBeenCalledWith('Sara', 2, expect.anything()));
+  await waitFor(() => expect(customersApi.list).toHaveBeenCalledWith('Sara', 2, expect.anything(), 'name_asc'));
   fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
-  await waitFor(() => expect(customersApi.list).toHaveBeenLastCalledWith('', 1, expect.anything()));
+  await waitFor(() => expect(customersApi.list).toHaveBeenLastCalledWith('', 1, expect.anything(), 'name_asc'));
 });
 it('opens customer history and reuses the existing order details screen', async () => {
   show(); fireEvent.click(await screen.findByRole('button', { name: 'View customer Sara Ali' }));
@@ -86,4 +86,11 @@ it('keeps errors retryable and does not invent empty customer data', async () =>
   vi.mocked(customersApi.list).mockResolvedValue({ items: [], totalCount: 0, pageNumber: 1, pageSize: 20 });
   fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
   expect(await screen.findByText('No customer profiles yet.')).toBeInTheDocument();
+});
+
+it('sorts customers on the server and resets pagination while preserving search', async () => {
+  show('/customers?search=Sara&page=2'); await screen.findByText('Sara Ali');
+  fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Sort customers' }));
+  fireEvent.click(await screen.findByRole('option', { name: 'Most plans booked' }));
+  await waitFor(() => expect(customersApi.list).toHaveBeenLastCalledWith('Sara', 1, expect.anything(), 'booked_desc'));
 });
