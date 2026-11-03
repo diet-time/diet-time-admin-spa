@@ -1,5 +1,16 @@
 # Diet Time Admin
 
+## Kitchen Preparation PDF
+
+The existing Download PDF action produces an A4 landscape report using the Admin palette: dark green (#00684F), mint, white and subtle grey. Every page has the embedded Diet Time logo, report title, service date, Qatar generation timestamp, page number and footer. The overview counts orders, unique customers, meal items, deliveries and takeaways for the selected date.
+
+Customer sections group orders by customer ID and keep them adjacent, with prominent customer names, order numbers, alternating subtle backgrounds and separate delivery/collection location blocks per order. Small groups stay together when they fit; larger groups and long orders paginate with repeated customer/location/allergen headings. Meals retain their configured categories, quantities, food preferences and allergen notes. Allergens are red, and selection status/source codes are omitted.
+
+Home delivery uses the historical order address snapshot, including building, street, unit, zone, area, directions and coordinates. Only when the snapshot is completely absent can the explicitly linked, customer-owned address be used. The current default address is never substituted. Generic map labels are discarded; incomplete addresses show "Address verification required" while retaining known location details. Valid coordinates include an Open map link. Takeaway uses saved branch details, with a linked branch fallback for missing snapshot fields.
+
+Deploy the API to apply the PDF changes; existing endpoints and preparation eligibility remain unchanged. No migration, SQL script or Flutter change is needed. Validation: 27 report/preparation/location unit tests and 2 isolated PostgreSQL integration tests passed. The synthetic seven-page report covers five customers, six orders, deliveries, takeaways, long addresses, allergens, customer grouping and map links. Rendered overview, delivery, takeaway and missing-address pages were visually reviewed. The sample is available at artifacts/kitchen-preparation-customer-report.pdf.
+
+
 Preparation Summary review warnings and their PDF export identify orders by their order number (for example, `ORD-20261102-000085`), rather than internal database IDs. This covers meal-assignment warnings, legacy-lock warnings and uninitialized service days. Missing order numbers display “Order number not recorded.” The change is supplied by the API; preparation quantities and stored review reasons remain unchanged.
 
 ## Customer directory
