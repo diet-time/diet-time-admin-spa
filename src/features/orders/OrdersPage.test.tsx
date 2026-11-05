@@ -65,8 +65,33 @@ describe('Staff order review',()=>{
   expect(within(dialog).queryByRole('button',{name:'Approve'})!==null).toBe(pending);
   expect(within(dialog).queryByRole('button',{name:'Reject'})!==null).toBe(pending);
   expect(within(dialog).queryByRole('button',{name:'Record Payment Status'})!==null).toBe(status!=='CANCELLED');
-  for(const name of ['Mark Completed','Activate','Mark as Active','Put On Hold','Resume Review','Cancel Order','Revise Dates'])expect(within(dialog).queryByRole('button',{name})).not.toBeInTheDocument();
+  for(const name of ['Mark Completed','Activate','Mark as Active','Put On Hold','Resume Review','Revise Dates'])expect(within(dialog).queryByRole('button',{name})).not.toBeInTheDocument();
+  expect(within(dialog).queryByRole('button',{name:'Cancel Order'})!==null).toBe(status==='CONFIRMED');
   expect(staffOrdersApi.action).not.toHaveBeenCalled();
+ });
+ it('requires a reason and explicit confirmation to cancel a confirmed order',async()=>{
+  const confirmed={...row,order:{...row.order,status:'CONFIRMED',paymentStatus:'PAID'}};
+  vi.mocked(staffOrdersApi.list).mockResolvedValue({items:[confirmed],totalCount:1});
+  vi.mocked(staffOrdersApi.get).mockResolvedValue(confirmed);
+  vi.mocked(staffOrdersApi.action).mockResolvedValue({...confirmed,order:{...confirmed.order,status:'CANCELLED',paymentStatus:'REFUND_PENDING'}});
+  renderPage();fireEvent.click(await screen.findByRole('button',{name:'Review'}));
+  fireEvent.click(await screen.findByRole('button',{name:'Cancel Order'}));
+  expect(staffOrdersApi.action).not.toHaveBeenCalled();
+  expect(screen.getByRole('button',{name:'Confirm'})).toBeDisabled();
+  fireEvent.change(screen.getByLabelText('Reason / payment reference (required)'),{target:{value:'Customer requested cancellation'}});
+  fireEvent.click(screen.getByRole('button',{name:'Confirm'}));
+  await waitFor(()=>expect(staffOrdersApi.action).toHaveBeenCalledWith('order-1','cancel',{expectedRowVersion:5,reason:'Customer requested cancellation'}));
+  expect(await screen.findByText('Order updated.')).toBeInTheDocument();
+  expect(screen.queryByRole('button',{name:'Cancel Order'})).not.toBeInTheDocument();
+ });
+ it('hides confirmed cancellation for read-only staff',async()=>{
+  vi.mocked(canWriteFromPath).mockReturnValue(false);
+  const confirmed={...row,order:{...row.order,status:'CONFIRMED'}};
+  vi.mocked(staffOrdersApi.list).mockResolvedValue({items:[confirmed],totalCount:1});
+  vi.mocked(staffOrdersApi.get).mockResolvedValue(confirmed);
+  renderPage();fireEvent.click(await screen.findByRole('button',{name:'Review'}));
+  await screen.findByRole('dialog',{name:/Order details/});
+  expect(screen.queryByRole('button',{name:'Cancel Order'})).not.toBeInTheDocument();
  });
  it('records received payment with a receipt reference without approving a pending order',async()=>{
   vi.mocked(staffOrdersApi.action).mockResolvedValue({...row,order:{...row.order,paymentStatus:'PAID',review:{...row.order.review,rowVersion:6}}});
