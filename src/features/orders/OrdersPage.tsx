@@ -1,3 +1,4 @@
+import { OrderWhatsAppHistory } from './OrderWhatsAppHistory';
 import { PackageChangeRequests } from './PackageChangeRequests';
 import CloseRounded from '@mui/icons-material/CloseRounded';
 import RefreshRounded from '@mui/icons-material/RefreshRounded';
@@ -21,7 +22,7 @@ export function OrdersPage({daily=false}:{daily?:boolean}){
  const [searchParams,setSearchParams]=useSearchParams();const reviewOrderId=searchParams.get('orderId');
  const cache=useQueryClient();const[status,setStatus]=useState(()=>approvalFilterStatus(searchParams.get('status')??(daily?'':'PENDING_APPROVAL')));const[serviceDate,setServiceDate]=useState(()=>daily?(searchParams.get('serviceDate')??qatarToday()):'');const[page,setPage]=useState(1);const[selected,setSelected]=useState<StaffOrder|null>(null);const[action,setAction]=useState('');const[reason,setReason]=useState('');const[payment,setPayment]=useState('PAID');const[notice,setNotice]=useState('');
  const query=useQuery({queryKey:daily?['staffOrders',status,page,serviceDate]:['staffOrders',status,page],queryFn:()=>daily?staffOrdersApi.list(status,page,serviceDate||undefined):staffOrdersApi.list(status,page),refetchInterval:30000});
- const mutation=useMutation({mutationFn:()=>staffOrdersApi.action(selected!.order.id,action,{expectedRowVersion:selected!.order.review.rowVersion,reason,...(action==='payment'?{paymentStatus:payment}:{})}),onSuccess:async(result)=>{setSelected(result);setAction('');setNotice('Order updated.');await Promise.all([cache.invalidateQueries({queryKey:['staffOrders']}),cache.invalidateQueries({queryKey:['dashboard','operations']})]);},onError:async()=>{await cache.invalidateQueries({queryKey:['staffOrders']});}});
+ const mutation=useMutation({mutationFn:()=>staffOrdersApi.action(selected!.order.id,action,{expectedRowVersion:selected!.order.review.rowVersion,reason,...(action==='payment'?{paymentStatus:payment}:{})}),onSuccess:async(result)=>{setSelected(result);setAction('');setNotice('Order updated.');await Promise.all([cache.invalidateQueries({queryKey:['staffOrders']}),cache.invalidateQueries({queryKey:['orderWhatsApp',selected?.order.id]}),cache.invalidateQueries({queryKey:['dashboard','operations']})]);},onError:async()=>{await cache.invalidateQueries({queryKey:['staffOrders']});}});
  useEffect(()=>{
   if(!reviewOrderId)return;
   let current=true;setNotice('');setSelected(null);setAction('');
@@ -30,7 +31,7 @@ export function OrdersPage({daily=false}:{daily?:boolean}){
  },[reviewOrderId]);
  const closeReview=()=>{setSelected(null);setSearchParams(previous=>{const next=new URLSearchParams(previous);next.delete('orderId');return next;},{replace:true});};
  const choose=(name:string)=>{if(name==='payment'&&selected?.order.status==='CANCELLED'||name==='cancel'&&selected?.order.status!=='CONFIRMED')return;mutation.reset();setAction(name);setReason('');};
- const needsReason=['reject','payment','cancel'].includes(action);
+ const needsReason=['reject','payment'].includes(action);
  const open=async(row:StaffOrder)=>{setSelected(row);setNotice('');try{setSelected(await staffOrdersApi.get(row.order.id));}catch(e){setNotice(errorText(e));}};
  return <Stack spacing={2}><Typography variant="h2">{daily?'Daily Orders':'Orders'}</Typography><Typography color="text.secondary">{daily?'Orders for the selected meal service date, including pending approval. Payment status is recorded separately.':'Review customer submissions before confirming fulfillment. Payment status is recorded separately.'}</Typography>{notice&&<Alert severity="info">{notice}</Alert>}
  <PackageChangeRequests/>
@@ -50,6 +51,7 @@ export function OrdersPage({daily=false}:{daily?:boolean}){
   </DialogTitle>
   <DialogContent dividers sx={{p:{xs:2,sm:3},bgcolor:'#fafbf8'}}>{selected&&<Stack spacing={2}>
     <OrderReviewDetails key={selected.order.id} value={selected}/>
+    <OrderWhatsAppHistory key={`whatsapp-${selected.order.id}`} orderId={selected.order.id}/>
     {!canWriteFromPath('/orders')&&<Alert severity="info">You have read-only access to Orders. An administrator with Orders write permission must approve or reject this order.</Alert>}
   </Stack>}</DialogContent>
   <DialogActions sx={{px:{xs:2,sm:3},py:2,gap:1,alignItems:'center',justifyContent:'space-between',flexWrap:'wrap'}}>

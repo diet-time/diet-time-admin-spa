@@ -69,7 +69,7 @@ describe('Staff order review',()=>{
   expect(within(dialog).queryByRole('button',{name:'Cancel Order'})!==null).toBe(status==='CONFIRMED');
   expect(staffOrdersApi.action).not.toHaveBeenCalled();
  });
- it('requires a reason and explicit confirmation to cancel a confirmed order',async()=>{
+ it('accepts an optional reason and requires explicit confirmation to cancel a confirmed order',async()=>{
   const confirmed={...row,order:{...row.order,status:'CONFIRMED',paymentStatus:'PAID'}};
   vi.mocked(staffOrdersApi.list).mockResolvedValue({items:[confirmed],totalCount:1});
   vi.mocked(staffOrdersApi.get).mockResolvedValue(confirmed);
@@ -77,8 +77,8 @@ describe('Staff order review',()=>{
   renderPage();fireEvent.click(await screen.findByRole('button',{name:'Review'}));
   fireEvent.click(await screen.findByRole('button',{name:'Cancel Order'}));
   expect(staffOrdersApi.action).not.toHaveBeenCalled();
-  expect(screen.getByRole('button',{name:'Confirm'})).toBeDisabled();
-  fireEvent.change(screen.getByLabelText('Reason / payment reference (required)'),{target:{value:'Customer requested cancellation'}});
+  expect(screen.getByRole('button',{name:'Confirm'})).toBeEnabled();
+  fireEvent.change(screen.getByLabelText('Notes (optional)'),{target:{value:'Customer requested cancellation'}});
   fireEvent.click(screen.getByRole('button',{name:'Confirm'}));
   await waitFor(()=>expect(staffOrdersApi.action).toHaveBeenCalledWith('order-1','cancel',{expectedRowVersion:5,reason:'Customer requested cancellation'}));
   expect(await screen.findByText('Order updated.')).toBeInTheDocument();
