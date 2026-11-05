@@ -1,3 +1,4 @@
+import { packageRequestsApi } from '@/api/packageRequestsApi';
 import { PendingActionsOutlined } from '@mui/icons-material';
 import { Alert, Button, Card, CardContent, Chip, Stack, Typography } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
@@ -17,12 +18,16 @@ export function PendingOrdersPanel({ serviceDate }: { serviceDate?: string }) {
     enabled: canReview, refetchInterval: 30_000, refetchOnWindowFocus: true,
   });
 
+  const packagePending = useQuery({queryKey:['packageRequests',1],queryFn:()=>packageRequestsApi.list(1),enabled:canReview,refetchInterval:30_000});
+  const packageNotice = packagePending.isError
+    ? <Alert severity="error" action={<Button onClick={()=>void packagePending.refetch()}>Retry package requests</Button>}>Unable to load pending package requests.</Alert>
+    : packagePending.data?.totalCount ? <Alert severity="warning" action={<Button onClick={()=>navigate('/orders')}>Review package requests</Button>}>{packagePending.data.totalCount} pause/resume requests awaiting confirmation</Alert> : null;
   if (permissions.isError) return <Alert severity="error" action={<Button onClick={() => void permissions.refetch()}>Retry permissions</Button>}>Unable to check order-review access.</Alert>;
   if (!canReview) return null;
   if (pending.isError) return <Alert severity="error" action={<Button onClick={() => void pending.refetch()}>Retry pending orders</Button>}>Unable to load pending confirmations. Please retry; orders may still be awaiting approval.</Alert>;
-  if (!pending.data || pending.data.totalCount <= 0) return null;
+  if (!pending.data || pending.data.totalCount <= 0) return packageNotice;
 
-  return <Card component="section" aria-label="Pending confirmation orders" sx={{ border: '1px solid', borderColor: 'warning.main', bgcolor: '#FFF8E8' }}>
+  return <Stack spacing={1.5}>{packageNotice}<Card component="section" aria-label="Pending confirmation orders" sx={{ border: '1px solid', borderColor: 'warning.main', bgcolor: '#FFF8E8' }}>
     <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
       <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ sm: 'center' }} justifyContent="space-between" gap={1.5}>
         <Stack direction="row" alignItems="center" gap={1} flexWrap="wrap">
@@ -36,5 +41,5 @@ export function PendingOrdersPanel({ serviceDate }: { serviceDate?: string }) {
         </Stack>
       </Stack>
     </CardContent>
-  </Card>;
+  </Card></Stack>;
 }

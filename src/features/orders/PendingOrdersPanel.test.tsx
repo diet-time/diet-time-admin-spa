@@ -1,3 +1,5 @@
+import { packageRequestsApi } from '@/api/packageRequestsApi';
+vi.mock('@/api/packageRequestsApi', () => ({ packageRequestsApi: { list: vi.fn().mockResolvedValue({items:[],totalCount:0}), review: vi.fn() } }));
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -38,6 +40,14 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe('Visible pending confirmation queue', () => {
+  it('shows pending pause/resume requests even when no purchase orders await approval', async () => {
+    vi.mocked(staffOrdersApi.list).mockResolvedValue({items:[],totalCount:0});
+    vi.mocked(packageRequestsApi.list).mockResolvedValueOnce({items:[],totalCount:2});
+    renderPanel();
+    expect(await screen.findByText('2 pause/resume requests awaiting confirmation')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button',{name:'Review package requests'}));
+    expect(await screen.findByRole('heading',{name:'Orders'})).toBeInTheDocument();
+  });
   it('opens the separate daily orders screen for the selected meal service date', async () => {
     renderPanel();
     fireEvent.click(await screen.findByRole('button', { name: 'Daily orders' }));

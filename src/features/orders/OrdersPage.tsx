@@ -1,3 +1,4 @@
+import { PackageChangeRequests } from './PackageChangeRequests';
 import CloseRounded from '@mui/icons-material/CloseRounded';
 import RefreshRounded from '@mui/icons-material/RefreshRounded';
 import { OrdersTable } from './OrdersTable';
@@ -32,6 +33,7 @@ export function OrdersPage({daily=false}:{daily?:boolean}){
  const needsReason=['reject','payment'].includes(action);
  const open=async(row:StaffOrder)=>{setSelected(row);setNotice('');try{setSelected(await staffOrdersApi.get(row.order.id));}catch(e){setNotice(errorText(e));}};
  return <Stack spacing={2}><Typography variant="h2">{daily?'Daily Orders':'Orders'}</Typography><Typography color="text.secondary">{daily?'Orders for the selected meal service date, including pending approval. Payment status is recorded separately.':'Review customer submissions before confirming fulfillment. Payment status is recorded separately.'}</Typography>{notice&&<Alert severity="info">{notice}</Alert>}
+ <PackageChangeRequests/>
  <Card sx={{borderRadius:'12px',boxShadow:'none'}}><CardContent sx={{p:'20px !important'}}><Stack direction={{xs:'column',sm:'row'}} useFlexGap flexWrap="wrap" alignItems={{sm:'center'}} gap={1.5}>
  {daily&&<><TextField type="date" label="Meal service date" value={serviceDate} onChange={e=>{setServiceDate(e.target.value);setPage(1);}} slotProps={{inputLabel:{shrink:true}}}/><Button onClick={()=>{setServiceDate(qatarToday());setPage(1);}}>Today in Qatar</Button><Button onClick={()=>{setServiceDate('');setPage(1);}}>All dates</Button><Button variant="outlined" onClick={()=>{setServiceDate('');setStatus('PENDING_APPROVAL');setPage(1);}}>All pending approvals</Button></>}
  <TextField select label="Approval status" value={status} onChange={e=>{setStatus(e.target.value);setPage(1);}} sx={{minWidth:220}}>{statuses.map(s=><MenuItem key={s} value={s}>{s?orderStatusLabel(s):'All approval statuses'}</MenuItem>)}</TextField><Button startIcon={<RefreshRounded/>} disabled={query.isFetching} onClick={()=>query.refetch()} sx={{ml:{sm:'auto'}}}>Refresh</Button></Stack></CardContent></Card>

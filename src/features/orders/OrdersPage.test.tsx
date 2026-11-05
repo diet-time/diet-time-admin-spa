@@ -1,3 +1,4 @@
+vi.mock('@/api/packageRequestsApi', () => ({ packageRequestsApi: { list: vi.fn().mockResolvedValue({items:[],totalCount:0}), review: vi.fn() } }));
 import { MemoryRouter } from 'react-router-dom';
 import { canWriteFromPath } from '@/auth/screenPermissionCache';
 import { fireEvent,render,screen,waitFor,within } from '@testing-library/react';
