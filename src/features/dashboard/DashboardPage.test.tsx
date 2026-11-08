@@ -7,8 +7,6 @@ import { accessControlApi } from '@/api/accessControlApi';
 import type { OperationsDashboard, ScreenPermission } from '@/api/apiTypes';
 import { DashboardPage } from './DashboardPage';
 
-vi.mock('@/features/orders/PendingOrdersPanel', () => ({ PendingOrdersPanel: () => <section aria-label="Pending confirmation orders">Pending confirmation orders</section> }));
-
 vi.mock('@/api/dashboardApi', () => ({ dashboardApi: { operations: vi.fn() } }));
 vi.mock('@/api/accessControlApi', () => ({ accessControlApi: { myScreens: vi.fn() } }));
 
@@ -50,7 +48,7 @@ const populated: OperationsDashboard = {
 };
 
 describe('Business dashboard insights', () => {
-  it('shows operational cards, charts and renewal opportunities without revenue', async () => {
+  it('shows operational cards and charts without the follow-up cards', async () => {
     vi.mocked(dashboardApi.operations).mockResolvedValue(populated);
     renderPage();
     const rate = await screen.findByRole('region', { name: 'Fulfillment rate' });
@@ -64,7 +62,9 @@ describe('Business dashboard insights', () => {
     expect(screen.getByRole('heading', { name: 'Fulfillment status' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Meal demand & orders' })).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Popular packages' })).toBeInTheDocument();
-    expect(screen.getByText('2 plans ending in the next 7 days')).toBeInTheDocument();
+    expect(screen.queryByText('Orders requiring review')).not.toBeInTheDocument();
+    expect(screen.queryByText('Overdue deliveries')).not.toBeInTheDocument();
+    expect(screen.queryByText('Renewal opportunities')).not.toBeInTheDocument();
     expect(screen.queryByText(/revenue|QAR|last week/i)).not.toBeInTheDocument();
   });
   it('uses service-day fulfillment badges and actual configured slot progress', async () => {
@@ -87,7 +87,7 @@ describe('Business dashboard insights', () => {
     expect(screen.getByText('Fulfillment data is not available')).toBeInTheDocument();
   });
   it('requests a new business date without navigation or a page reload', async () => {
-    renderPage(); await screen.findByText('Orders requiring review');
+    renderPage(); await screen.findByRole('region', { name: 'Fulfillment rate' });
     fireEvent.change(screen.getByLabelText('Service date'), { target: { value: '2026-11-05' } });
     await waitFor(() => expect(dashboardApi.operations).toHaveBeenCalledWith('2026-11-05', expect.anything()));
   });
@@ -97,21 +97,5 @@ describe('Business dashboard insights', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Refresh dashboard' }));
     expect(await screen.findByText('Unable to refresh. Showing the last loaded overview.')).toBeInTheDocument();
     expect(screen.getByRole('table')).toBeInTheDocument();
-  });
-});
-
-describe('Pending orders on the operations dashboard', () => {
-  it('opens the existing approval queue even when no deliveries are scheduled', async () => {
-    renderPage();
-    expect(await screen.findByText('No deliveries scheduled')).toBeInTheDocument();
-    expect(screen.getByText('Orders requiring review')).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole('button', { name: 'Review pending orders' }));
-    expect(await screen.findByText('Existing order approval screen')).toBeInTheDocument();
-  });
-  it('does not offer the approval link without Orders read permission', async () => {
-    vi.mocked(accessControlApi.myScreens).mockResolvedValue([{ ...permission, canRead: false }]);
-    renderPage();
-    await screen.findByText('Orders requiring review');
-    expect(screen.queryByRole('button', { name: 'Review pending orders' })).not.toBeInTheDocument();
   });
 });

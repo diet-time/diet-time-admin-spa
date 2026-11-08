@@ -11,7 +11,7 @@ import type { DashboardServiceOrder, OperationsDashboard } from '@/api/apiTypes'
 import { canReadPath } from '@/auth/screenPermissionRoutes';
 import { CustomerInsightsCard } from './CustomerInsightsCard';
 import { dashboardToday } from './dashboardDates';
-import { BusinessFollowUps, DashboardMetric, DeliverySlotsCard, FulfillmentDonut, PopularPackagesCard, ScheduledOrdersCard } from './DashboardWidgets';
+import { DashboardMetric, DeliverySlotsCard, FulfillmentDonut, PopularPackagesCard, ScheduledOrdersCard } from './DashboardWidgets';
 
 export function DashboardPage() {
   const [date, setDate] = useState(dashboardToday);
@@ -27,11 +27,11 @@ export function DashboardPage() {
       <Stack direction="row" gap={1} alignItems="center" flexWrap="wrap"><Chip size="small" variant="outlined" icon={<CalendarMonthOutlined />} label="7-day outlook" sx={{ bgcolor: 'white', borderRadius: 1.5, fontSize: 11 }} /><TextField type="date" label="Service date" value={date} onChange={event => { if (event.target.value) setDate(event.target.value); }} slotProps={{ inputLabel: { shrink: true } }} sx={{ width: 155 }} /><Button variant="outlined" size="small" startIcon={<TodayOutlined fontSize="small" />} onClick={() => setDate(dashboardToday())} sx={{ minHeight: 38, bgcolor: 'white' }}>Today</Button><Button size="small" aria-label="Refresh dashboard" disabled={query.isFetching} onClick={() => void query.refetch()} sx={{ minWidth: 38 }}><RefreshRounded fontSize="small" /></Button></Stack>
     </Stack>
     {query.isError && <Alert severity={query.data ? 'warning' : 'error'} action={<Button onClick={() => void query.refetch()}>Retry</Button>}>{query.data ? 'Unable to refresh. Showing the last loaded overview.' : 'Unable to load operations dashboard.'}</Alert>}
-    {query.data ? <DashboardContent onCustomers={canViewCustomers ? () => navigate('/customers') : undefined} onCustomer={canViewCustomers ? id => navigate(`/customers?customerId=${id}`) : undefined} data={query.data} onCalendar={openCalendar} onReview={canReview ? () => navigate('/orders?status=PENDING_APPROVAL') : undefined} onOrder={canReview ? id => navigate(`/orders?orderId=${id}`) : undefined} /> : query.isPending ? <DashboardSkeleton /> : null}
+    {query.data ? <DashboardContent onCustomers={canViewCustomers ? () => navigate('/customers') : undefined} onCustomer={canViewCustomers ? id => navigate(`/customers?customerId=${id}`) : undefined} data={query.data} onCalendar={openCalendar} onOrder={canReview ? id => navigate(`/orders?orderId=${id}`) : undefined} /> : query.isPending ? <DashboardSkeleton /> : null}
   </Stack>;
 }
 
-function DashboardContent({ data, onCalendar, onReview, onOrder, onCustomer, onCustomers }: { onCustomer?: (id: string) => void; onCustomers?: () => void; data: OperationsDashboard; onCalendar: () => void; onReview?: () => void; onOrder?: (id: string) => void }) {
+function DashboardContent({ data, onCalendar, onOrder, onCustomer, onCustomers }: { onCustomer?: (id: string) => void; onCustomers?: () => void; data: OperationsDashboard; onCalendar: () => void; onOrder?: (id: string) => void }) {
   const insights = data.insights;
   const fulfillment = insights?.fulfillment;
   const scheduled = fulfillment?.total ?? data.today.scheduledDeliveries;
@@ -50,7 +50,6 @@ function DashboardContent({ data, onCalendar, onReview, onOrder, onCustomer, onC
       <Grid size={{ xs: 12, md: 6 }}><FulfillmentDonut data={fulfillment} /></Grid>
       <Grid size={{ xs: 12, md: 6 }}><PopularPackagesCard packages={insights?.popularPackages ?? []} total={insights?.activeSubscriptions} /></Grid>
     </Grid>
-    <BusinessFollowUps pending={insights?.pendingConfirmations ?? data.needsAttention.ordersRequiringReview} overdue={fulfillment?.overdue} expiring={insights?.expiringSubscriptions} onReview={onReview} onCalendar={onCalendar} />
     <Grid container spacing={1.5} alignItems="stretch">
       <Grid size={{ xs: 12, lg: 8 }}><ScheduledOrdersCard rows={rows} onCalendar={onCalendar} onOrder={onOrder} /></Grid>
       <Grid size={{ xs: 12, lg: 4 }}><DeliverySlotsCard slots={insights?.deliverySlots ?? []} fulfillment={fulfillment} /></Grid>

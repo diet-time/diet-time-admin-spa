@@ -1,5 +1,5 @@
 import { ArrowForwardRounded, BedtimeOutlined, ChevronRightRounded, EventAvailableOutlined, LocalShippingOutlined, StorefrontOutlined, WbSunnyOutlined } from '@mui/icons-material';
-import { Box, Button, Card, CardContent, Chip, Grid, IconButton, LinearProgress, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tooltip as MuiTooltip, Typography } from '@mui/material';
+import { Box, Button, Card, CardContent, Chip, IconButton, LinearProgress, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tooltip as MuiTooltip, Typography } from '@mui/material';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { type ReactNode } from 'react';
 import type { DashboardFulfillment, DashboardPackage, DashboardServiceOrder, DashboardSlot } from '@/api/apiTypes';
@@ -50,14 +50,6 @@ export function DeliverySlotsCard({ slots, fulfillment }: { slots: DashboardSlot
     })}</Stack>}
     {!!fulfillment?.takeaway && <Stack direction="row" gap={1} alignItems="center" mt={1.5} px={1}><StorefrontOutlined fontSize="small" color="primary" /><Typography variant="caption" flex={1}>Takeaway collections</Typography><Typography variant="caption" fontWeight={800}>{fulfillment.collected} / {fulfillment.takeaway}</Typography></Stack>}
   </ChartCard>;
-}
-
-export function BusinessFollowUps({ pending, overdue, expiring, onReview, onCalendar }: { pending: number; overdue?: number; expiring?: number; onReview?: () => void; onCalendar: () => void }) {
-  return <Grid container spacing={1.5} aria-label="Business follow-ups">
-    <Grid size={{ xs: 12, md: 4 }}><Box sx={{ height: '100%', p: 1.5, borderRadius: '10px', bgcolor: pending ? '#FFF7E8' : '#F1F5F2', border: '1px solid', borderColor: pending ? '#F3E5C8' : '#E5ECE7' }}><Stack direction="row" gap={1} alignItems="center"><Box flex={1}><Typography variant="caption" fontWeight={750}>Orders requiring review</Typography><Typography variant="caption" display="block" color="text.secondary">{pending} pending confirmation · all dates</Typography></Box>{onReview && <Button size="small" onClick={onReview} sx={{ fontSize: 11 }}>Review pending orders</Button>}</Stack></Box></Grid>
-    <Grid size={{ xs: 12, md: 4 }}><Box sx={{ height: '100%', p: 1.5, borderRadius: '10px', bgcolor: overdue ? '#FFF1EE' : '#F1F5F2', border: '1px solid', borderColor: overdue ? '#F3DAD3' : '#E5ECE7' }}><Stack direction="row" gap={1} alignItems="center"><Box flex={1}><Typography variant="caption" fontWeight={750}>Overdue deliveries</Typography><Typography variant="caption" display="block" color="text.secondary">{overdue === undefined ? 'Not available' : `${overdue} need attention on this date`}</Typography></Box><Button size="small" onClick={onCalendar} sx={{ fontSize: 11 }}>View schedule</Button></Stack></Box></Grid>
-    <Grid size={{ xs: 12, md: 4 }}><Box sx={{ height: '100%', p: 1.5, borderRadius: '10px', bgcolor: '#EEF4FA', border: '1px solid #DBE7F0' }}><Typography variant="caption" fontWeight={750}>Renewal opportunities</Typography><Typography variant="caption" display="block" color="text.secondary">{expiring === undefined ? 'Not available' : `${expiring} plans ending in the next 7 days`}</Typography></Box></Grid>
-  </Grid>;
 }
 
 function EmptyChart({ text }: { text: string }) { return <Stack minHeight={170} alignItems="center" justifyContent="center"><Typography variant="body2" color="text.secondary">{text}</Typography></Stack>; }
