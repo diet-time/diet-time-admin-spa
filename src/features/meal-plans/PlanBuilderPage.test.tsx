@@ -9,6 +9,7 @@ import { mealsApi } from '@/api/mealsApi';
 import { queryClient } from '@/app/queryClient';
 import '@/i18n';
 import { PlanBuilderPage } from './PlanBuilderPage';
+import { MVP_MENU_WEEKDAYS } from './menuWeekdays';
 
 vi.mock('@/api/plansApi', () => ({ plansApi: { get: vi.fn(), validateMenu: vi.fn(), update: vi.fn() } }));
 vi.mock('@/api/masterDataApi', () => ({ masterDataApi: { list: vi.fn() } }));
@@ -96,5 +97,44 @@ describe('saved menu slots', () => {
     expect(screen.getByText('Inactive')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Save draft' })).not.toBeInTheDocument();
     expect(screen.getByLabelText('Active slot')).toBeDisabled();
+  });
+
+  const readyToPublish = () => {
+    const plan = makePlan();
+    const day = plan.days[0]!;
+    plan.days = [1, 2, 3, 4].flatMap(weekNumber => MVP_MENU_WEEKDAYS.map((menuWeekday, index) => ({
+      ...day, id: `day-${weekNumber}-${index}`, menuWeekday, weekNumber, displayOrder: index,
+      slots: [{ ...day.slots[0]!, id: `slot-${weekNumber}-${index}`,
+        options: [{ id: `option-${weekNumber}-${index}`, mealItemId: meal4Id, mealName: 'Meal',
+          isDefault: true, additionalPrice: 0, isAvailable: true, displayOrder: 0 }] }],
+    })));
+    return plan;
+  };
+
+  it('refreshes pricing after publication so carried-forward prices appear immediately', async () => {
+    const plan = readyToPublish();
+    vi.mocked(plansApi.get).mockResolvedValue(plan);
+    vi.mocked(plansApi.update).mockResolvedValue({ id: 'published', createdDraft: false });
+    const invalidation = vi.spyOn(queryClient, 'invalidateQueries');
+    try {
+      mount();
+      await screen.findByText('Meal 4');
+      await userEvent.click(screen.getByRole('button', { name: 'Publish' }));
+      await waitFor(() => expect(invalidation).toHaveBeenCalledWith({ queryKey: ['meal-plan-prices'] }));
+      expect(plansApi.update).toHaveBeenCalledWith('published', expect.objectContaining({ publish: true }));
+      expect(invalidation).toHaveBeenCalledWith({ queryKey: ['meal-plans', 'pricing-lookup'] });
+    } finally { invalidation.mockRestore(); }
+  });
+
+  it('shows the server pricing review message when publication is blocked', async () => {
+    vi.mocked(plansApi.get).mockResolvedValue(readyToPublish());
+    const message = 'Save a draft and review its Plan Pricing before publishing.';
+    vi.mocked(plansApi.update).mockRejectedValue({ isAxiosError: true,
+      response: { data: { code: 'PRICING_REVIEW_REQUIRED', message } } });
+    mount();
+    await screen.findByText('Meal 4');
+    await userEvent.click(screen.getByRole('button', { name: 'Publish' }));
+    expect(await screen.findByText(message)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save draft' })).toBeEnabled();
   });
 });

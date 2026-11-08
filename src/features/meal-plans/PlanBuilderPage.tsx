@@ -275,6 +275,12 @@ export function PlanBuilderPage() {
         queryClient.invalidateQueries({ queryKey: ['plans'] }),
         queryClient.invalidateQueries({ queryKey: ['plan', savedPlanId] }),
         queryClient.invalidateQueries({ queryKey: ['plan-menu-validation', savedPlanId] }),
+        queryClient.invalidateQueries({ queryKey: ['meal-plans', 'pricing-lookup'] }),
+        ...(publish ? [
+          queryClient.invalidateQueries({ queryKey: ['meal-plan-prices'] }),
+          queryClient.invalidateQueries({ queryKey: ['plan-pricing'] }),
+          queryClient.invalidateQueries({ queryKey: ['plan-pricing-summary'] }),
+        ] : []),
       ]);
       if (publish) navigate(`/meal-plans/${savedPlanId}/edit?view=menu&week=${selectedWeek}`);
       else navigate(`/meal-plans/${savedPlanId}/edit?week=${selectedWeek}`);
