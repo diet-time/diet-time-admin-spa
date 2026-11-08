@@ -26,10 +26,30 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/access-control/me/screens', route => route.fulfill({ json: { data: [{ screenId: 'orders', groupCode: 'OPERATIONS', groupName: 'Operations', screenCode: 'ORDERS', screenName: 'Orders', routeUrl: '/orders', displayOrder: 1, isActive: true, canRead: true, canWrite: true }] } }));
   await page.route('**/admin/orders**', route => {
     if (route.request().method() !== 'GET') return route.abort();
+    if (new URL(route.request().url()).pathname.endsWith('/package-requests')) return route.fulfill({ json: { items: [], totalCount: 0 } });
     return route.fulfill({ json: new URL(route.request().url()).pathname.endsWith('/review-demo') ? order : { items: [order], totalCount: 1 } });
   });
+  await page.route('**/admin/notifications/unread-count', route => route.fulfill({ json: { data: { unreadCount: 0 } } }));
 });
 for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
+  test(`daily orders keeps filters and status readable at ${viewport.width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize(viewport);
+    await page.goto('/orders/daily?serviceDate=2026-11-09&status=CONFIRMED', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('heading', { name: 'Daily Orders', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '9 Nov 2026', exact: true })).toBeVisible();
+    await expect(page.getByText('Confirmed · Qatar time', { exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Approval queue', exact: true })).toHaveAttribute('href', '/orders');
+    await expect(page.getByRole('button', { name: 'Review', exact: true })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'pagination navigation' })).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    if (viewport.width < 900) {
+      await expect(page.getByRole('article', { name: `Order ${order.order.orderNumber}` })).toBeVisible();
+      await expect(page.getByRole('table', { name: 'Customer orders' })).toHaveCount(0);
+    } else {
+      await expect(page.getByRole('table', { name: 'Customer orders' })).toBeVisible();
+    }
+    await page.screenshot({ path: testInfo.outputPath(`daily-orders-${viewport.width}.png`), fullPage: true });
+  });
   test(`order review stays readable and actions remain visible at ${viewport.width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize(viewport);
     await page.goto('/orders?status=ACTIVE&orderId=review-demo', { waitUntil: 'domcontentloaded' });

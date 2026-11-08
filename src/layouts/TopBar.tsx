@@ -16,7 +16,9 @@ export function TopBar({ onMenu }: { onMenu: () => void }) {
   const [anchor, setAnchor] = useState<null | HTMLElement>(null);
   const segment = location.pathname.split('/').filter(Boolean)[0] ?? 'dashboard';
   const titleKey = segment === 'meal-plans' ? 'mealPlans' : segment === 'meal-types' ? 'mealTypes' : segment === 'audit' ? 'audit' : segment;
-  const pageTitle = location.pathname.startsWith('/admin/package-options') ? 'Package Options'
+  const pageTitle = location.pathname === '/orders/daily' ? t('dailyOrders')
+    : location.pathname === '/orders' ? 'Approval queue'
+    : location.pathname.startsWith('/admin/package-options') ? 'Package Options'
     : location.pathname.startsWith('/admin/durations') ? 'Durations'
       : location.pathname.startsWith('/admin/plan-pricing') ? 'Plan Pricing'
         : t(titleKey);

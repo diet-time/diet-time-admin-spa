@@ -13,6 +13,9 @@ const breadcrumbsForPath = (pathname: string): Crumb[] => {
   const parts = pathname.split('/').filter(Boolean);
   if (!parts.length) return [];
 
+  if (pathname === '/orders/daily') return [{ label: 'Orders', to: '/orders' }, { label: 'Daily Orders' }];
+  if (pathname === '/orders') return [{ label: 'Orders' }, { label: 'Approval queue' }];
+
   if (parts[0] === 'admin') {
     const labels: Record<string, string> = {
       'package-options': 'Package Options',

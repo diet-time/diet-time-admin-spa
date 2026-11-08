@@ -1,7 +1,8 @@
+import { renderWithToasts as render } from '@/test/renderWithToasts';
 vi.mock('@/api/packageRequestsApi', () => ({ packageRequestsApi: { list: vi.fn().mockResolvedValue({items:[],totalCount:0}), review: vi.fn() } }));
 import { MemoryRouter } from 'react-router-dom';
 import { canWriteFromPath } from '@/auth/screenPermissionCache';
-import { fireEvent,render,screen,waitFor,within } from '@testing-library/react';
+import { fireEvent,screen,waitFor,within } from '@testing-library/react';
 import { afterEach,beforeEach,describe,expect,it,vi } from 'vitest';
 import { QueryClient,QueryClientProvider } from '@tanstack/react-query';
 import { staffOrdersApi,type StaffOrder } from '@/api/staffOrdersApi';
@@ -42,10 +43,28 @@ describe('Daily orders by meal service date',()=>{
   await screen.findByRole('button',{name:'Review / Approve'});
   fireEvent.change(screen.getByLabelText('Meal service date'),{target:{value:'2026-11-02'}});
   await waitFor(()=>expect(staffOrdersApi.list).toHaveBeenCalledWith('',1,'2026-11-02'));
-  fireEvent.click(screen.getByRole('button',{name:'All pending approvals'}));
+  fireEvent.click(screen.getByRole('button',{name:'All dates'}));
+  fireEvent.mouseDown(screen.getByRole('combobox',{name:'Approval status'}));
+  fireEvent.click(screen.getByRole('option',{name:'Pending Confirmation'}));
   await waitFor(()=>expect(staffOrdersApi.list).toHaveBeenCalledWith('PENDING_APPROVAL',1,undefined));
   expect(screen.getByLabelText('Meal service date')).toHaveValue('');
-  expect(screen.getByText('Showing orders across all meal service dates.')).toBeInTheDocument();
+  expect(screen.getByRole('heading',{name:'All service dates'})).toBeInTheDocument();
+ });
+ it('keeps the selected date and approval scope visible and provides a separate approval queue',async()=>{
+  renderPage('/orders/daily?serviceDate=2026-11-01&status=CONFIRMED',true);
+  expect(await screen.findByRole('heading',{name:'1 Nov 2026'})).toBeInTheDocument();
+  expect(screen.getByText('Confirmed · Qatar time')).toBeInTheDocument();
+  expect(screen.getByRole('link',{name:'Approval queue'})).toHaveAttribute('href','/orders');
+  expect(screen.queryByRole('navigation',{name:'pagination navigation'})).not.toBeInTheDocument();
+  expect(await screen.findByText('Pending payment')).toBeInTheDocument();
+ });
+ it('resets the daily filters to today and all approval statuses',async()=>{
+  renderPage('/orders/daily?serviceDate=2026-11-01&status=CONFIRMED',true);
+  await screen.findByText('Pending payment');
+  fireEvent.click(screen.getByRole('button',{name:'Reset filters'}));
+  await waitFor(()=>expect(staffOrdersApi.list).toHaveBeenLastCalledWith('',1,expect.any(String)));
+  expect(screen.getByRole('button',{name:'Today in Qatar'})).toHaveAttribute('aria-pressed','true');
+  expect(screen.getByRole('combobox',{name:'Approval status'})).toHaveTextContent('All approval statuses');
  });
  it('defaults to today in Qatar rather than the browser time zone',async()=>{
   vi.useFakeTimers({toFake:['Date']});vi.setSystemTime(new Date('2026-10-30T22:00:00Z'));

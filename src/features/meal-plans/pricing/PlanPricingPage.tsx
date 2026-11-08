@@ -1,3 +1,4 @@
+import { toast } from '@/app/store/toastStore';
 import { Add, DeleteOutline, EditOutlined, MoreHoriz, Search, VisibilityOutlined } from '@mui/icons-material';
 import {
   Alert,
@@ -32,7 +33,6 @@ import {
   Typography,
 } from '@mui/material';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import axios from 'axios';
 import { format, parseISO } from 'date-fns';
 import { useState } from 'react';
 import {
@@ -91,9 +91,6 @@ interface FormValues {
   arabicDescription: string;
 }
 
-interface ApiErrorEnvelope {
-  errors?: Record<string, string[]> | Array<{ code?: string; message?: string; field?: string }>;
-}
 
 
 const initialFilters: Filters = { search: '', mealPlanTemplateId: '', status: '', currencyCode: '', mealPlanPricePackageId: '' };
@@ -135,13 +132,6 @@ const editForm = (price: PlanPrice): FormValues => ({
   isActive: price.isActive,
   ...translationForm(price.translations),
 });
-const apiErrorMessage = (error: unknown, fallback: string) => {
-  if (axios.isAxiosError<ApiErrorEnvelope>(error)) {
-    const errors = error.response?.data?.errors;
-    if (Array.isArray(errors)) return errors[0]?.message ?? fallback;
-  }
-  return fallback;
-};
 const priceLabel = (price: PlanPrice) =>
   `${price.currencyCode} ${new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(price.amount)}`;
 const periodLabel = (price: PlanPrice) =>
@@ -211,6 +201,7 @@ export function PlanPricingPage() {
     mutationFn: ({ id, body }: { id?: string; body: PlanPriceInput }) =>
       id ? planPricingApi.update(id, body) : planPricingApi.create(body),
     onSuccess: async () => {
+      toast.success('Pricing saved successfully.');
       setDialog(null);
       await refresh();
     },
@@ -218,11 +209,12 @@ export function PlanPricingPage() {
   const statusMutation = useMutation({
     mutationFn: ({ price, isActive }: { price: PlanPrice; isActive: boolean }) =>
       planPricingApi.setStatus(price.id, isActive),
-    onSuccess: refresh,
+    onSuccess: async () => { toast.success('Price status updated.'); await refresh(); },
   });
   const deleteMutation = useMutation({
     mutationFn: (id: string) => planPricingApi.remove(id),
     onSuccess: async () => {
+      toast.success('Pricing deleted.');
       setDeletePrice(null);
       if ((listQuery.data?.items.length ?? 0) === 1 && page > 0) setPage((current) => current - 1);
       await refresh();
@@ -276,11 +268,6 @@ export function PlanPricingPage() {
         <SummaryCard label="Inactive Prices" value={summary.inactive} color="warning.main" />
       </Grid>
 
-      {(statusMutation.isError || deleteMutation.isError) && (
-        <Alert severity="error">
-          {apiErrorMessage(statusMutation.error ?? deleteMutation.error, 'The pricing record could not be updated. Please try again.')}
-        </Alert>
-      )}
 
       <Card>
         <CardContent sx={{ pb: '16px !important' }}>

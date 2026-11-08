@@ -1,6 +1,7 @@
+import { toast } from '@/app/store/toastStore';
 import { discountError, discountPreview } from './packageDiscount';
 import { Add, EditOutlined, InfoOutlined, ToggleOffOutlined, ToggleOnOutlined } from '@mui/icons-material';
-import { Alert, Box, Button, Card, Dialog, DialogActions, DialogContent, DialogTitle, Grid, IconButton, MenuItem, Snackbar, Stack, Switch, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Tooltip, Typography, FormControlLabel } from '@mui/material';
+import { Alert, Box, Button, Card, Dialog, DialogActions, DialogContent, DialogTitle, Grid, IconButton, MenuItem, Stack, Switch, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Tooltip, Typography, FormControlLabel } from '@mui/material';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { plansApi } from '@/api/plansApi';
@@ -32,7 +33,6 @@ export function SubscriptionPlanPricingPage() {
   const [active, setActive] = useState<ActiveFilter>('all');
   const [dialog, setDialog] = useState<MealPlanPrice | 'new' | null>(null);
   const [statusTarget, setStatusTarget] = useState<MealPlanPrice | null>(null);
-  const [notice, setNotice] = useState('');
   const plans = useQuery({ queryKey: ['meal-plans', 'pricing-lookup'], queryFn: ({ signal }) => plansApi.list({ page: 1, pageSize: 100 }, signal) });
   const durations = useQuery({ queryKey: ['durations', 'lookup'], queryFn: ({ signal }) => subscriptionPricingApi.durations(signal) });
   const packages = useQuery({ queryKey: ['package-options', 'pricing-lookup'], queryFn: ({ signal }) => packageOptionsApi.list({ page: 1, pageSize: 100, isActive: true }, signal) });
@@ -49,7 +49,7 @@ export function SubscriptionPlanPricingPage() {
       : subscriptionPricingApi.create(body),
     onSuccess: async (_, value) => {
       setDialog(null);
-      setNotice(value.id ? 'Price updated successfully.' : 'Price added successfully.');
+      toast.success(value.id ? 'Price updated successfully.' : 'Price added successfully.');
       await refreshPrices();
     },
   });
@@ -57,7 +57,7 @@ export function SubscriptionPlanPricingPage() {
     mutationFn: (price: MealPlanPrice) => subscriptionPricingApi.setStatus(price.id, !price.isActive),
     onSuccess: async (_, price) => {
       setStatusTarget(null);
-      setNotice(`Price ${price.isActive ? 'deactivated' : 'activated'} successfully.`);
+      toast.success(`Price ${price.isActive ? 'deactivated' : 'activated'} successfully.`);
       await refreshPrices();
     },
   });
@@ -137,7 +137,6 @@ export function SubscriptionPlanPricingPage() {
     <Dialog open={!!statusTarget} onClose={() => !status.isPending && setStatusTarget(null)} maxWidth="xs" fullWidth>
       <DialogTitle>{statusTarget?.isActive ? 'Deactivate price?' : 'Activate price?'}</DialogTitle>
       <DialogContent>
-        {status.isError && <Alert severity="error" sx={{ mb: 2 }}>{pricingSaveError(status.error, undefined, 'The price status could not be changed. Please try again.').message}</Alert>}
         <Typography>{statusTarget?.isActive ? 'This price will no longer be offered to new subscriptions. Historical customer order values will not change.' : 'This enables the price. Customers can select it when its plan, package and duration are available.'}</Typography>
       </DialogContent>
       <DialogActions>
@@ -145,7 +144,6 @@ export function SubscriptionPlanPricingPage() {
         <Button variant="contained" disabled={status.isPending} color={statusTarget?.isActive ? 'warning' : 'primary'} onClick={() => statusTarget && status.mutate(statusTarget)}>{status.isPending ? 'Saving…' : 'Confirm'}</Button>
       </DialogActions>
     </Dialog>
-    <Snackbar open={!!notice} autoHideDuration={4000} message={notice} onClose={() => setNotice('')} />
   </Stack>;
 }
 

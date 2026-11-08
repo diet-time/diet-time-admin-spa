@@ -1,3 +1,4 @@
+import { toast } from '@/app/store/toastStore';
 import { Add, EditOutlined, Search, ToggleOffOutlined, ToggleOnOutlined } from '@mui/icons-material';
 import {
   Alert,
@@ -14,7 +15,6 @@ import {
   IconButton,
   InputAdornment,
   MenuItem,
-  Snackbar,
   Stack,
   Switch,
   Table,
@@ -123,7 +123,6 @@ export function PricePackagesTab({ createRequest = 0 }: { createRequest?: number
   const [status, setStatus] = useState<PackageStatusFilter>('all');
   const [dialog, setDialog] = useState<{ item?: MealPlanPricePackage } | null>(null);
   const [confirmPackage, setConfirmPackage] = useState<MealPlanPricePackage | null>(null);
-  const [success, setSuccess] = useState('');
 
   useEffect(() => {
     if (createRequest > 0) setDialog({});
@@ -151,7 +150,7 @@ export function PricePackagesTab({ createRequest = 0 }: { createRequest?: number
       id ? mealPlanPricePackagesApi.update(id, body) : mealPlanPricePackagesApi.create(body),
     onSuccess: async (_, variables) => {
       setDialog(null);
-      setSuccess(variables.id ? 'Duration updated successfully.' : 'Duration created successfully.');
+      toast.success(variables.id ? 'Duration updated successfully.' : 'Duration created successfully.');
       await refreshPackages();
     },
   });
@@ -160,7 +159,7 @@ export function PricePackagesTab({ createRequest = 0 }: { createRequest?: number
     mutationFn: (item: MealPlanPricePackage) => mealPlanPricePackagesApi.setStatus(item.id, !item.isActive),
     onSuccess: async (_, item) => {
       setConfirmPackage(null);
-      setSuccess(`Duration ${item.isActive ? 'deactivated' : 'activated'} successfully.`);
+      toast.success(`Duration ${item.isActive ? 'deactivated' : 'activated'} successfully.`);
       await refreshPackages();
     },
   });
@@ -178,7 +177,6 @@ export function PricePackagesTab({ createRequest = 0 }: { createRequest?: number
         <Button variant="contained" startIcon={<Add />} onClick={() => setDialog({})}>Add Duration</Button>
       </Stack>
 
-      {statusMutation.isError && <Alert severity="error">Unable to update the duration status. Please try again.</Alert>}
 
       <Card>
         <CardContent sx={{ pb: '16px !important' }}>
@@ -259,8 +257,6 @@ export function PricePackagesTab({ createRequest = 0 }: { createRequest?: number
           <Button variant="contained" color={confirmPackage?.isActive ? 'warning' : 'primary'} disabled={!confirmPackage || statusMutation.isPending} onClick={() => confirmPackage && statusMutation.mutate(confirmPackage)}>{confirmPackage?.isActive ? 'Deactivate' : 'Activate'}</Button>
         </DialogActions>
       </Dialog>
-
-      <Snackbar open={!!success} autoHideDuration={4000} onClose={() => setSuccess('')} message={success} />
     </Stack>
   );
 }

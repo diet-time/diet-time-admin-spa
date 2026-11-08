@@ -1,7 +1,8 @@
+import { toast } from '@/app/store/toastStore';
 import { Add, EditOutlined, ToggleOffOutlined, ToggleOnOutlined, Search } from '@mui/icons-material';
 import {
-  Alert, Box, Button, Card, CardContent, Dialog, DialogActions, DialogContent, DialogTitle,
-  FormControlLabel, Grid, IconButton, InputAdornment, Snackbar, Stack, Switch, Table, TableBody,
+  Box, Button, Card, CardContent, Dialog, DialogActions, DialogContent, DialogTitle,
+  FormControlLabel, Grid, IconButton, InputAdornment, Stack, Switch, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, TextField, Tooltip, Typography,
 } from '@mui/material';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -19,7 +20,6 @@ export function PackageOptionsPage() {
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<PackageOption | 'new' | null>(null);
   const [statusTarget, setStatusTarget] = useState<PackageOption | null>(null);
-  const [notice, setNotice] = useState('');
   const listQuery = useQuery({
     queryKey: ['package-options', search],
     queryFn: ({ signal }) => packageOptionsApi.list({ page: 1, pageSize: 100, search: search.trim() || undefined }, signal),
@@ -32,14 +32,14 @@ export function PackageOptionsPage() {
       return !!id;
     },
     onSuccess: async (updated) => {
-      setEditing(null); setNotice(updated ? 'Package updated successfully.' : 'Package created successfully.');
+      setEditing(null); toast.success(updated ? 'Package updated successfully.' : 'Package created successfully.');
       await queryClient.invalidateQueries({ queryKey: ['package-options'] });
     },
   });
   const status = useMutation({
     mutationFn: (item: PackageOption) => packageOptionsApi.setStatus(item.id, !item.isActive),
     onSuccess: async (_, item) => {
-      setStatusTarget(null); setNotice(`Package ${item.isActive ? 'deactivated' : 'activated'} successfully.`);
+      setStatusTarget(null); toast.success(`Package ${item.isActive ? 'deactivated' : 'activated'} successfully.`);
       await queryClient.invalidateQueries({ queryKey: ['package-options'] });
     },
   });
@@ -50,7 +50,6 @@ export function PackageOptionsPage() {
       <Box><Typography variant="h2">Package Options</Typography><Typography color="text.secondary">Configure meal and snack combinations available with subscriptions.</Typography></Box>
       <Button variant="contained" startIcon={<Add />} onClick={() => setEditing('new')}>Add Package</Button>
     </Stack>
-    {(status.isError || save.isError) && <Alert severity="error">The change could not be saved. Review the values and try again.</Alert>}
     <Card>
       <CardContent><TextField fullWidth placeholder="Search package name" value={search} onChange={(event) => setSearch(event.target.value)} slotProps={{ input: { startAdornment: <InputAdornment position="start"><Search /></InputAdornment> } }} /></CardContent>
       {listQuery.isLoading ? <Box p={3}><LoadingState /></Box> : listQuery.isError ? <Box p={3}><ErrorState message="Unable to load package options." onRetry={() => void listQuery.refetch()} /></Box> : !items.length ?
@@ -61,7 +60,6 @@ export function PackageOptionsPage() {
     </Card>
     {editing && <PackageDialog item={editing === 'new' ? undefined : editing} allPackages={items} pending={save.isPending} onClose={() => { setEditing(null); save.reset(); }} onSave={(values) => save.mutate({ id: editing === 'new' ? undefined : editing.id, values })} />}
     <Dialog open={!!statusTarget} onClose={() => !status.isPending && setStatusTarget(null)} maxWidth="xs" fullWidth><DialogTitle>{statusTarget?.isActive ? 'Deactivate package?' : 'Activate package?'}</DialogTitle><DialogContent><Typography>{statusTarget?.isActive && (statusTarget.pricingUsageCount ?? 0) > 0 ? `This package is used by ${statusTarget.pricingUsageCount} pricing record(s). Existing prices remain unchanged, but it will not be available for new pricing.` : statusTarget?.isActive ? 'This package will no longer be available for new pricing.' : 'This package will be available for pricing.'}</Typography></DialogContent><DialogActions><Button onClick={() => setStatusTarget(null)}>Cancel</Button><Button variant="contained" color={statusTarget?.isActive ? 'warning' : 'primary'} disabled={!statusTarget || status.isPending} onClick={() => statusTarget && status.mutate(statusTarget)}>{statusTarget?.isActive ? 'Deactivate' : 'Activate'}</Button></DialogActions></Dialog>
-    <Snackbar open={!!notice} autoHideDuration={4000} message={notice} onClose={() => setNotice('')} />
   </Stack>;
 }
 

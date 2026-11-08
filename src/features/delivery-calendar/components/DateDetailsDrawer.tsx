@@ -1,5 +1,6 @@
+import { toast } from '@/app/store/toastStore';
 import { ExpandMore, Close, DinnerDiningOutlined, DownloadOutlined, EggAltOutlined, LocalCafeOutlined, LunchDiningOutlined, RestaurantMenuOutlined } from '@mui/icons-material';
-import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Button, Card, CardContent, Chip, CircularProgress, Divider, Drawer, Grid, IconButton, List, ListItem, ListItemText, Skeleton, Snackbar, Stack, Tab, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tabs, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
+import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Button, Card, CardContent, Chip, CircularProgress, Divider, Drawer, Grid, IconButton, List, ListItem, ListItemText, Skeleton, Stack, Tab, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tabs, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { format, isBefore, parseISO, startOfDay } from 'date-fns';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -11,7 +12,6 @@ import { dailyCounts, visibleDeliveries, type FulfillmentFilter } from '../fulfi
 
 export function DateDetailsDrawer({ date, onClose, focusServiceDayId }: { date?: string; onClose: () => void; focusServiceDayId?: string }) {
   const [tab, setTab] = useState(0);
-  const [notice, setNotice] = useState<string>();
   useEffect(() => setTab(0), [date, focusServiceDayId]);
   const query = useQuery({ queryKey: ['delivery-calendar-detail', date], queryFn: ({ signal }) => deliveryCalendarApi.detail(date!, signal), enabled: !!date, refetchInterval: 60_000, refetchOnWindowFocus: true });
   const preparation = useQuery({ queryKey: ['delivery-preparation-summary', date], queryFn: ({ signal }) => deliveryCalendarApi.preparationSummary(date!, signal), enabled: !!date && tab === 1 });
@@ -26,8 +26,7 @@ export function DateDetailsDrawer({ date, onClose, focusServiceDayId }: { date?:
     <Stack direction="row" alignItems="center" p={2} borderBottom={1} borderColor="divider"><Box flex={1} minWidth={0}><Typography variant="h2" sx={{ fontSize: { xs: 20, sm: 26 } }}>{date ? format(parseISO(date), 'EEEE, d MMMM yyyy') : 'Order details'}</Typography><Typography color="text.secondary">Orders scheduled for this delivery date</Typography></Box><IconButton onClick={onClose} aria-label="Close details"><Close /></IconButton></Stack>
     {past && <Alert severity="info" sx={{ m: 2, mb: 0 }}>This is a past delivery date.</Alert>}
     {query.isError && query.data && <Alert severity="warning">Unable to refresh orders. Showing the last loaded data.</Alert>}
-    {query.isLoading ? <Box p={3}><LoadingState /></Box> : !query.data ? <Box p={3}><ErrorState message="Unable to load order details." onRetry={() => void query.refetch()} /></Box> : <DrawerContent onSuccess={setNotice} date={date!} detail={query.data} tab={tab} onTab={setTab} preparation={preparation.data} preparationLoading={preparation.isLoading} preparationError={preparation.isError} onRetryPreparation={() => void preparation.refetch()} />}
-    <Snackbar open={!!notice} autoHideDuration={4000} onClose={() => setNotice(undefined)}><Alert severity="success" onClose={() => setNotice(undefined)}>{notice}</Alert></Snackbar>
+    {query.isLoading ? <Box p={3}><LoadingState /></Box> : !query.data ? <Box p={3}><ErrorState message="Unable to load order details." onRetry={() => void query.refetch()} /></Box> : <DrawerContent onSuccess={toast.success} date={date!} detail={query.data} tab={tab} onTab={setTab} preparation={preparation.data} preparationLoading={preparation.isLoading} preparationError={preparation.isError} onRetryPreparation={() => void preparation.refetch()} />}
   </Drawer>;
 }
 
@@ -89,11 +88,9 @@ const selectionLabel = (status: string) => status === 'CUSTOMER_CONFIRMED' ? 'Cu
 
 export function PreparationSummary({ date, summary }: { date: string; summary: DeliveryPreparationSummary }) {
   const [downloading, setDownloading] = useState(false);
-  const [feedback, setFeedback] = useState<'success' | 'error'>();
 
   const downloadReport = async () => {
     setDownloading(true);
-    setFeedback(undefined);
     try {
       const report = await deliveryCalendarApi.preparationReport(date);
       const url = URL.createObjectURL(report.blob);
@@ -104,9 +101,9 @@ export function PreparationSummary({ date, summary }: { date: string; summary: D
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
-      setFeedback('success');
+      toast.success('Preparation report downloaded.');
     } catch {
-      setFeedback('error');
+      toast.error('Unable to download preparation report. Please try again.');
     } finally {
       setDownloading(false);
     }
@@ -129,7 +126,6 @@ export function PreparationSummary({ date, summary }: { date: string; summary: D
     <Typography variant="overline" fontWeight={800}>Customer preparation details</Typography>
     {(summary.selections ?? []).map(selection => <CustomerPreparation key={selection.serviceDayId} selection={selection} />)}
     <PlanBreakdown summary={summary} />
-    <Snackbar open={!!feedback} autoHideDuration={4000} onClose={() => setFeedback(undefined)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>{feedback === 'error' ? <Alert severity="error" variant="filled" onClose={() => setFeedback(undefined)}><Typography variant="body2">Unable to download preparation report.</Typography><Typography variant="body2">Please try again.</Typography></Alert> : <Alert severity="success" variant="filled" onClose={() => setFeedback(undefined)}>Preparation report downloaded.</Alert>}</Snackbar>
   </Stack>;
 }
 

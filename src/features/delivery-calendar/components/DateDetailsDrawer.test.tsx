@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { renderWithToasts as render } from '@/test/renderWithToasts';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { deliveryCalendarApi } from '@/api/deliveryCalendarApi';
 import { PreparationSummary } from './DateDetailsDrawer';
@@ -136,8 +137,7 @@ describe('PreparationSummary report download', () => {
     fireEvent.click(button);
 
     await waitFor(() => expect(button).toBeEnabled());
-    expect(screen.getByText('Unable to download preparation report.')).toBeInTheDocument();
-    expect(screen.getByText('Please try again.')).toBeInTheDocument();
+    expect(screen.getByText('Unable to download preparation report. Please try again.')).toBeInTheDocument();
     expect(screen.getByText('Chicken with Rice')).toBeInTheDocument();
   });
 });

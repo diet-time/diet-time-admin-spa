@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { notificationsApi, recentNotificationLimit, type StaffNotification } from '@/api/notificationsApi';
 import { useAuthStore } from '@/app/store/authStore';
+import { toast } from '@/app/store/toastStore';
 
 const notificationVisual = (type: string) => {
   if (type === 'DELIVERY_OVERDUE') return { icon: <ReportProblemOutlined />, label: 'Overdue', color: '#B42318', tint: '#FFF0ED' };
@@ -22,17 +23,16 @@ export function NotificationBell() {
   const audience = user?.roles.includes('Admin') ? 'admin' : 'restricted';
   const permitted = !!user?.roles.includes('Admin');
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
-  const [error, setError] = useState<string>();
   const client = useQueryClient();
   const navigate = useNavigate();
   const key = ['admin-notifications', user?.id, audience];
   const count = useQuery({ queryKey: [...key, 'count'], queryFn: ({ signal }) => notificationsApi.unreadCount(signal), enabled: permitted, refetchInterval: 45_000 });
   const list = useQuery({ queryKey: [...key, 'list', recentNotificationLimit], queryFn: ({ signal }) => notificationsApi.list(1, signal), enabled: permitted && !!anchor, refetchInterval: 45_000 });
-  useEffect(() => { setAnchor(null); setError(undefined); }, [user?.id, audience]);
+  useEffect(() => { setAnchor(null); }, [user?.id, audience]);
   const mutation = useMutation({
     mutationFn: (id?: string) => id ? notificationsApi.read(id) : notificationsApi.readAll(),
-    onSuccess: async () => { setError(undefined); await client.invalidateQueries({ queryKey: key }); },
-    onError: () => setError('Unable to mark notifications as read. Please try again.'),
+    onSuccess: async () => { await client.invalidateQueries({ queryKey: key }); },
+    onError: () => toast.error('Unable to mark notifications as read. Please try again.'),
   });
   const openNotification = async (notification: StaffNotification) => {
     try {
@@ -57,7 +57,6 @@ export function NotificationBell() {
         <Typography variant="caption" color="text.secondary">{count.isPending ? 'Checking for updates…' : count.isError ? 'Unread count unavailable' : count.data ? null : 'All caught up'}</Typography>
         <Button size="small" sx={{ minHeight: 28 }} startIcon={<DoneAllRounded fontSize="small" />} disabled={!count.data || mutation.isPending} onClick={() => mutation.mutate(undefined)}>Mark All as Read</Button>
       </Stack>}
-      {error && <Alert severity="error">{error}</Alert>}
       {list.isError && permitted && <Alert severity="error" action={<Button onClick={() => void list.refetch()}>Retry</Button>}>Unable to refresh notifications.{list.data ? ' Showing the last loaded updates.' : ''}</Alert>}
       {!permitted ? <Typography p={2} color="text.secondary">Order notifications are available to Admin staff.</Typography>
         : list.isPending ? <Stack spacing={1.25} p={2} aria-label="Loading notifications">{[0, 1, 2].map(index => <Skeleton key={index} variant="rounded" height={96} />)}</Stack>

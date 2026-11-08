@@ -4,6 +4,11 @@ import { describe, expect, it } from 'vitest';
 import { Breadcrumbs } from './Breadcrumbs';
 
 describe('Breadcrumbs', () => {
+  it('names Daily Orders explicitly', () => {
+    render(<MemoryRouter initialEntries={['/orders/daily']}><Breadcrumbs /></MemoryRouter>);
+    expect(screen.getByText('Daily Orders')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Orders' })).toHaveAttribute('href', '/orders');
+  });
   it('replaces meal-plan record IDs with a friendly edit label', () => {
     const path = '/meal-plans/5fd7d007-47d6-4ce9-8779-42450f4d29a9/edit';
     render(<MemoryRouter initialEntries={[path]}><Breadcrumbs /></MemoryRouter>);
