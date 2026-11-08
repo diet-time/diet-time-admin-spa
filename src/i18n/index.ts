@@ -4,6 +4,7 @@ import { initReactI18next } from 'react-i18next';
 
 const resources = {
   en: { translation: {
+    masterData: 'Master Data', packageOptions: 'Package Options', durations: 'Durations', planPricing: 'Plan Pricing',
     orders: 'Orders', dailyOrders: 'Daily Orders',
     customers: 'Customers',
     weekdays: { SATURDAY: 'Saturday', SUNDAY: 'Sunday', MONDAY: 'Monday', TUESDAY: 'Tuesday', WEDNESDAY: 'Wednesday', THURSDAY: 'Thursday', FRIDAY: 'Friday' },
@@ -11,6 +12,7 @@ const resources = {
     appName: 'Diet Time Admin', dashboard: 'Dashboard', meals: 'Meals', mealPlans: 'Meal Plans', operations: 'Operations', deliveryCalendar: 'Delivery Calendar', categories: 'Categories', ingredients: 'Ingredients', allergens: 'Allergens', tags: 'Tags', mealTypes: 'Meal Types', pricing: 'Pricing', media: 'Media', audit: 'Audit History', settings: 'Settings', roles: 'Roles', users: 'Users', administration: 'Administration', search: 'Search', logout: 'Log out', needsAttention: 'Needs attention', retry: 'Try again', noData: 'No data available', saveDraft: 'Save draft', publish: 'Publish',
   } },
   ar: { translation: {
+    masterData: 'البيانات الأساسية', packageOptions: 'خيارات الباقات', durations: 'المدد', planPricing: 'تسعير الخطط',
     orders: 'الطلبات', dailyOrders: 'الطلبات اليومية',
     customers: 'العملاء',
     weekdays: { SATURDAY: 'السبت', SUNDAY: 'الأحد', MONDAY: 'الاثنين', TUESDAY: 'الثلاثاء', WEDNESDAY: 'الأربعاء', THURSDAY: 'الخميس', FRIDAY: 'الجمعة' },

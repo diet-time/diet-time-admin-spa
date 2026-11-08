@@ -20,7 +20,14 @@ const breadcrumbsForPath = (pathname: string): Crumb[] => {
       'plan-pricing': 'Plan Pricing',
     };
     const label = labels[parts[1] ?? ''];
-    return label ? [{ label: 'Meal Plans', to: '/meal-plans' }, { label }] : [{ label: 'Administration' }];
+    return label ? [{ label: 'Master Data' }, { label }] : [{ label: 'Administration' }];
+  }
+
+  if (['categories', 'ingredients', 'allergens', 'meal-types', 'pricing', 'media'].includes(parts[0] ?? '')) {
+    return [{ label: 'Master Data' }, ...parts.map((part, index) => ({
+      label: isRecordId(part) ? 'Details' : titleCase(part),
+      to: index < parts.length - 1 ? `/${parts.slice(0, index + 1).join('/')}` : undefined,
+    }))];
   }
 
   if (parts[0] === 'meal-plans') {

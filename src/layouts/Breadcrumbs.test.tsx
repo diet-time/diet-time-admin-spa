@@ -13,9 +13,9 @@ describe('Breadcrumbs', () => {
     expect(screen.queryByText(/5fd7d007/i)).not.toBeInTheDocument();
   });
 
-  it('groups duration administration under Meal Plans', () => {
+  it('groups duration administration under Master Data', () => {
     render(<MemoryRouter initialEntries={['/admin/durations']}><Breadcrumbs /></MemoryRouter>);
-    expect(screen.getByRole('link', { name: 'Meal Plans' })).toHaveAttribute('href', '/meal-plans');
+    expect(screen.getByText('Master Data')).toBeInTheDocument();
     expect(screen.getByText('Durations')).toBeInTheDocument();
   });
 });
