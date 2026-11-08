@@ -7,6 +7,7 @@ import { useAuthStore } from '@/app/store/authStore';
 import { endSession } from '@/auth/session';
 import { Breadcrumbs } from './Breadcrumbs';
 import { NotificationBell } from './NotificationBell';
+import { navigationForPath } from './navigation';
 
 export function TopBar({ onMenu }: { onMenu: () => void }) {
   const { t } = useTranslation();
@@ -16,12 +17,8 @@ export function TopBar({ onMenu }: { onMenu: () => void }) {
   const [anchor, setAnchor] = useState<null | HTMLElement>(null);
   const segment = location.pathname.split('/').filter(Boolean)[0] ?? 'dashboard';
   const titleKey = segment === 'meal-plans' ? 'mealPlans' : segment === 'meal-types' ? 'mealTypes' : segment === 'audit' ? 'audit' : segment;
-  const pageTitle = location.pathname === '/orders/daily' ? t('dailyOrders')
-    : location.pathname === '/orders' ? 'Approval queue'
-    : location.pathname.startsWith('/admin/package-options') ? 'Package Options'
-    : location.pathname.startsWith('/admin/durations') ? 'Durations'
-      : location.pathname.startsWith('/admin/plan-pricing') ? 'Plan Pricing'
-        : t(titleKey);
+  const current = navigationForPath(location.pathname);
+  const pageTitle = t(current?.label ?? titleKey);
 
   const logout = async () => {
     await endSession();

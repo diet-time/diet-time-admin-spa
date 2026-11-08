@@ -1,57 +1,16 @@
-import { AdminPanelSettingsOutlined, CalendarMonthOutlined, ChevronLeft, ChevronRight, DashboardOutlined, DinnerDiningOutlined, ExpandLess, ExpandMore, HistoryOutlined, MenuBookOutlined, ReceiptLongOutlined, StorageOutlined } from '@mui/icons-material';
+import { ChevronLeft, ChevronRight, ExpandLess, ExpandMore } from '@mui/icons-material';
 import { Box, Collapse, Drawer, IconButton, List, ListItemButton, ListItemIcon, ListItemText, Menu, MenuItem, Toolbar, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { useEffect, useState, type MouseEvent, type ReactNode } from 'react';
+import { useEffect, useState, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NavLink, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { colors } from '@/theme/theme';
 import { useQuery } from '@tanstack/react-query';
 import { accessControlApi } from '@/api/accessControlApi';
 import { canReadPath } from '@/auth/screenPermissionRoutes';
+import { navigationItems, navigationForPath } from './navigation';
 
 const expandedWidth = 240;
 const collapsedWidth = 64;
-
-interface NavItem {
-  key: string;
-  path: string;
-  icon: ReactNode;
-  children?: Array<{ label: string; path: string }>;
-}
-
-const items: NavItem[] = [
-  { key: 'dashboard', path: '/', icon: <DashboardOutlined /> },
-  { key: 'orders', path: '/orders', icon: <ReceiptLongOutlined />, children: [
-    { label: 'dailyOrders', path: '/orders/daily' },
-    { label: 'customers', path: '/customers' },
-  ] },
-
-  { key: 'meals', path: '/meals', icon: <DinnerDiningOutlined /> },
-  { key: 'mealPlans', path: '/meal-plans', icon: <MenuBookOutlined /> },
-  { key: 'operations', path: '/operations', icon: <CalendarMonthOutlined />, children: [
-    { label: 'Delivery Calendar', path: '/operations/delivery-calendar' },
-    { label: 'Holidays / Closures', path: '/operations/closures' },
-  ] },
-  { key: 'masterData', path: '/master-data', icon: <StorageOutlined />, children: [
-    { label: 'categories', path: '/categories' },
-    { label: 'ingredients', path: '/ingredients' },
-    { label: 'allergens', path: '/allergens' },
-    { label: 'mealTypes', path: '/meal-types' },
-    { label: 'pricing', path: '/pricing' },
-    { label: 'media', path: '/media' },
-    { label: 'packageOptions', path: '/admin/package-options' },
-    { label: 'durations', path: '/admin/durations' },
-    { label: 'planPricing', path: '/admin/plan-pricing' },
-  ] },
-  { key: 'audit', path: '/audit', icon: <HistoryOutlined /> },
-  { key: 'administration', path: '/administration', icon: <AdminPanelSettingsOutlined />, children: [
-    { label: 'Settings', path: '/settings' },
-    { label: 'Users', path: '/users' },
-    { label: 'Roles', path: '/roles' },
-  ] },
-];
-
-const matchesPath = (pathname: string, path: string) => pathname === path || (path !== '/' && pathname.startsWith(`${path}/`));
-const activeGroup = (pathname: string) => items.find(item => item.children && (matchesPath(pathname, item.path) || item.children.some(child => matchesPath(pathname, child.path))))?.key ?? null;
 
 export function Sidebar({ open, collapsed, onClose, onToggle }: {
   open: boolean;
@@ -65,14 +24,15 @@ export function Sidebar({ open, collapsed, onClose, onToggle }: {
   const location = useLocation();
   const permissions = useQuery({ queryKey: ['access-control', 'me', 'screens'], queryFn: accessControlApi.myScreens, staleTime: 60_000 });
   const compact = desktop && collapsed;
-  const [openGroup, setOpenGroup] = useState<string | null>(() => activeGroup(location.pathname));
+  const current = navigationForPath(location.pathname);
+  const [openGroup, setOpenGroup] = useState<string | null>(() => navigationForPath(location.pathname)?.group ?? null);
   const [flyout, setFlyout] = useState<{ key: string; anchor: HTMLElement } | null>(null);
   useEffect(() => {
-    setOpenGroup(activeGroup(location.pathname));
+    setOpenGroup(navigationForPath(location.pathname)?.group ?? null);
     setFlyout(null);
   }, [location.pathname]);
   const width = compact ? collapsedWidth : expandedWidth;
-  const visibleItems = items.map(item => item.children && permissions.data
+  const visibleItems = navigationItems.map(item => item.children && permissions.data
     ? { ...item, children: item.children.filter(child => canReadPath(permissions.data, child.path)) }
     : item).filter(item => !permissions.data || (item.children ? item.children.length > 0 : canReadPath(permissions.data, item.path)));
   const flyoutItem = compact ? visibleItems.find(item => item.key === flyout?.key) : undefined;
@@ -89,14 +49,17 @@ export function Sidebar({ open, collapsed, onClose, onToggle }: {
         aria-label="Main navigation"
         sx={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', px: 1, py: 1, scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,.4) transparent' }}
       >
-        {visibleItems.map((item) => {
-          const active = matchesPath(location.pathname, item.path) || !!item.children?.some(child => matchesPath(location.pathname, child.path));
+        {visibleItems.map((item, index) => {
+          const active = item.children ? current?.group === item.key : current?.path === item.path;
           const expanded = compact ? flyoutItem?.key === item.key : openGroup === item.key;
           return (
             <Box key={item.path}>
+              {visibleItems[index - 1]?.section !== item.section && (compact
+                ? index > 0 && <Box sx={{ borderTop: '1px solid rgba(255,255,255,.16)', my: 1 }} />
+                : <Typography component="div" sx={{ px: 1.5, pt: index ? 1.5 : 0.5, pb: 0.5, fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.65)' }}>{t(item.section)}</Typography>)}
               <Tooltip title={compact ? t(item.key) : ''} placement={theme.direction === 'rtl' ? 'left' : 'right'}>
                 <ListItemButton
-                  component={item.children ? 'button' : NavLink}
+                  component={item.children ? 'button' : Link}
                   to={item.children ? undefined : item.path}
                   onClick={(event: MouseEvent<HTMLElement>) => {
                     if (!item.children) { onClose(); return; }
@@ -105,6 +68,7 @@ export function Sidebar({ open, collapsed, onClose, onToggle }: {
                   }}
                   selected={active}
                   aria-label={t(item.key)}
+                  aria-current={!item.children && active ? 'page' : undefined}
                   aria-expanded={item.children ? expanded : undefined}
                   aria-controls={item.children && expanded ? `nav-${item.key}` : undefined}
                   aria-haspopup={item.children && compact ? 'menu' : undefined}
@@ -133,12 +97,11 @@ export function Sidebar({ open, collapsed, onClose, onToggle }: {
                     {item.children.map((child) => (
                       <ListItemButton
                         key={child.path}
-                        component={NavLink}
+                        component={Link}
                         to={child.path}
-                        end
                         onClick={onClose}
-                        selected={matchesPath(location.pathname, child.path)}
-                        aria-current={matchesPath(location.pathname, child.path) ? 'page' : undefined}
+                        selected={current?.path === child.path}
+                        aria-current={current?.path === child.path ? 'page' : undefined}
                         sx={{ px: 1.5, py: 0.5, borderRadius: 1.5, minHeight: { xs: 44, md: 34 }, fontSize: 12.5, '&.Mui-selected': { bgcolor: 'rgba(206,241,123,.12)', color: colors.lime, fontWeight: 700 }, '&.Mui-selected:hover': { bgcolor: 'rgba(206,241,123,.2)' } }}
                       >
                         {t(child.label)}
@@ -161,7 +124,7 @@ export function Sidebar({ open, collapsed, onClose, onToggle }: {
         slotProps={{ list: { id: flyoutItem ? `nav-${flyoutItem.key}` : undefined, 'aria-label': flyoutItem ? t(flyoutItem.key) : undefined }, paper: { sx: { minWidth: 208, maxHeight: 'calc(100vh - 32px)' } } }}
       >
         {flyoutItem?.children?.map(child => (
-          <MenuItem key={child.path} component={NavLink} to={child.path} end selected={matchesPath(location.pathname, child.path)} onClick={() => { setFlyout(null); onClose(); }} sx={{ fontSize: 13, minHeight: 40 }}>
+          <MenuItem key={child.path} component={Link} to={child.path} selected={current?.path === child.path} aria-current={current?.path === child.path ? 'page' : undefined} onClick={() => { setFlyout(null); onClose(); }} sx={{ fontSize: 13, minHeight: 40 }}>
             {t(child.label)}
           </MenuItem>
         ))}

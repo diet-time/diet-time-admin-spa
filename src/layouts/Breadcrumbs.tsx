@@ -1,5 +1,7 @@
 import { Breadcrumbs as MuiBreadcrumbs, Link, Typography } from '@mui/material';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { navigationForPath } from './navigation';
 
 interface Crumb {
   label: string;
@@ -9,12 +11,16 @@ interface Crumb {
 const titleCase = (value: string) => value.replaceAll('-', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 const isRecordId = (value: string) => /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(value);
 
-const breadcrumbsForPath = (pathname: string): Crumb[] => {
+const breadcrumbsForPath = (pathname: string, t: (key: string) => string): Crumb[] => {
   const parts = pathname.split('/').filter(Boolean);
   if (!parts.length) return [];
 
-  if (pathname === '/orders/daily') return [{ label: 'Orders', to: '/orders' }, { label: 'Daily Orders' }];
-  if (pathname === '/orders') return [{ label: 'Orders' }, { label: 'Approval queue' }];
+  const current = navigationForPath(pathname);
+  if (pathname === '/orders') return [{ label: t('orders'), to: '/orders/daily' }, { label: t('orderApprovals') }];
+  if (current && (current.path === pathname || pathname === '/meal-plans/pricing')) return [
+    ...(current.group ? [{ label: t(current.group) }] : []),
+    { label: t(current.label) },
+  ];
 
   if (parts[0] === 'admin') {
     const labels: Record<string, string> = {
@@ -34,7 +40,7 @@ const breadcrumbsForPath = (pathname: string): Crumb[] => {
   }
 
   if (parts[0] === 'meal-plans') {
-    const crumbs: Crumb[] = [{ label: 'Meal Plans', to: parts.length > 1 ? '/meal-plans' : undefined }];
+    const crumbs: Crumb[] = [{ label: t('mealPlans'), to: parts.length > 1 ? '/meal-plans' : undefined }];
     if (parts[1] === 'new') crumbs.push({ label: 'New Plan' });
     else if (parts[2] === 'edit') crumbs.push({ label: 'Edit Plan' });
     else if (parts[1] === 'pricing') crumbs.push({ label: 'Plan Pricing' });
@@ -57,7 +63,8 @@ const breadcrumbsForPath = (pathname: string): Crumb[] => {
 };
 
 export function Breadcrumbs() {
-  const crumbs = breadcrumbsForPath(useLocation().pathname);
+  const { t } = useTranslation();
+  const crumbs = breadcrumbsForPath(useLocation().pathname, t);
   return (
     <MuiBreadcrumbs
       aria-label="Breadcrumb"

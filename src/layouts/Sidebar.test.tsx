@@ -7,106 +7,110 @@ import { createDietTimeTheme } from '@/theme/theme';
 import { accessControlApi } from '@/api/accessControlApi';
 import type { ScreenPermission } from '@/api/apiTypes';
 import { Sidebar } from './Sidebar';
+import '@/i18n';
 
 vi.mock('@/api/accessControlApi', () => ({ accessControlApi: { myScreens: vi.fn() } }));
-vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => ({ orders: 'Orders', dailyOrders: 'Daily Orders', customers: 'Customers' }[key] ?? key) }) }));
-const orderPermission: ScreenPermission = { screenId: 'orders', groupCode: 'OPERATIONS', groupName: 'Operations', screenCode: 'ORDERS', screenName: 'Orders', routeUrl: '/orders', displayOrder: 45, isActive: true, canRead: true, canWrite: true };
+const permission = (routeUrl: string, canRead = true): ScreenPermission => ({ screenId: routeUrl,
+  groupCode: 'ADMIN', groupName: 'Admin', screenCode: routeUrl, screenName: routeUrl,
+  routeUrl, displayOrder: 1, isActive: true, canRead, canWrite: true });
+const renderSidebar = (path = '/', collapsed = false) => render(
+  <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <ThemeProvider theme={createDietTimeTheme('ltr')}>
+      <MemoryRouter initialEntries={[path]}><Sidebar open collapsed={collapsed} onClose={() => {}} onToggle={() => {}} /></MemoryRouter>
+    </ThemeProvider>
+  </QueryClientProvider>,
+);
 
-describe('Orders approval menu permissions', () => {
-  it.each([true, false])('respects the customer directory read permission (%s)', async canRead => {
-    vi.mocked(accessControlApi.myScreens).mockResolvedValue([orderPermission, { ...orderPermission, screenId: 'customers', screenCode: 'CUSTOMERS', routeUrl: '/customers', canRead }]);
-    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter><Sidebar open collapsed={false} onClose={() => {}} onToggle={() => {}} /></MemoryRouter></QueryClientProvider>);
-    await waitFor(() => expect(screen.queryByRole('link', { name: 'meals' })).not.toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button', { name: 'Orders' }));
-    expect((await screen.findByRole('link', { name: 'Daily Orders' }))).toHaveAttribute('href', '/orders/daily');
-    expect(screen.queryByRole('link', { name: 'Customers' }) !== null).toBe(canRead);
-  });
-  it('shows the existing Orders route after the permission catalogue is restored', async () => {
-    vi.mocked(accessControlApi.myScreens).mockResolvedValue([orderPermission]);
-    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <MemoryRouter><Sidebar open collapsed={false} onClose={() => {}} onToggle={() => {}} /></MemoryRouter>
-    </QueryClientProvider>);
-    fireEvent.click(await screen.findByRole('button', { name: 'Orders' }));
-    expect(await screen.findByRole('link', { name: 'Daily Orders' })).toHaveAttribute('href', '/orders/daily');
-  });
-  it.each(['/customers', '/orders/daily', '/orders'])('opens the group on %s and allows it to be collapsed', async path => {
-    vi.mocked(accessControlApi.myScreens).mockResolvedValue([orderPermission, { ...orderPermission, screenId: 'customers', routeUrl: '/customers' }]);
-    render(<QueryClientProvider client={new QueryClient()}><MemoryRouter initialEntries={[path]}><Sidebar open collapsed={false} onClose={() => {}} onToggle={() => {}} /></MemoryRouter></QueryClientProvider>);
-    const group = await screen.findByRole('button', { name: 'Orders' });
-    expect(group).toHaveAttribute('aria-expanded', 'true');
-    expect(group).toHaveClass('Mui-selected');
-    expect(await screen.findByRole('link', { name: 'Customers' })).toHaveAttribute('href', '/customers');
-    fireEvent.click(group);
-    expect(group).toHaveAttribute('aria-expanded', 'false');
-    await waitFor(() => expect(screen.queryByRole('link', { name: 'Customers' })).not.toBeInTheDocument());
-  });
-  it('hides the group when neither child is permitted', async () => {
-    vi.mocked(accessControlApi.myScreens).mockResolvedValue([]);
-    render(<QueryClientProvider client={new QueryClient()}><MemoryRouter><Sidebar open collapsed={false} onClose={() => {}} onToggle={() => {}} /></MemoryRouter></QueryClientProvider>);
-    await waitFor(() => expect(screen.queryByRole('button', { name: 'Orders' })).not.toBeInTheDocument());
-  });
-});
-
-describe('Compact navigation', () => {
-  const masterPermission: ScreenPermission = { ...orderPermission, screenId: 'categories', routeUrl: '/categories' };
-  const renderSidebar = (path = '/', collapsed = false) => render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <ThemeProvider theme={createDietTimeTheme('ltr')}>
-        <MemoryRouter initialEntries={[path]}><Sidebar open collapsed={collapsed} onClose={() => {}} onToggle={() => {}} /></MemoryRouter>
-      </ThemeProvider>
-    </QueryClientProvider>,
-  );
-
-  it('groups permitted master screens and keeps one section open at a time', async () => {
-    vi.mocked(accessControlApi.myScreens).mockResolvedValue([orderPermission, masterPermission, { ...masterPermission, screenId: 'ingredients', routeUrl: '/ingredients', canRead: false }]);
+describe('Task-based navigation', () => {
+  it.each([true, false])('keeps Orders and approvals directly accessible and filters Customers (%s)', async canRead => {
+    vi.mocked(accessControlApi.myScreens).mockResolvedValue([permission('/orders'), permission('/customers', canRead)]);
     renderSidebar('/orders/daily');
-    const master = await screen.findByRole('button', { name: 'masterData' });
-    expect(screen.queryByRole('link', { name: 'categories' })).not.toBeInTheDocument();
-    fireEvent.click(master);
-    expect(await screen.findByRole('link', { name: 'categories' })).toHaveAttribute('href', '/categories');
-    expect(screen.queryByRole('link', { name: 'ingredients' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Orders' })).toHaveAttribute('aria-expanded', 'false');
-    expect(master).toHaveAttribute('aria-expanded', 'true');
+    await waitFor(() => expect(screen.queryByRole('link', { name: 'Meals' })).not.toBeInTheDocument());
+    expect(screen.getByRole('link', { name: 'Orders' })).toHaveAttribute('href', '/orders/daily');
+    expect(screen.getByRole('link', { name: 'Order Approvals' })).toHaveAttribute('href', '/orders');
+    expect(screen.queryByRole('link', { name: 'Customers' }) !== null).toBe(canRead);
+    expect(screen.queryByRole('button', { name: 'Orders' })).not.toBeInTheDocument();
   });
 
-  it.each(['/categories/123/edit', '/admin/durations'])('opens Master Data on direct navigation to %s', async path => {
-    vi.mocked(accessControlApi.myScreens).mockResolvedValue([masterPermission, { ...masterPermission, screenId: 'durations', routeUrl: '/admin/durations' }]);
+  it.each(['/orders/daily', '/orders'])('selects only the correct order screen on %s', async path => {
+    vi.mocked(accessControlApi.myScreens).mockResolvedValue([permission('/orders')]);
     renderSidebar(path);
-    const master = await screen.findByRole('button', { name: 'masterData' });
-    expect(master).toHaveAttribute('aria-expanded', 'true');
-    expect(master).toHaveClass('Mui-selected');
-    expect(await screen.findByRole('link', { name: path.startsWith('/categories') ? 'categories' : 'durations' })).toHaveClass('Mui-selected');
+    const current = await screen.findByRole('link', { name: path === '/orders' ? 'Order Approvals' : 'Orders' });
+    const other = screen.getByRole('link', { name: path === '/orders' ? 'Orders' : 'Order Approvals' });
+    expect(current).toHaveClass('Mui-selected');
+    expect(current).toHaveAttribute('aria-current', 'page');
+    expect(other).not.toHaveClass('Mui-selected');
+    expect(other).not.toHaveAttribute('aria-current');
   });
 
-  it('keeps mobile labels and child links visible when desktop collapse is saved', async () => {
-    vi.mocked(accessControlApi.myScreens).mockResolvedValue([masterPermission]);
-    renderSidebar('/categories', true);
-    expect(await screen.findByRole('link', { name: 'categories' })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'masterData' })).toHaveTextContent('masterData');
+  it('respects an explicit permission denial for the Orders subroute', async () => {
+    vi.mocked(accessControlApi.myScreens).mockResolvedValue([permission('/orders'), permission('/orders/daily', false)]);
+    renderSidebar();
+    await waitFor(() => expect(screen.queryByRole('link', { name: 'Orders' })).not.toBeInTheDocument());
+    expect(screen.getByRole('link', { name: 'Order Approvals' })).toBeInTheDocument();
   });
 
-  it('provides permitted child links in the collapsed desktop flyout', async () => {
-    vi.stubGlobal('matchMedia', vi.fn().mockImplementation((query: string) => ({ matches: query.includes('min-width'), media: query, addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn() })));
-    try {
-      vi.mocked(accessControlApi.myScreens).mockResolvedValue([masterPermission]);
-      renderSidebar('/', true);
-      const master = await screen.findByRole('button', { name: 'masterData' });
-      expect(master).not.toHaveTextContent('masterData');
-      fireEvent.click(master);
-      const menu = await screen.findByRole('menu', { name: 'masterData' });
-      expect(within(menu).getByRole('menuitem', { name: 'categories' })).toHaveAttribute('href', '/categories');
-      fireEvent.click(within(menu).getByRole('menuitem', { name: 'categories' }));
-      await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
-    } finally {
-      vi.unstubAllGlobals();
-    }
+  it('puts routine tasks first and keeps Delivery Calendar out of a group', async () => {
+    vi.mocked(accessControlApi.myScreens).mockResolvedValue(['/', '/orders', '/customers', '/operations/delivery-calendar', '/meals', '/meal-plans'].map(path => permission(path)));
+    renderSidebar();
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Administration' })).not.toBeInTheDocument());
+    expect(within(screen.getByRole('navigation')).getAllByRole('link').map(link => link.textContent)).toEqual([
+      'Dashboard', 'Orders', 'Order Approvals', 'Customers', 'Delivery Calendar', 'Meals', 'Meal Plan Templates',
+    ]);
+  });
+
+  it('hides inaccessible sections entirely', async () => {
+    vi.mocked(accessControlApi.myScreens).mockResolvedValue([]);
+    renderSidebar();
+    await waitFor(() => expect(within(screen.getByRole('navigation')).queryByRole('link')).not.toBeInTheDocument());
+    expect(screen.queryByText('Workspace')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Master Data' })).not.toBeInTheDocument();
   });
 });
 
-it('places Dashboard before the Orders group', async () => {
-  vi.mocked(accessControlApi.myScreens).mockResolvedValue([orderPermission, { ...orderPermission, screenId: 'home', routeUrl: '/' }]);
-  render(<QueryClientProvider client={new QueryClient()}><MemoryRouter><Sidebar open collapsed={false} onClose={() => {}} onToggle={() => {}} /></MemoryRouter></QueryClientProvider>);
-  const home = await screen.findByRole('link', { name: 'dashboard' });
-  const orders = await screen.findByRole('button', { name: 'Orders' });
-  expect(home.compareDocumentPosition(orders) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+describe('Setup navigation', () => {
+  it('opens only one setup group and filters individual master data links', async () => {
+    vi.mocked(accessControlApi.myScreens).mockResolvedValue([permission('/categories'), permission('/ingredients', false), permission('/users')]);
+    renderSidebar('/users');
+    const master = await screen.findByRole('button', { name: 'Master Data' });
+    fireEvent.click(master);
+    expect(await screen.findByRole('link', { name: 'Categories' })).toHaveAttribute('href', '/categories');
+    expect(screen.queryByRole('link', { name: 'Ingredients' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Administration' })).toHaveAttribute('aria-expanded', 'false');
+    expect(master).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it.each([
+    ['/categories/123/edit', '/categories', 'Master Data', 'Categories'],
+    ['/admin/durations', '/admin/durations', 'Master Data', 'Durations'],
+    ['/operations/closures', '/operations/closures', 'Master Data', 'Holidays & Closures'],
+    ['/audit', '/audit', 'Administration', 'Audit History'],
+  ])('opens the correct setup section for %s', async (path, permittedPath, group, label) => {
+    vi.mocked(accessControlApi.myScreens).mockResolvedValue([permission(permittedPath)]);
+    renderSidebar(path);
+    expect(await screen.findByRole('button', { name: group })).toHaveAttribute('aria-expanded', 'true');
+    expect(await screen.findByRole('link', { name: label })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('shows mobile labels even when desktop collapse is saved', async () => {
+    vi.mocked(accessControlApi.myScreens).mockResolvedValue([permission('/orders'), permission('/categories')]);
+    renderSidebar('/categories', true);
+    expect(await screen.findByRole('link', { name: 'Categories' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Orders' })).toHaveTextContent('Orders');
+  });
+
+  it('keeps direct links and setup flyouts usable on collapsed desktop', async () => {
+    vi.stubGlobal('matchMedia', vi.fn().mockImplementation((query: string) => ({ matches: query.includes('min-width'), media: query,
+      addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn() })));
+    try {
+      vi.mocked(accessControlApi.myScreens).mockResolvedValue([permission('/orders'), permission('/categories')]);
+      renderSidebar('/', true);
+      expect(await screen.findByRole('link', { name: 'Orders' })).toHaveAttribute('href', '/orders/daily');
+      fireEvent.click(await screen.findByRole('button', { name: 'Master Data' }));
+      const menu = await screen.findByRole('menu', { name: 'Master Data' });
+      expect(within(menu).getByRole('menuitem', { name: 'Categories' })).toHaveAttribute('href', '/categories');
+      fireEvent.click(within(menu).getByRole('menuitem', { name: 'Categories' }));
+      await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
+    } finally { vi.unstubAllGlobals(); }
+  });
 });

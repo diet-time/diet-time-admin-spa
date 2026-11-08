@@ -35,10 +35,16 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
   test(`daily orders keeps filters and status readable at ${viewport.width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize(viewport);
     await page.goto('/orders/daily?serviceDate=2026-11-09&status=CONFIRMED', { waitUntil: 'domcontentloaded' });
-    await expect(page.getByRole('heading', { name: 'Daily Orders', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Orders', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: '9 Nov 2026', exact: true })).toBeVisible();
     await expect(page.getByText('Confirmed · Qatar time', { exact: true })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Approval queue', exact: true })).toHaveAttribute('href', '/orders');
+    await expect(page.locator('main').getByRole('link', { name: 'Order Approvals', exact: true })).toHaveAttribute('href', '/orders');
+    if (viewport.width >= 900) {
+      const navigation = page.getByRole('navigation', { name: 'Main navigation' });
+      await expect(navigation.getByRole('link', { name: 'Orders', exact: true })).toBeVisible();
+      await expect(navigation.getByRole('link', { name: 'Orders', exact: true })).toHaveAttribute('aria-current', 'page');
+      await expect(navigation.getByRole('link', { name: 'Order Approvals', exact: true })).not.toHaveAttribute('aria-current');
+    }
     await expect(page.getByRole('button', { name: 'Review', exact: true })).toBeVisible();
     await expect(page.getByRole('navigation', { name: 'pagination navigation' })).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -49,6 +55,12 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
       await expect(page.getByRole('table', { name: 'Customer orders' })).toBeVisible();
     }
     await page.screenshot({ path: testInfo.outputPath(`daily-orders-${viewport.width}.png`), fullPage: true });
+    await page.locator('main').getByRole('link', { name: 'Order Approvals', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Order Approvals', exact: true })).toBeVisible();
+    if (viewport.width >= 900) await expect(page.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('link', { name: 'Orders', exact: true })).toHaveAttribute('href', '/orders/daily');
+    await page.getByRole('link', { name: 'Back to Orders', exact: true }).click();
+    await expect(page).toHaveURL(/\/orders\/daily\?serviceDate=2026-11-09&status=CONFIRMED/);
+    await expect(page.getByRole('heading', { name: '9 Nov 2026', exact: true })).toBeVisible();
   });
   test(`order review stays readable and actions remain visible at ${viewport.width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize(viewport);

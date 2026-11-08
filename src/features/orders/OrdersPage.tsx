@@ -3,16 +3,18 @@ import { OrderWhatsAppHistory } from './OrderWhatsAppHistory';
 import { PackageChangeRequests } from './PackageChangeRequests';
 import CloseRounded from '@mui/icons-material/CloseRounded';
 import RefreshRounded from '@mui/icons-material/RefreshRounded';
+import ArrowBackRounded from '@mui/icons-material/ArrowBackRounded';
 import { OrdersTable } from './OrdersTable';
 import { IconButton } from '@mui/material';
 import { OrderReviewDetails } from './OrderReviewDetails';
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useMutation,useQuery,useQueryClient } from '@tanstack/react-query';
 import { Alert,Box,Button,Dialog,DialogTitle,DialogContent,DialogActions,Stack,TextField,MenuItem,Typography } from '@mui/material';
 import { staffOrdersApi,orderStatusLabel,approvalStatuses,approvalFilterStatus,type StaffOrder } from '@/api/staffOrdersApi';
 import { canWriteFromPath } from '@/auth/screenPermissionCache';
 import { formatOrderDate } from './orderPresentation';
+import { useTranslation } from 'react-i18next';
 const statuses=approvalStatuses;
 const errorText=(e:unknown)=>{const value=e as {response?:{data?:{detail?:string}};message?:string};return value.response?.data?.detail??value.message??'Unable to update the order.';};
 const qatarToday=()=>{
@@ -21,6 +23,8 @@ const qatarToday=()=>{
  return `${part('year')}-${part('month')}-${part('day')}`;
 };
 export function OrdersPage({daily=false}:{daily?:boolean}){
+ const { t } = useTranslation();
+ const location = useLocation();
  const [searchParams,setSearchParams]=useSearchParams();const reviewOrderId=searchParams.get('orderId');
  const cache=useQueryClient();const[status,setStatus]=useState(()=>approvalFilterStatus(searchParams.get('status')??(daily?'':'PENDING_APPROVAL')));const[serviceDate,setServiceDate]=useState(()=>daily?(searchParams.get('serviceDate')??qatarToday()):'');const[page,setPage]=useState(1);const[selected,setSelected]=useState<StaffOrder|null>(null);const[action,setAction]=useState('');const[reason,setReason]=useState('');const[payment,setPayment]=useState('PAID');
  const query=useQuery({queryKey:daily?['staffOrders',status,page,serviceDate]:['staffOrders',status,page],queryFn:()=>daily?staffOrdersApi.list(status,page,serviceDate||undefined):staffOrdersApi.list(status,page),refetchInterval:30000});
@@ -48,9 +52,10 @@ export function OrdersPage({daily=false}:{daily?:boolean}){
  </Stack>;
  return <Stack spacing={2.5}>
  <Stack direction={{xs:'column',sm:'row'}} justifyContent="space-between" alignItems={{sm:'center'}} gap={1.5}>
-  <Box><Typography component="h1" variant="h2" fontWeight={800}>{daily?'Daily Orders':'Approval queue'}</Typography><Typography variant="body2" color="text.secondary" mt={0.5}>{daily?'Find customer bookings by service date.':'Review and confirm customer bookings across all service dates.'}</Typography></Box>
+  <Box><Typography component="h1" variant="h2" fontWeight={800}>{t(daily?'orders':'orderApprovals')}</Typography><Typography variant="body2" color="text.secondary" mt={0.5}>{daily?'Find customer bookings by service date.':'Review and confirm customer bookings across all service dates.'}</Typography></Box>
   <Stack direction="row" gap={1}>
-   {daily&&<Button component={Link} to="/orders" variant="outlined" size="small">Approval queue</Button>}
+   {daily?<Button component={Link} to="/orders" state={{ordersReturnTo:`/orders/daily?${new URLSearchParams({serviceDate,status})}`}} variant="outlined" size="small">{t('orderApprovals')}</Button>
+    :<Button component={Link} to={typeof location.state?.ordersReturnTo==='string'&&location.state.ordersReturnTo.startsWith('/orders/daily')?location.state.ordersReturnTo:'/orders/daily'} startIcon={<ArrowBackRounded/>} variant="outlined" size="small">{t('backToOrders')}</Button>}
    <Button startIcon={<RefreshRounded/>} disabled={query.isFetching} onClick={()=>query.refetch()} size="small">Refresh</Button>
   </Stack>
  </Stack>

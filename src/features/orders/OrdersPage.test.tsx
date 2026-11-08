@@ -1,4 +1,5 @@
 import { renderWithToasts as render } from '@/test/renderWithToasts';
+import '@/i18n';
 vi.mock('@/api/packageRequestsApi', () => ({ packageRequestsApi: { list: vi.fn().mockResolvedValue({items:[],totalCount:0}), review: vi.fn() } }));
 import { MemoryRouter } from 'react-router-dom';
 import { canWriteFromPath } from '@/auth/screenPermissionCache';
@@ -54,7 +55,7 @@ describe('Daily orders by meal service date',()=>{
   renderPage('/orders/daily?serviceDate=2026-11-01&status=CONFIRMED',true);
   expect(await screen.findByRole('heading',{name:'1 Nov 2026'})).toBeInTheDocument();
   expect(screen.getByText('Confirmed · Qatar time')).toBeInTheDocument();
-  expect(screen.getByRole('link',{name:'Approval queue'})).toHaveAttribute('href','/orders');
+  expect(screen.getByRole('link',{name:'Order Approvals'})).toHaveAttribute('href','/orders');
   expect(screen.queryByRole('navigation',{name:'pagination navigation'})).not.toBeInTheDocument();
   expect(await screen.findByText('Pending payment')).toBeInTheDocument();
  });
@@ -74,6 +75,11 @@ describe('Daily orders by meal service date',()=>{
 });
 
 describe('Staff order review',()=>{
+ it('provides a visible way back to Orders from the approvals screen',async()=>{
+  renderPage('/orders');
+  expect(screen.getByRole('link',{name:'Back to Orders'})).toHaveAttribute('href','/orders/daily');
+  expect(screen.getByRole('heading',{name:'Order Approvals'})).toBeInTheDocument();
+ });
  it.each(['PENDING_APPROVAL','PENDING','CONFIRMED','ACTIVE','ON_HOLD','COMPLETED','CANCELLED','REJECTED'])('offers only pending approval decisions for %s',async(status)=>{
   const value={...row,order:{...row.order,status}};
   vi.mocked(staffOrdersApi.list).mockResolvedValue({items:[value],totalCount:1});
