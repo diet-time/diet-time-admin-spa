@@ -1,4 +1,4 @@
-import { AdminPanelSettingsOutlined, CalendarMonthOutlined, DashboardOutlined, DinnerDiningOutlined, FactCheckOutlined, MenuBookOutlined, PeopleOutline, ReceiptLongOutlined, StorageOutlined } from '@mui/icons-material';
+import { AdminPanelSettingsOutlined, CalendarMonthOutlined, DashboardOutlined, DinnerDiningOutlined, MenuBookOutlined, PeopleOutline, ReceiptLongOutlined, StorageOutlined } from '@mui/icons-material';
 import type { ReactNode } from 'react';
 
 export interface NavItem {
@@ -11,8 +11,7 @@ export interface NavItem {
 
 export const navigationItems: NavItem[] = [
   { key: 'dashboard', path: '/', section: 'workspace', icon: <DashboardOutlined /> },
-  { key: 'orders', path: '/orders/daily', section: 'workspace', icon: <ReceiptLongOutlined /> },
-  { key: 'orderApprovals', path: '/orders', section: 'workspace', icon: <FactCheckOutlined /> },
+  { key: 'orders', path: '/orders', section: 'workspace', icon: <ReceiptLongOutlined /> },
   { key: 'customers', path: '/customers', section: 'workspace', icon: <PeopleOutline /> },
   { key: 'deliveryCalendar', path: '/operations/delivery-calendar', section: 'workspace', icon: <CalendarMonthOutlined /> },
   { key: 'meals', path: '/meals', section: 'catalog', icon: <DinnerDiningOutlined /> },
@@ -39,7 +38,7 @@ export const navigationItems: NavItem[] = [
 
 const matchesPath = (pathname: string, path: string) => pathname === path || (path !== '/' && pathname.startsWith(`${path}/`));
 
-// Prefer the specific Orders route over /orders, which is the approval queue.
+// Legacy order URLs share the same workspace navigation item.
 export function navigationForPath(pathname: string) {
   if (pathname === '/meal-plans/pricing') pathname = '/admin/plan-pricing';
   return navigationItems.flatMap(item => item.children

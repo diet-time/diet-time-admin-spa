@@ -1,3 +1,4 @@
+import { packageRequestsApi, type PackageRequest } from '@/api/packageRequestsApi';
 import { renderWithToasts as render } from '@/test/renderWithToasts';
 import '@/i18n';
 vi.mock('@/api/packageRequestsApi', () => ({ packageRequestsApi: { list: vi.fn().mockResolvedValue({items:[],totalCount:0}), review: vi.fn() } }));
@@ -12,7 +13,7 @@ vi.mock('@/api/staffOrdersApi',async(importOriginal)=>{const actual=await import
 vi.mock('@/auth/screenPermissionCache',()=>({canWriteFromPath:vi.fn(()=>true)}));
 const row:StaffOrder={order:{id:'order-1',orderNumber:'ORD-1',status:'PENDING_APPROVAL',paymentStatus:'PENDING',placedAt:'2026-10-30T12:00:00Z',plan:{name:'Complete Balance',durationName:'6 Days'},mealCount:2,snackCount:1,fulfillmentMethod:'TAKEAWAY',takeawayBranch:{name:'Diet Time – Azizia Branch'},delivery:{startDate:'2026-11-01',endDate:'2026-11-07',days:[1,2,3,4,6,7],serviceDates:['2026-11-01','2026-11-02']},pricing:{currencyCode:'QAR',totalAmount:699},review:{rowVersion:5,requiresPrepayment:false,awaitingPayment:false,canFulfill:false}},customerName:'Customer',customerPhone:'+97455555555',history:[]};
 const renderPage=(initialEntry='/orders',daily=false)=>render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false},mutations:{retry:false}}})}><MemoryRouter initialEntries={[initialEntry]}><OrdersPage daily={daily}/></MemoryRouter></QueryClientProvider>);
-beforeEach(()=>{vi.clearAllMocks();vi.mocked(canWriteFromPath).mockReturnValue(true);vi.mocked(staffOrdersApi.list).mockResolvedValue({items:[row],totalCount:1});vi.mocked(staffOrdersApi.get).mockResolvedValue(row);vi.mocked(staffOrdersApi.action).mockResolvedValue({...row,order:{...row.order,status:'CONFIRMED',review:{...row.order.review,rowVersion:6,canFulfill:true}}});});
+beforeEach(()=>{vi.clearAllMocks();vi.mocked(packageRequestsApi.list).mockResolvedValue({items:[],totalCount:0});vi.mocked(canWriteFromPath).mockReturnValue(true);vi.mocked(staffOrdersApi.list).mockResolvedValue({items:[row],totalCount:1});vi.mocked(staffOrdersApi.get).mockResolvedValue(row);vi.mocked(staffOrdersApi.action).mockResolvedValue({...row,order:{...row.order,status:'CONFIRMED',review:{...row.order.review,rowVersion:6,canFulfill:true}}});});
 afterEach(()=>vi.useRealTimers());
 describe('Daily orders by meal service date',()=>{
  it('limits the approval dropdown to approval states',async()=>{
@@ -51,11 +52,11 @@ describe('Daily orders by meal service date',()=>{
   expect(screen.getByLabelText('Meal service date')).toHaveValue('');
   expect(screen.getByRole('heading',{name:'All service dates'})).toBeInTheDocument();
  });
- it('keeps the selected date and approval scope visible and provides a separate approval queue',async()=>{
+ it('keeps the selected date and approval scope visible in the shared workspace',async()=>{
   renderPage('/orders/daily?serviceDate=2026-11-01&status=CONFIRMED',true);
   expect(await screen.findByRole('heading',{name:'1 Nov 2026'})).toBeInTheDocument();
   expect(screen.getByText('Confirmed · Qatar time')).toBeInTheDocument();
-  expect(screen.getByRole('link',{name:'Order Approvals'})).toHaveAttribute('href','/orders');
+  expect(screen.getByRole('tab',{name:'All orders'})).toBeInTheDocument();expect(screen.queryByRole('link',{name:'Order Approvals'})).not.toBeInTheDocument();
   expect(screen.queryByRole('navigation',{name:'pagination navigation'})).not.toBeInTheDocument();
   expect(await screen.findByText('Pending payment')).toBeInTheDocument();
  });
@@ -75,10 +76,11 @@ describe('Daily orders by meal service date',()=>{
 });
 
 describe('Staff order review',()=>{
- it('provides a visible way back to Orders from the approvals screen',async()=>{
+ it('uses one Orders workspace with an attention queue',async()=>{
   renderPage('/orders');
-  expect(screen.getByRole('link',{name:'Back to Orders'})).toHaveAttribute('href','/orders/daily');
-  expect(screen.getByRole('heading',{name:'Order Approvals'})).toBeInTheDocument();
+  expect(screen.queryByRole('link',{name:'Back to Orders'})).not.toBeInTheDocument();
+  expect(screen.getByRole('heading',{name:'Orders'})).toBeInTheDocument();
+  expect(screen.getByRole('tab',{name:/Needs attention/})).toHaveAttribute('aria-selected','true');
  });
  it.each(['PENDING_APPROVAL','PENDING','CONFIRMED','ACTIVE','ON_HOLD','COMPLETED','CANCELLED','REJECTED'])('offers only pending approval decisions for %s',async(status)=>{
   const value={...row,order:{...row.order,status}};
@@ -158,5 +160,47 @@ describe('Staff order review',()=>{
  });
  it('shows a concurrency error without repeating the decision',async()=>{
   vi.mocked(staffOrdersApi.action).mockRejectedValue({response:{data:{detail:'This order changed. Refresh before another action.'}}});renderPage();fireEvent.click(await screen.findByRole('button',{name:'Review'}));fireEvent.click(await screen.findByRole('button',{name:'Approve'}));fireEvent.click(screen.getByRole('button',{name:'Confirm'}));expect(await screen.findByText('This order changed. Refresh before another action.')).toBeInTheDocument();expect(staffOrdersApi.action).toHaveBeenCalledTimes(1);
+ });
+});
+
+const pauseRequest:PackageRequest={orderId:'order-1',orderNumber:'ORD-1',planName:'Complete Balance',customerName:'Customer',request:{id:'pause-1',type:'PAUSE',status:'PENDING_APPROVAL',pauseStartDate:'2026-12-01',resumeDate:'2026-12-05',projectedEndDate:'2026-12-20',reason:'Travel',createdAt:'2026-11-10T10:00:00Z'}};
+describe('Unified order requests',()=>{
+ it('shows pause requests and bookings in the same grid across all service dates',async()=>{
+  vi.mocked(packageRequestsApi.list).mockResolvedValue({items:[pauseRequest],totalCount:1});renderPage('/orders?serviceDate=2026-11-01');
+  const grid=screen.getByRole('region',{name:'Filtered customer orders'});
+  expect(await within(grid).findByRole('button',{name:'Review pause'})).toBeInTheDocument();
+  expect(within(grid).getByRole('button',{name:'Review'})).toBeInTheDocument();
+  expect(screen.getByRole('tab',{name:'Needs attention 2'})).toHaveAttribute('aria-selected','true');
+  expect(screen.queryByLabelText('Meal service date')).not.toBeInTheDocument();
+  expect(staffOrdersApi.list).toHaveBeenCalledWith('PENDING_APPROVAL',1,undefined);
+  fireEvent.click(screen.getByRole('button',{name:'Review pause'}));
+  expect(screen.getByRole('dialog',{name:'Review pause request'})).toBeInTheDocument();
+  expect(screen.getByText('Travel')).toBeInTheDocument();expect(packageRequestsApi.review).not.toHaveBeenCalled();
+ });
+ it('filters the same grid to pause requests without showing booking rows',async()=>{
+  vi.mocked(packageRequestsApi.list).mockResolvedValue({items:[pauseRequest],totalCount:1});renderPage();
+  await screen.findByRole('button',{name:'Review pause'});
+  fireEvent.mouseDown(screen.getByRole('combobox',{name:'Request type'}));fireEvent.click(screen.getByRole('option',{name:'Pause requests'}));
+  await waitFor(()=>expect(screen.queryByRole('button',{name:'Review'})).not.toBeInTheDocument());
+  expect(await screen.findByRole('button',{name:'Review pause'})).toBeInTheDocument();
+ });
+ it('opens the pending pause from its order badge while retaining filters',async()=>{
+  vi.mocked(packageRequestsApi.list).mockResolvedValue({items:[pauseRequest],totalCount:1});renderPage('/orders?view=all&status=CONFIRMED&serviceDate=2026-11-01');
+  fireEvent.click(await screen.findByRole('button',{name:'Pause requested'}));
+  fireEvent.click(screen.getByRole('button',{name:'Close request details'}));
+  await waitFor(()=>expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  expect(screen.getByLabelText('Meal service date')).toHaveValue('2026-11-01');
+  expect(screen.getByRole('combobox',{name:'Approval status'})).toHaveTextContent('Confirmed');
+ });
+ it('loads paused packages using their lifecycle status',async()=>{
+  renderPage();fireEvent.click(screen.getByRole('tab',{name:'Paused'}));
+  await waitFor(()=>expect(staffOrdersApi.list).toHaveBeenCalledWith('PAUSED',1,undefined));
+  expect(screen.getByRole('heading',{name:'Paused packages'})).toBeInTheDocument();
+ });
+ it('shows a request API error without hiding available bookings',async()=>{
+  vi.mocked(packageRequestsApi.list).mockRejectedValue(new Error('Unavailable'));renderPage();
+  expect(await screen.findByText(/Pause and resume requests could not be loaded/)).toBeInTheDocument();
+  expect(await screen.findByRole('button',{name:'Review'})).toBeInTheDocument();
+  expect(screen.queryByRole('tab',{name:'Needs attention 1'})).not.toBeInTheDocument();
  });
 });

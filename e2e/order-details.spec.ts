@@ -27,7 +27,10 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/admin/orders**', route => {
     if (route.request().method() !== 'GET') return route.abort();
     if (new URL(route.request().url()).pathname.endsWith('/package-requests')) return route.fulfill({ json: { items: [], totalCount: 0 } });
-    return route.fulfill({ json: new URL(route.request().url()).pathname.endsWith('/review-demo') ? order : { items: [order], totalCount: 1 } });
+        const url=new URL(route.request().url());
+    const booking=url.searchParams.get('status')==='PENDING_APPROVAL'
+      ? {...order,customerName:'New Customer',order:{...order.order,id:'pending-demo',orderNumber:'ORD-DEMO-0044',status:'PENDING_APPROVAL',paymentStatus:'PENDING'}} : order;
+    return route.fulfill({ json: url.pathname.endsWith('/review-demo') ? order : { items: [booking], totalCount: 1 } });
   });
   await page.route('**/admin/notifications/unread-count', route => route.fulfill({ json: { data: { unreadCount: 0 } } }));
 });
@@ -35,15 +38,15 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
   test(`daily orders keeps filters and status readable at ${viewport.width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize(viewport);
     await page.goto('/orders/daily?serviceDate=2026-11-09&status=CONFIRMED', { waitUntil: 'domcontentloaded' });
-    await expect(page.getByRole('heading', { name: 'Orders', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Orders', exact: true, level: 1 })).toBeVisible();
     await expect(page.getByRole('heading', { name: '9 Nov 2026', exact: true })).toBeVisible();
     await expect(page.getByText('Confirmed · Qatar time', { exact: true })).toBeVisible();
-    await expect(page.locator('main').getByRole('link', { name: 'Order Approvals', exact: true })).toHaveAttribute('href', '/orders');
+    await expect(page.getByRole('tab', { name: 'Serving today', exact: true })).toHaveAttribute('aria-selected','true');
     if (viewport.width >= 900) {
       const navigation = page.getByRole('navigation', { name: 'Main navigation' });
       await expect(navigation.getByRole('link', { name: 'Orders', exact: true })).toBeVisible();
       await expect(navigation.getByRole('link', { name: 'Orders', exact: true })).toHaveAttribute('aria-current', 'page');
-      await expect(navigation.getByRole('link', { name: 'Order Approvals', exact: true })).not.toHaveAttribute('aria-current');
+      await expect(navigation.getByRole('link', { name: 'Order Approvals', exact: true })).toHaveCount(0);
     }
     await expect(page.getByRole('button', { name: 'Review', exact: true })).toBeVisible();
     await expect(page.getByRole('navigation', { name: 'pagination navigation' })).toHaveCount(0);
@@ -55,11 +58,10 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
       await expect(page.getByRole('table', { name: 'Customer orders' })).toBeVisible();
     }
     await page.screenshot({ path: testInfo.outputPath(`daily-orders-${viewport.width}.png`), fullPage: true });
-    await page.locator('main').getByRole('link', { name: 'Order Approvals', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Order Approvals', exact: true })).toBeVisible();
-    if (viewport.width >= 900) await expect(page.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('link', { name: 'Orders', exact: true })).toHaveAttribute('href', '/orders/daily');
-    await page.getByRole('link', { name: 'Back to Orders', exact: true }).click();
-    await expect(page).toHaveURL(/\/orders\/daily\?serviceDate=2026-11-09&status=CONFIRMED/);
+    await page.getByRole('tab', { name: /Needs attention/ }).click();
+    await expect(page.getByRole('heading', { name: 'Requests awaiting review', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Orders', exact: true, level: 1 })).toBeVisible();
+    await page.goBack();
     await expect(page.getByRole('heading', { name: '9 Nov 2026', exact: true })).toBeVisible();
   });
   test(`order review stays readable and actions remain visible at ${viewport.width}px`, async ({ page }, testInfo) => {
@@ -89,4 +91,41 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
     await dialog.getByRole('button', { name: 'Close', exact: true }).click();
     await expect(dialog).not.toBeVisible();
   });
+}
+
+for (const viewport of [{width:1440,height:1000},{width:390,height:844}]) {
+ test(`pause requests share the grid and review drawer at ${viewport.width}px`,async({page},testInfo)=>{
+  await page.setViewportSize(viewport);
+  let reviewed=false;
+  const pause={orderId:order.order.id,orderNumber:order.order.orderNumber,customerName:order.customerName,planName:order.order.plan.name,
+   request:{id:'pause-demo',type:'PAUSE',status:'PENDING_APPROVAL',pauseStartDate:'2026-11-16',resumeDate:'2026-11-20',projectedEndDate:'2026-11-25',reason:'Travelling for work',createdAt:'2026-11-11T08:00:00Z'}};
+  await page.route('**/admin/orders/package-requests**',async route=>{
+   if(route.request().method()==='POST'){
+    expect(route.request().postDataJSON()).toEqual({approve:true,reason:'Schedule checked'});
+    reviewed=true;return route.fulfill({json:{status:'APPROVED'}});
+   }
+   return route.fulfill({json:{items:reviewed?[]:[pause],totalCount:reviewed?0:1}});
+  });
+  await page.goto('/orders');
+  const grid=page.getByRole('region',{name:'Filtered customer orders'});
+  await expect(grid.getByRole('button',{name:'Review pause',exact:true})).toBeVisible();
+  await expect(grid.getByRole('button',{name:'Review',exact:true})).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+  await page.screenshot({path:testInfo.outputPath(`orders-attention-${viewport.width}.png`),fullPage:true});
+  await page.getByRole('tab',{name:'All orders',exact:true}).click();
+  await grid.getByRole('button',{name:'Pause requested',exact:true}).click();
+  const drawer=page.getByRole('dialog',{name:'Review pause request',exact:true});
+  await expect(drawer.getByText('Travelling for work')).toBeVisible();
+  await expect(drawer.getByText('Proposed package end: 25 Nov 2026')).toBeVisible();
+  const approve=drawer.getByRole('button',{name:'Approve pause',exact:true});
+  const bounds=await approve.boundingBox();expect(bounds!.y+bounds!.height).toBeLessThanOrEqual(viewport.height);
+  expect(await drawer.evaluate(element=>element.scrollWidth<=element.clientWidth)).toBe(true);
+  await drawer.screenshot({path:testInfo.outputPath(`pause-review-${viewport.width}.png`)});
+  await approve.click();expect(reviewed).toBe(false);
+  await drawer.getByLabel('Review notes (optional)').fill('Schedule checked');
+  await drawer.getByRole('button',{name:'Confirm approval',exact:true}).click();
+  await expect(drawer).not.toBeVisible();
+  await expect(grid.getByRole('button',{name:'Pause requested',exact:true})).toHaveCount(0);
+  await expect(page.getByRole('tab',{name:'All orders',exact:true})).toHaveAttribute('aria-selected','true');
+ });
 }

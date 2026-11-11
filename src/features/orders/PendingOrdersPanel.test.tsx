@@ -1,3 +1,4 @@
+import '@/i18n';
 import { packageRequestsApi } from '@/api/packageRequestsApi';
 vi.mock('@/api/packageRequestsApi', () => ({ packageRequestsApi: { list: vi.fn().mockResolvedValue({items:[],totalCount:0}), review: vi.fn() } }));
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
@@ -48,10 +49,10 @@ describe('Visible pending confirmation queue', () => {
     fireEvent.click(screen.getByRole('button',{name:'Review package requests'}));
     expect(await screen.findByRole('heading',{name:'Orders'})).toBeInTheDocument();
   });
-  it('opens the separate daily orders screen for the selected meal service date', async () => {
+  it('opens the service-date view of the shared Orders workspace', async () => {
     renderPanel();
     fireEvent.click(await screen.findByRole('button', { name: 'Daily orders' }));
-    expect(await screen.findByRole('heading', { name: 'Daily Orders' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Orders' })).toBeInTheDocument();
     expect(screen.getByLabelText('Meal service date')).toHaveValue('2026-11-01');
     expect(staffOrdersApi.list).toHaveBeenCalledWith('', 1, '2026-11-01');
   });

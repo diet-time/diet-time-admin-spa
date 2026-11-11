@@ -16,7 +16,7 @@ const breadcrumbsForPath = (pathname: string, t: (key: string) => string): Crumb
   if (!parts.length) return [];
 
   const current = navigationForPath(pathname);
-  if (pathname === '/orders') return [{ label: t('orders'), to: '/orders/daily' }, { label: t('orderApprovals') }];
+  if (parts[0] === 'orders') return [{ label: t('orders') }];
   if (current && (current.path === pathname || pathname === '/meal-plans/pricing')) return [
     ...(current.group ? [{ label: t(current.group) }] : []),
     { label: t(current.label) },

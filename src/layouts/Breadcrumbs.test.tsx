@@ -5,10 +5,10 @@ import { Breadcrumbs } from './Breadcrumbs';
 import '@/i18n';
 
 describe('Breadcrumbs', () => {
-  it('provides a working Orders link from Order Approvals', () => {
+  it('names the unified Orders workspace', () => {
     render(<MemoryRouter initialEntries={['/orders']}><Breadcrumbs /></MemoryRouter>);
-    expect(screen.getByRole('link', { name: 'Orders' })).toHaveAttribute('href', '/orders/daily');
-    expect(screen.getByText('Order Approvals')).toBeInTheDocument();
+    expect(screen.getByText('Orders')).toBeInTheDocument();
+    expect(screen.queryByText('Order Approvals')).not.toBeInTheDocument();
   });
   it('names Orders as a direct workspace destination', () => {
     render(<MemoryRouter initialEntries={['/orders/daily']}><Breadcrumbs /></MemoryRouter>);

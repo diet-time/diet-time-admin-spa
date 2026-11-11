@@ -22,12 +22,12 @@ const renderSidebar = (path = '/', collapsed = false) => render(
 );
 
 describe('Task-based navigation', () => {
-  it.each([true, false])('keeps Orders and approvals directly accessible and filters Customers (%s)', async canRead => {
+  it.each([true, false])('keeps one Orders workspace directly accessible and filters Customers (%s)', async canRead => {
     vi.mocked(accessControlApi.myScreens).mockResolvedValue([permission('/orders'), permission('/customers', canRead)]);
     renderSidebar('/orders/daily');
     await waitFor(() => expect(screen.queryByRole('link', { name: 'Meals' })).not.toBeInTheDocument());
-    expect(screen.getByRole('link', { name: 'Orders' })).toHaveAttribute('href', '/orders/daily');
-    expect(screen.getByRole('link', { name: 'Order Approvals' })).toHaveAttribute('href', '/orders');
+    expect(screen.getByRole('link', { name: 'Orders' })).toHaveAttribute('href', '/orders');
+    expect(screen.queryByRole('link', { name: 'Order Approvals' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Customers' }) !== null).toBe(canRead);
     expect(screen.queryByRole('button', { name: 'Orders' })).not.toBeInTheDocument();
   });
@@ -35,19 +35,17 @@ describe('Task-based navigation', () => {
   it.each(['/orders/daily', '/orders'])('selects only the correct order screen on %s', async path => {
     vi.mocked(accessControlApi.myScreens).mockResolvedValue([permission('/orders')]);
     renderSidebar(path);
-    const current = await screen.findByRole('link', { name: path === '/orders' ? 'Order Approvals' : 'Orders' });
-    const other = screen.getByRole('link', { name: path === '/orders' ? 'Orders' : 'Order Approvals' });
+    const current = await screen.findByRole('link', { name: 'Orders' });
     expect(current).toHaveClass('Mui-selected');
     expect(current).toHaveAttribute('aria-current', 'page');
-    expect(other).not.toHaveClass('Mui-selected');
-    expect(other).not.toHaveAttribute('aria-current');
+    expect(screen.queryByRole('link', { name: 'Order Approvals' })).not.toBeInTheDocument();
   });
 
-  it('respects an explicit permission denial for the Orders subroute', async () => {
+  it('uses canonical Orders permission independently of a legacy subroute', async () => {
     vi.mocked(accessControlApi.myScreens).mockResolvedValue([permission('/orders'), permission('/orders/daily', false)]);
     renderSidebar();
-    await waitFor(() => expect(screen.queryByRole('link', { name: 'Orders' })).not.toBeInTheDocument());
-    expect(screen.getByRole('link', { name: 'Order Approvals' })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'Orders' })).toHaveAttribute('href','/orders');
+    expect(screen.queryByRole('link', { name: 'Order Approvals' })).not.toBeInTheDocument();
   });
 
   it('puts routine tasks first and keeps Delivery Calendar out of a group', async () => {
@@ -55,7 +53,7 @@ describe('Task-based navigation', () => {
     renderSidebar();
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Administration' })).not.toBeInTheDocument());
     expect(within(screen.getByRole('navigation')).getAllByRole('link').map(link => link.textContent)).toEqual([
-      'Dashboard', 'Orders', 'Order Approvals', 'Customers', 'Delivery Calendar', 'Meals', 'Meal Plan Templates',
+      'Dashboard', 'Orders', 'Customers', 'Delivery Calendar', 'Meals', 'Meal Plan Templates',
     ]);
   });
 
@@ -105,7 +103,7 @@ describe('Setup navigation', () => {
     try {
       vi.mocked(accessControlApi.myScreens).mockResolvedValue([permission('/orders'), permission('/categories')]);
       renderSidebar('/', true);
-      expect(await screen.findByRole('link', { name: 'Orders' })).toHaveAttribute('href', '/orders/daily');
+      expect(await screen.findByRole('link', { name: 'Orders' })).toHaveAttribute('href', '/orders');
       fireEvent.click(await screen.findByRole('button', { name: 'Master Data' }));
       const menu = await screen.findByRole('menu', { name: 'Master Data' });
       expect(within(menu).getByRole('menuitem', { name: 'Categories' })).toHaveAttribute('href', '/categories');
