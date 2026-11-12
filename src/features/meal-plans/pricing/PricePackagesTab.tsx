@@ -99,7 +99,7 @@ const packageApiError = (error: unknown) => {
     const first = errors[0];
     const code = first?.code?.toLowerCase() ?? '';
     if (code.includes('duplicate')) fields.code = 'A duration with this code already exists.';
-    else if (code.includes('duration') || code.includes('referenced')) fields.durationDays = 'Service days cannot be changed because the duration is already used.';
+    else if (first?.field?.toLowerCase() === 'durationdays' || code.includes('duration')) fields.durationDays = first?.message ?? 'Unable to update service days.';
     message = first?.message ?? message;
   } else if (errors) {
     for (const [field, messages] of Object.entries(errors)) {
@@ -113,9 +113,6 @@ const packageApiError = (error: unknown) => {
   }
   return { message, fields };
 };
-
-const durationLocked = (item?: MealPlanPricePackage) =>
-  !!item && (item.canEditDurationDays === false || (item.usageCount ?? 0) > 0);
 
 export function PricePackagesTab({ createRequest = 0 }: { createRequest?: number }) {
   const [page, setPage] = useState(0);
@@ -142,6 +139,10 @@ export function PricePackagesTab({ createRequest = 0 }: { createRequest?: number
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['meal-plan-price-packages'] }),
       queryClient.invalidateQueries({ queryKey: ['meal-plan-price-package-lookup'] }),
+      queryClient.invalidateQueries({ queryKey: ['plan-pricing'] }),
+      queryClient.invalidateQueries({ queryKey: ['plan-pricing-detail'] }),
+      queryClient.invalidateQueries({ queryKey: ['meal-plan-prices'] }),
+      queryClient.invalidateQueries({ queryKey: ['durations'] }),
     ]);
   };
 
@@ -270,7 +271,6 @@ function PackageDialog({ item, pending, apiError, onClose, onSave }: {
 }) {
   const [values, setValues] = useState<PackageFormValues>(item ? packageForm(item) : emptyForm());
   const [errors, setErrors] = useState<PackageFormErrors>({});
-  const serviceDaysLocked = durationLocked(item);
   const fieldErrors = { ...errors, ...apiError?.fields };
 
   const submit = () => {
@@ -298,7 +298,7 @@ function PackageDialog({ item, pending, apiError, onClose, onSave }: {
           <TextField required label="English Name" placeholder="1 Week" value={values.nameEn} disabled={pending} error={!!fieldErrors.nameEn} helperText={fieldErrors.nameEn} onChange={(event) => setValues({ ...values, nameEn: event.target.value })} />
           <TextField required label="Arabic Name" placeholder="أسبوع واحد" value={values.nameAr} disabled={pending} error={!!fieldErrors.nameAr} helperText={fieldErrors.nameAr} slotProps={{ htmlInput: { dir: 'rtl' } }} onChange={(event) => setValues({ ...values, nameAr: event.target.value })} />
           <Grid container spacing={2}>
-            <Grid size={{ xs: 12, sm: 6 }}><TextField required fullWidth type="number" label="Service Days" value={values.durationDays} disabled={pending || serviceDaysLocked} error={!!fieldErrors.durationDays} helperText={fieldErrors.durationDays ?? (serviceDaysLocked ? 'Service days cannot be changed because this duration is already used by meal-plan pricing.' : 'Number of meal-service days included in this duration.')} slotProps={{ htmlInput: { min: 1, step: 1 } }} onChange={(event) => setValues({ ...values, durationDays: event.target.value })} /></Grid>
+            <Grid size={{ xs: 12, sm: 6 }}><TextField required fullWidth type="number" label="Service Days" value={values.durationDays} disabled={pending} error={!!fieldErrors.durationDays} helperText={fieldErrors.durationDays ?? (item ? 'Updates linked pricing for new bookings. Existing bookings keep their service days.' : 'Number of meal-service days included in this duration.')} slotProps={{ htmlInput: { min: 1, step: 1 } }} onChange={(event) => setValues({ ...values, durationDays: event.target.value })} /></Grid>
             <Grid size={{ xs: 12, sm: 6 }}><TextField required fullWidth type="number" label="Display Order" value={values.displayOrder} disabled={pending} error={!!fieldErrors.displayOrder} helperText={fieldErrors.displayOrder} slotProps={{ htmlInput: { min: 0, step: 1 } }} onChange={(event) => setValues({ ...values, displayOrder: event.target.value })} /></Grid>
           </Grid>
           <FormControlLabel disabled={pending} control={<Switch checked={values.isDeliveryEnabled} onChange={(_, checked) => setValues({ ...values, isDeliveryEnabled: checked })} />} label="Enable Delivery" />

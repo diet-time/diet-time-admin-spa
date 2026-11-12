@@ -9,6 +9,12 @@ import { useAuthStore } from '@/app/store/authStore';
 import { toast } from '@/app/store/toastStore';
 
 const notificationVisual = (type: string) => {
+  if (type === 'PACKAGE_PAUSE_REQUESTED') return { icon: <AssignmentOutlined />, label: 'Pause Requested', color: '#986000', tint: '#FFF6E6' };
+  if (type === 'PACKAGE_RESUME_REQUESTED') return { icon: <AssignmentOutlined />, label: 'Resume Requested', color: '#2667A0', tint: '#EAF3FD' };
+  if (type === 'PACKAGE_PAUSE_APPROVED') return { icon: <CheckCircleOutline />, label: 'Pause Approved', color: '#087A58', tint: '#E8F7EF' };
+  if (type === 'PACKAGE_RESUME_APPROVED') return { icon: <CheckCircleOutline />, label: 'Resume Approved', color: '#087A58', tint: '#E8F7EF' };
+  if (type === 'PACKAGE_PAUSE_REJECTED') return { icon: <ReportProblemOutlined />, label: 'Pause Rejected', color: '#B42318', tint: '#FFF0ED' };
+  if (type === 'PACKAGE_RESUME_REJECTED') return { icon: <ReportProblemOutlined />, label: 'Resume Rejected', color: '#B42318', tint: '#FFF0ED' };
   if (type === 'DELIVERY_OVERDUE') return { icon: <ReportProblemOutlined />, label: 'Overdue', color: '#B42318', tint: '#FFF0ED' };
   if (type === 'ORDER_REJECTED') return { icon: <ReportProblemOutlined />, label: 'Rejected', color: '#B42318', tint: '#FFF0ED' };
   if (type === 'ORDER_CANCELLED') return { icon: <ReportProblemOutlined />, label: 'Cancelled', color: '#986000', tint: '#FFF6E6' };

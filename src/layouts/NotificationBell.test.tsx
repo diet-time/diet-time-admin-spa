@@ -60,6 +60,20 @@ it('refreshes only notification queries from the panel refresh button', async ()
   expect(invalidate).toHaveBeenCalledExactlyOnceWith({ queryKey: ['admin-notifications', 'staff', 'admin'] });
   view.client.clear();
 });
+it.each([
+  ['PACKAGE_PAUSE_REQUESTED', 'Pause Requested'],
+  ['PACKAGE_RESUME_REQUESTED', 'Resume Requested'],
+  ['PACKAGE_PAUSE_APPROVED', 'Pause Approved'],
+  ['PACKAGE_RESUME_APPROVED', 'Resume Approved'],
+  ['PACKAGE_PAUSE_REJECTED', 'Pause Rejected'],
+  ['PACKAGE_RESUME_REJECTED', 'Resume Rejected'],
+])('shows %s in the inbox with its own status', async (eventType, label) => {
+  vi.mocked(notificationsApi.list).mockResolvedValue({ items: [{ ...item, eventType, title: label }], page: 1, pageSize: 50, totalCount: 1 });
+  show(); fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
+  const article = await screen.findByRole('article', { name: label });
+  expect(within(article).getAllByText(label)).toHaveLength(2);
+  expect(within(article).queryByText('Pending Confirmation')).not.toBeInTheDocument();
+});
 it('marks a single item read and refreshes its badge and highlight', async () => {
   let read = false;
   vi.mocked(notificationsApi.read).mockImplementation(async () => { read = true; });

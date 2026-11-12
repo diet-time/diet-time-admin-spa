@@ -61,13 +61,17 @@ describe('PricePackagesTab', () => {
     await waitFor(() => expect(mealPlanPricePackagesApi.create).toHaveBeenCalledWith({ code: 'MONTH', nameEn: '1 Month', nameAr: 'شهر واحد', durationDays: 24, displayOrder: 4, isActive: true, isDeliveryEnabled: true }));
   });
 
-  it('disables service days when an existing package is referenced', async () => {
+  it('updates service days even when an existing package is referenced', async () => {
     const user = userEvent.setup();
     renderTab();
     await screen.findByText('WEEK');
     await user.click(screen.getByRole('button', { name: 'Edit 1 Week' }));
-    expect(screen.getByLabelText(/Service Days/)).toBeDisabled();
-    expect(screen.getByText(/cannot be changed because this duration is already used/)).toBeInTheDocument();
+    const days = screen.getByLabelText(/Service Days/);
+    expect(days).toBeEnabled();
+    await user.clear(days);
+    await user.type(days, '7');
+    await user.click(screen.getByRole('button', { name: 'Save Duration' }));
+    await waitFor(() => expect(mealPlanPricePackagesApi.update).toHaveBeenCalledWith('week', expect.objectContaining({ durationDays: 7 })));
   });
 
   it('loads and saves delivery eligibility independently of duration', async () => {
