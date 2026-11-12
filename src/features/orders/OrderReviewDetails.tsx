@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { formatOrderDate, orderStatusColor } from './orderPresentation';
+import { OrderServiceStatus } from './OrderServiceStatus';
 import {
   Accordion, AccordionDetails, AccordionSummary, Alert, Box, Chip, Divider,
   Paper, Stack, Typography,
@@ -44,6 +45,7 @@ export function OrderReviewDetails({ value }: { value: StaffOrder }) {
           <Typography variant="body2" color="text.secondary" mt={0.5}>{order.mealCount} {order.mealCount === 1 ? 'Meal' : 'Meals'} + {order.snackCount} {order.snackCount === 1 ? 'Snack' : 'Snacks'} · {order.plan.durationName}</Typography>
           <Stack direction="row" useFlexGap flexWrap="wrap" gap={1} mt={1.5}>
             <Chip size="small" color={orderStatusColor(approvalFilterStatus(order.status) || order.status)} label={approvalStatusLabel(order.status)} />
+            <OrderServiceStatus schedule={order.packageSchedule} />
             <Chip size="small" variant="outlined" color={orderStatusColor(order.paymentStatus)} label={`Payment: ${paymentLabel(order.paymentStatus)}`} />
           </Stack>
         </Box>
@@ -55,6 +57,7 @@ export function OrderReviewDetails({ value }: { value: StaffOrder }) {
     </Paper>
     {order.review.awaitingPayment && <Alert severity="warning">Confirmed, awaiting required prepayment. Fulfillment is not authorized.</Alert>}
     {note && <Alert severity="info" sx={{ overflowWrap: 'anywhere' }}>{note}</Alert>}
+    {order.packageSchedule?.displayStatus === 'PAUSED' && <Alert severity="info">Approved pause.{order.packageSchedule.nextScheduledDelivery ? ` Next service: ${formatOrderDate(order.packageSchedule.nextScheduledDelivery)}.` : ''}</Alert>}
     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 2 }}>
       <Section title="Customer" icon={<PersonOutlineRounded fontSize="small" />}>
         <Stack spacing={1.5}><Field label="Name">{value.customerName || 'Name not recorded'}</Field><Field label="Phone">{value.customerPhone || 'Phone not recorded'}</Field></Stack>

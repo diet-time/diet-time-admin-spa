@@ -19,6 +19,19 @@ const value: StaffOrder = {
   },
 };
 describe('Staff order detail presentation', () => {
+  it('shows an approved pause with its revised service period and next service date', () => {
+    render(<OrderReviewDetails value={{ ...value, order: { ...value.order, status: 'CONFIRMED',
+      packageSchedule: { displayStatus: 'PAUSED', pauseApprovalStatus: 'APPROVED', resumeDate: '2026-12-01', nextScheduledDelivery: '2026-12-01', remainingServiceDays: 24 },
+      delivery: { ...value.order.delivery, startDate: '2026-12-01', endDate: '2026-12-28', serviceDates: ['2026-12-01', '2026-12-02'] },
+    } }} />);
+    expect(screen.getByText('Confirmed')).toBeInTheDocument();
+    expect(screen.getByText('Paused')).toBeInTheDocument();
+    expect(screen.getByText('Approved pause. Next service: 1 Dec 2026.')).toBeInTheDocument();
+    expect(within(screen.getByText('Start date').parentElement!).getByText('1 Dec 2026')).toBeInTheDocument();
+    expect(screen.queryByText('14 Nov 2026')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Service dates/ }));
+    expect(within(screen.getByRole('list', { name: 'Scheduled service dates' })).getAllByRole('listitem')).toHaveLength(2);
+  });
   it('groups customer, delivery, package and payment details with clear headings', () => {
     render(<OrderReviewDetails value={value} />);
     expect(screen.getByRole('heading', { name: 'Complete Balance' })).toBeInTheDocument();

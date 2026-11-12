@@ -4,6 +4,7 @@ import { Box, Button, Card, Chip, Divider, Pagination, Skeleton, Stack, Table, T
 import type { ReactNode } from 'react';
 import { approvalFilterStatus, approvalStatusLabel, type StaffOrder } from '@/api/staffOrdersApi';
 import { formatOrderDate, orderStatusColor } from './orderPresentation';
+import { OrderServiceStatus } from './OrderServiceStatus';
 
 function Payment({ row }: { row: StaffOrder }) {
   const { order } = row;
@@ -16,7 +17,7 @@ function Payment({ row }: { row: StaffOrder }) {
 }
 
 function Approval({ row }: { row: StaffOrder }) {
-  return <Chip size="small" label={approvalStatusLabel(row.order.status)} color={orderStatusColor(approvalFilterStatus(row.order.status) || row.order.status)} sx={{ fontSize: 11, fontWeight: 650, height: 24 }} />;
+  return <Stack spacing={0.5} alignItems="flex-start"><Chip size="small" label={approvalStatusLabel(row.order.status)} color={orderStatusColor(approvalFilterStatus(row.order.status) || row.order.status)} sx={{ fontSize: 11, fontWeight: 650, height: 24 }} /><OrderServiceStatus schedule={row.order.packageSchedule} /></Stack>;
 }
 
 function Service({ row }: { row: StaffOrder }) {
